@@ -17,10 +17,12 @@ architecture rtl of opa_satadd_tb is
 
    signal counter  : std_logic_vector(20 downto 0);
    signal expected : t_opa_matrix(counter'range, 1 downto 0);
+   signal resulted : t_opa_matrix(counter'range, 1 downto 0);
    signal sums     : t_opa_matrix(counter'range, 1 downto 0);
 
 begin
 
+  -- Run on many inputs
   count : process(clk_i, rstn_i) is
   begin
     if rstn_i = '0' then
@@ -30,22 +32,7 @@ begin
     end if;
   end process;
   
-  calc : process(clk_i) is
-    variable sum : integer;
-  begin
-    if rstn_i = '0' then
-      expected <= (others => (others => '0'));
-    elsif rising_edge(clk_i) then
-      sum := 0;
-      for i in 0 to 20 loop
-        sum := sum + to_integer(unsigned(counter(i downto i)));
-        if sum > 3 then sum := 3; end if;
-        expected(i,0) <= f_opa_bit(sum mod 2 = 1);
-        expected(i,1) <= f_opa_bit(sum /   2 = 1);
-      end loop;
-    end if;
-  end process;
-  
+  -- Run it for real
   satadd : opa_satadd
     generic map(
       g_state => 2,
@@ -54,6 +41,25 @@ begin
       bits_i => counter,
       sums_o => sums);
 
-  good_o <= f_opa_bit(expected = sums);
+  -- Run an equivalent circuit
+  verify : process(clk_i) is
+    variable sum : integer;
+  begin
+    if rstn_i = '0' then
+      expected <= (others => (others => '0'));
+      resulted <= (others => (others => '0'));
+    elsif rising_edge(clk_i) then
+      sum := 0;
+      for i in 0 to 20 loop
+        sum := sum + to_integer(unsigned(counter(i downto i)));
+        if sum > 3 then sum := 3; end if;
+        expected(i,0) <= f_opa_bit(sum mod 2 = 1);
+        expected(i,1) <= f_opa_bit(sum /   2 = 1);
+      end loop;
+      resulted <= sums;
+    end if;
+  end process;
+  
+  good_o <= f_opa_bit(expected = resulted);
   
 end rtl;
