@@ -1,10 +1,9 @@
-vlog -sv ../opa_sim_tb.vhd
--- make -f Makefile
-vsim -L unisim -t 10fs work.main -voptargs="+acc"
+make -f Makefile
+vsim -L unisim -t 1ns work.opa_sim_tb -voptargs="+acc"
 set StdArithNoWarnings 1
 set NumericStdNoWarnings 1
 do wave.do
 radix -hexadecimal
-run 300us
+run 100us
 wave zoomfull
 radix -hexadecimal
