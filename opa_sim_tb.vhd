@@ -4,7 +4,8 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
-use work.opa_internal_pkg.all;
+use work.opa_functions_pkg.all;
+use work.opa_components_pkg.all;
 
 entity opa_sim_tb is
 end opa_sim_tb;
@@ -30,12 +31,10 @@ begin
 
   reset : process
   begin
-    loop
-      rstn <= '0';
-      wait for period*256;
-      rstn <= '1';
-      wait for 1 ms;
-    end loop;
+    rstn <= '0';
+    wait for period*256;
+    rstn <= '1';
+    wait until rstn = '0';
   end process;
   
   satadd_tb : opa_satadd_tb
@@ -56,5 +55,9 @@ begin
       end if;
     end if;
   end process;
+  
+  assert (r_ok = '1')
+  report "Testing failed"
+  severity failure;
 
 end rtl;

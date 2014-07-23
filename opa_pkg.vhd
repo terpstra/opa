@@ -9,7 +9,7 @@ package opa_pkg is
     log_arch   : natural; -- 2**log_arch   = # of architectural registers
     log_width  : natural; -- 2**log_width  = # of bits in registers
     log_decode : natural; -- 2**log_decode = decode width
-    num_res    : natural; -- # of reservation stations (must be divisible by num_decode)
+    num_stat   : natural; -- # of reservation stations (must be divisible by num_decode)
     num_ieu    : natural; -- # of IEUs (logic, add/sub, ...)
     num_mul    : natural; -- # of multipliers (mulhi, mullo, <<, >>, rol, ...)
   end record;
