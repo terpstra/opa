@@ -10,10 +10,12 @@ package opa_functions_pkg is
   function f_opa_log2(x : natural) return natural;
   function f_opa_bit(x : boolean) return std_logic;
   
-  -- Number of types of execution units
-  constant c_types     : natural := 3; -- load/store, ieu, mul
-  constant c_log_types : natural;
-  constant c_num_mem   : natural := 2; -- read+write memory paths
+  -- Types of execution units; if you modify, update f_opa_unit_{type,index}
+  constant c_type_ieu   : natural := 0;
+  constant c_type_mul   : natural := 1;
+  constant c_type_load  : natural := 2;
+  constant c_type_store : natural := 3;
+  constant c_types      : natural := 4;
   
   -- Decode config into useful values
   function f_opa_decoders (conf : t_opa_config) return natural;
@@ -22,11 +24,20 @@ package opa_functions_pkg is
   function f_opa_back_wide(conf : t_opa_config) return natural;
   function f_opa_stat_wide(conf : t_opa_config) return natural;
   function f_opa_max_typ  (conf : t_opa_config) return natural;
+  
+  function f_opa_unit_type (conf : t_opa_config; u : natural) return natural;
+  function f_opa_unit_index(conf : t_opa_config; u : natural) return natural;
 
   type t_opa_matrix is array(natural range <>, natural range <>) of std_logic;
   
-  function f_opa_select(i : natural; x : t_opa_matrix) return std_logic_vector;
-  function f_opa_match(x, y : t_opa_matrix) return std_logic_vector;
+  function f_opa_select_row(x : t_opa_matrix; i : natural) return std_logic_vector;
+  function f_opa_select_col(x : t_opa_matrix; j : natural) return std_logic_vector;
+  function "not"(x : t_opa_matrix) return t_opa_matrix;
+  function f_opa_transpose(x : t_opa_matrix) return t_opa_matrix;
+  function f_opa_product(x : t_opa_matrix; y : std_logic_vector) return std_logic_vector;
+  function f_opa_product(x, y : t_opa_matrix) return t_opa_matrix;
+  
+  function f_opa_match(x, y : t_opa_matrix) return std_logic_vector; -- do any rows match?
   function f_opa_match_index(n : natural; x : t_opa_matrix) return std_logic_vector;
   function f_opa_compose(x : std_logic_vector; y : t_opa_matrix) return std_logic_vector;
 
@@ -47,8 +58,6 @@ package body opa_functions_pkg is
     if x then return '1'; else return '0'; end if;
   end f_opa_bit;
   
-  constant c_log_types : natural := f_opa_log2(c_types);
-  
   function f_opa_decoders(conf : t_opa_config) return natural is
   begin
     return 2**conf.log_decode;
@@ -56,7 +65,7 @@ package body opa_functions_pkg is
   
   function f_opa_executers(conf : t_opa_config) return natural is
   begin
-    return conf.num_ieu + conf.num_mul + c_num_mem;
+    return conf.num_ieu + conf.num_mul + 1 + 1;
   end f_opa_executers;
   
   function f_opa_back_num(conf : t_opa_config) return natural is
@@ -82,23 +91,120 @@ package body opa_functions_pkg is
     return max;
   end f_opa_max_typ;
   
-  function f_opa_select(i : natural; x : t_opa_matrix) return std_logic_vector is
+  function f_opa_unit_type (conf : t_opa_config; u : natural) return natural is
+    constant c_ieu   : natural := 0;
+    constant c_mul   : natural := c_ieu + conf.num_ieu;
+    constant c_load  : natural := c_mul + conf.num_mul;
+    constant c_store : natural := c_load + 1;
+    constant c_end   : natural := c_store + 1;
+  begin
+    assert (u < c_end) report "impossible unit type" severity failure;
+    if u >= c_store then return c_type_store; end if;
+    if u >= c_load  then return c_type_load;  end if;
+    if u >= c_mul   then return c_type_mul;   end if;
+    if u >= c_ieu   then return c_type_ieu;   end if;
+    assert (false) report "unreachable" severity failure;
+    return 0;
+  end f_opa_unit_type;
+  
+  function f_opa_unit_index(conf : t_opa_config; u : natural) return natural is
+    constant c_ieu   : natural := 0;
+    constant c_mul   : natural := c_ieu + conf.num_ieu;
+    constant c_load  : natural := c_mul + conf.num_mul;
+    constant c_store : natural := c_load + 1;
+    constant c_end   : natural := c_store + 1;
+  begin
+    assert (u < c_end) report "impossible unit type" severity failure;
+    if u >= c_store then return u-c_store; end if;
+    if u >= c_load  then return u-c_load;  end if;
+    if u >= c_mul   then return u-c_mul;   end if;
+    if u >= c_ieu   then return u-c_ieu;   end if;
+    assert (false) report "unreachable" severity failure;
+    return 0;
+  end f_opa_unit_index;
+  
+  --------------------------------------------------------------------------------------
+  
+  function f_opa_select_row(x : t_opa_matrix; i : natural) return std_logic_vector is
     variable result : std_logic_vector(x'range(2));
   begin
     for j in result'range loop
       result(j) := x(i, j);
     end loop;
     return result;
-  end f_opa_select;
+  end f_opa_select_row;
+  
+  function f_opa_select_col(x : t_opa_matrix; j : natural) return std_logic_vector is
+    variable result : std_logic_vector(x'range(1));
+  begin
+    for i in result'range loop
+      result(i) := x(i, j);
+    end loop;
+    return result;
+  end f_opa_select_col;
+  
+  function "not"(x : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'range(2));
+  begin
+    for i in result'range(1) loop
+      for j in result'range(2) loop
+        result(i, j) := not x(i, j);
+      end loop;
+    end loop;
+    return result;
+  end "not";
+  
+  function f_opa_transpose(x : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(2), x'range(1));
+  begin
+    for i in result'range(1) loop
+      for j in result'range(2) loop
+        result(i, j) := x(j, i);
+      end loop;
+    end loop;
+    return result;
+  end f_opa_transpose;
+  
+  -- Assumption: synthesis tool can recognize a chain of ORs and do something intelligent
+  
+  function f_opa_product(x : t_opa_matrix; y : std_logic_vector) return std_logic_vector is
+    variable result : std_logic_vector(x'range(1));
+  begin
+    assert (x'low(2)  = y'low)  report "matrix-vector dimension mismatch" severity failure;
+    assert (x'high(2) = y'high) report "matrix-vector dimension mismatch" severity failure;
+    for i in result'range loop
+      result(i) := '0';
+      for j in x'range(2) loop
+        result(i) := result(i) or (x(i, j) and y(j));
+      end loop;
+    end loop;
+    return result;
+  end f_opa_product;
+  
+  function f_opa_product(x, y : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), y'range(2));
+  begin
+    assert (x'low(2)  = y'low(1))  report "matrix-matrix dimension mismatch" severity failure;
+    assert (x'high(2) = y'high(1)) report "matrix-matrix dimension mismatch" severity failure;
+    for i in x'range(1) loop
+      for j in y'range(2) loop
+        result(i,j) := '0';
+        for k in y'range(1) loop
+          result(i,j) := result(i,j) or (x(i,k) and y(k,j));
+        end loop;
+      end loop;
+    end loop;
+    return result;
+  end f_opa_product;
   
   function f_opa_match(x, y : t_opa_matrix) return std_logic_vector is
     variable result : std_logic_vector(x'range(1)) := (others => '0');
   begin
-    assert (x'low(2)  = y'low(2))  report "matrix dimension mismatch" severity failure;
-    assert (x'high(2) = y'high(2)) report "matrix dimension mismatch" severity failure;
+    assert (x'low(2)  = y'low(2))  report "matrix-matrix row mismatch" severity failure;
+    assert (x'high(2) = y'high(2)) report "matrix-matrix row mismatch" severity failure;
     for i in x'range(1) loop
       for j in y'range(1) loop
-        result(i) := result(i) or f_opa_bit(f_opa_select(i, x) = f_opa_select(j, y));
+        result(i) := result(i) or f_opa_bit(f_opa_select_row(x, i) = f_opa_select_row(y, j));
       end loop;
     end loop;
     return result;
@@ -112,7 +218,7 @@ package body opa_functions_pkg is
     for j in result'range loop
       v_i := std_logic_vector(to_unsigned(j, x'length(2)));
       for i in x'range(1) loop
-        result(j) := result(j) or f_opa_bit(f_opa_select(i, x) = v_i);
+        result(j) := result(j) or f_opa_bit(f_opa_select_row(x, i) = v_i);
       end loop;
     end loop;
     return result;
@@ -122,7 +228,7 @@ package body opa_functions_pkg is
     variable result : std_logic_vector(y'range(1));
   begin
     for i in result'range loop
-      result(i) := x(to_integer(unsigned(f_opa_select(i, y))));
+      result(i) := x(to_integer(unsigned(f_opa_select_row(y, i))));
     end loop;
     return result;
   end f_opa_compose;

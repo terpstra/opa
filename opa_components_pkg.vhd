@@ -45,7 +45,7 @@ package opa_components_pkg is
       
       -- Values the decoder needs to provide us
       dec_stb_i      : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      dec_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_log_types-1               downto 0);
+      dec_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
       dec_stat_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
       dec_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
       dec_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
