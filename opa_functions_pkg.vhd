@@ -30,15 +30,18 @@ package opa_functions_pkg is
 
   type t_opa_matrix is array(natural range <>, natural range <>) of std_logic;
   
+  function "not"(x : t_opa_matrix) return t_opa_matrix;
+  function "or" (x, y : t_opa_matrix) return t_opa_matrix;
+  function "and"(x, y : t_opa_matrix) return t_opa_matrix;
+  
   function f_opa_select_row(x : t_opa_matrix; i : natural) return std_logic_vector;
   function f_opa_select_col(x : t_opa_matrix; j : natural) return std_logic_vector;
-  function "not"(x : t_opa_matrix) return t_opa_matrix;
   function f_opa_transpose(x : t_opa_matrix) return t_opa_matrix;
   function f_opa_product(x : t_opa_matrix; y : std_logic_vector) return std_logic_vector;
   function f_opa_product(x, y : t_opa_matrix) return t_opa_matrix;
   
-  function f_opa_match(x, y : t_opa_matrix) return std_logic_vector; -- do any rows match?
-  function f_opa_match_index(n : natural; x : t_opa_matrix) return std_logic_vector;
+  function f_opa_match(x, y : t_opa_matrix) return t_opa_matrix; -- do any rows match?
+  function f_opa_match_index(n : natural; x : t_opa_matrix) return t_opa_matrix;
   function f_opa_compose(x : std_logic_vector; y : t_opa_matrix) return std_logic_vector;
 
 end package;
@@ -134,15 +137,6 @@ package body opa_functions_pkg is
     return result;
   end f_opa_select_row;
   
-  function f_opa_select_col(x : t_opa_matrix; j : natural) return std_logic_vector is
-    variable result : std_logic_vector(x'range(1));
-  begin
-    for i in result'range loop
-      result(i) := x(i, j);
-    end loop;
-    return result;
-  end f_opa_select_col;
-  
   function "not"(x : t_opa_matrix) return t_opa_matrix is
     variable result : t_opa_matrix(x'range(1), x'range(2));
   begin
@@ -153,6 +147,45 @@ package body opa_functions_pkg is
     end loop;
     return result;
   end "not";
+  
+  function "or"(x, y : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'range(2));
+  begin
+    assert (x'low(1)  = y'low(1))  report "matrix-matrix dimension mismatch" severity failure;
+    assert (x'high(1) = y'high(1)) report "matrix-matrix dimension mismatch" severity failure;
+    assert (x'low(2)  = y'low(2))  report "matrix-matrix dimension mismatch" severity failure;
+    assert (x'high(2) = y'high(2)) report "matrix-matrix dimension mismatch" severity failure;
+    for i in result'range(1) loop
+      for j in result'range(2) loop
+        result(i, j) := x(i, j) or y(i, j);
+      end loop;
+    end loop;
+    return result;
+  end "or";
+  
+  function "and"(x, y : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'range(2));
+  begin
+    assert (x'low(1)  = y'low(1))  report "matrix-matrix dimension mismatch" severity failure;
+    assert (x'high(1) = y'high(1)) report "matrix-matrix dimension mismatch" severity failure;
+    assert (x'low(2)  = y'low(2))  report "matrix-matrix dimension mismatch" severity failure;
+    assert (x'high(2) = y'high(2)) report "matrix-matrix dimension mismatch" severity failure;
+    for i in result'range(1) loop
+      for j in result'range(2) loop
+        result(i, j) := x(i, j) and y(i, j);
+      end loop;
+    end loop;
+    return result;
+  end "and";
+  
+  function f_opa_select_col(x : t_opa_matrix; j : natural) return std_logic_vector is
+    variable result : std_logic_vector(x'range(1));
+  begin
+    for i in result'range loop
+      result(i) := x(i, j);
+    end loop;
+    return result;
+  end f_opa_select_col;
   
   function f_opa_transpose(x : t_opa_matrix) return t_opa_matrix is
     variable result : t_opa_matrix(x'range(2), x'range(1));
@@ -197,28 +230,28 @@ package body opa_functions_pkg is
     return result;
   end f_opa_product;
   
-  function f_opa_match(x, y : t_opa_matrix) return std_logic_vector is
-    variable result : std_logic_vector(x'range(1)) := (others => '0');
+  function f_opa_match(x, y : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), y'range(1));
   begin
     assert (x'low(2)  = y'low(2))  report "matrix-matrix row mismatch" severity failure;
     assert (x'high(2) = y'high(2)) report "matrix-matrix row mismatch" severity failure;
     for i in x'range(1) loop
       for j in y'range(1) loop
-        result(i) := result(i) or f_opa_bit(f_opa_select_row(x, i) = f_opa_select_row(y, j));
+        result(i, j) := f_opa_bit(f_opa_select_row(x, i) = f_opa_select_row(y, j));
       end loop;
     end loop;
     return result;
   end f_opa_match;
   
-  function f_opa_match_index(n : natural; x : t_opa_matrix) return std_logic_vector is
-    variable result : std_logic_vector(n-1 downto 0) := (others => '0');
+  function f_opa_match_index(n : natural; x : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(n-1 downto 0, x'range(1));
     variable v_i : std_logic_vector(x'range(2));
   begin
     assert (x'length(2) = f_opa_log2(n)) report "index width mismatch" severity failure;
-    for j in result'range loop
-      v_i := std_logic_vector(to_unsigned(j, x'length(2)));
-      for i in x'range(1) loop
-        result(j) := result(j) or f_opa_bit(f_opa_select_row(x, i) = v_i);
+    for i in result'range loop
+      v_i := std_logic_vector(to_unsigned(i, x'length(2)));
+      for j in x'range(1) loop
+        result(i, j) := f_opa_bit(f_opa_select_row(x, j) = v_i);
       end loop;
     end loop;
     return result;

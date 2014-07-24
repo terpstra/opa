@@ -11,6 +11,21 @@ package opa_components_pkg is
   --            outputs always left unregistered
   -- Exception: top-level core registers its bus outputs
   
+  component opa_dpram is
+    generic(
+      g_width : natural;
+      g_size  : natural);
+    port(
+      clk_i    : in  std_logic;
+      rst_n_i  : in  std_logic;
+      r_en_i   : in  std_logic;
+      r_addr_i : in  std_logic_vector(f_opa_log2(g_size)-1 downto 0);
+      r_data_o : out std_logic_vector(g_width-1 downto 0);
+      w_en_i   : in  std_logic;
+      w_addr_i : in  std_logic_vector(f_opa_log2(g_size)-1 downto 0);
+      w_data_i : in  std_logic_vector(g_width-1 downto 0));
+  end component;
+  
   component opa_satadd_ks is
     generic(
       g_state : natural;  -- bits in the adder
@@ -58,9 +73,23 @@ package opa_components_pkg is
       -- EU is committed to completion in 2 cycles (after stb_o) [ latency1: connect regx_i=regx_o ]
       eu_done_regx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
+      -- The ports can be used by the register file to select sources
+      -- Alternatively, the register file can operate solely using eu_next_reg[abx]_o
+      reg_bypass_a_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+      reg_bypass_b_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+      reg_mux_a_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+      reg_mux_b_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+      
       -- Connections to/from the committer
       commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0); -- must be a register
       commit_done_o  : out std_logic_vector(  g_config.num_stat-1 downto 0));
   end component;
+  
+  -- TODO:
+  -- fetcher
+  -- decoder (constants, op decode)
+  -- renamer (move optimization)
+  -- memory
+  -- commiter
 
 end package;

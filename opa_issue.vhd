@@ -29,6 +29,13 @@ entity opa_issue is
     -- EU is committed to completion in 2 cycles (after stb_o) [ latency1: connect regx_i=regx_o ]
     eu_done_regx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
+    -- The ports can be used by the register file to select sources
+    -- Alternatively, the register file can operate solely using eu_next_reg[abx]_o
+    reg_bypass_a_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+    reg_bypass_b_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+    reg_mux_a_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+    reg_mux_b_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+    
     -- Connections to/from the committer
     commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0); -- must be a register
     commit_done_o  : out std_logic_vector(  g_config.num_stat-1 downto 0));
@@ -44,32 +51,41 @@ architecture rtl of opa_issue is
   constant c_stations  : natural := g_config.num_stat;
   constant c_unit_wide : natural := f_opa_log2(f_opa_max_typ(g_config));
   
-  constant c_ones : std_logic_vector(c_executers-1 downto 0) := (others => '1');
+  constant c_ones     : std_logic_vector(c_executers-1 downto 0) := (others => '1');
+  constant c_ones_dec : std_logic_vector(c_decoders-1  downto 0) := (others => '1');
 
-  signal r_dec_stb       : std_logic_vector(c_decoders-1 downto 0);
-  signal r_dec_typ       : t_opa_matrix(c_decoders -1 downto 0, c_types    -1 downto 0);
-  signal r_dec_stat      : t_opa_matrix(c_decoders -1 downto 0, c_stat_wide-1 downto 0);
-  signal r_dec_regx      : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
-  signal r_dec_rega      : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
-  signal r_dec_regb      : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
-  signal r_done_regx     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
-  signal s_dec_done_a    : std_logic_vector(c_decoders-1 downto 0);
-  signal s_dec_done_b    : std_logic_vector(c_decoders-1 downto 0);
+  signal r_dec_stb         : std_logic_vector(c_decoders-1 downto 0);
+  signal r_dec_typ         : t_opa_matrix(c_decoders -1 downto 0, c_types    -1 downto 0);
+  signal r_dec_stat        : t_opa_matrix(c_decoders -1 downto 0, c_stat_wide-1 downto 0);
+  signal r_dec_regx        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
+  signal r_dec_rega        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
+  signal r_dec_regb        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
+  signal r_done_regx       : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
+  signal s_dec_already_a   : std_logic_vector(c_decoders-1 downto 0);
+  signal s_dec_already_b   : std_logic_vector(c_decoders-1 downto 0);
+  signal s_dec_now_a       : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_dec_now_b       : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_dec_done_a      : std_logic_vector(c_decoders-1 downto 0);
+  signal s_dec_done_b      : std_logic_vector(c_decoders-1 downto 0);
   
-  signal r_back_ready    : std_logic_vector(c_back_num-1 downto 0) := (others => '1');
-  signal s_back_now_done : std_logic_vector(c_back_num-1 downto 0);
-  signal s_back_cleared  : std_logic_vector(c_back_num-1 downto 0);
+  signal r_back_ready      : std_logic_vector(c_back_num-1 downto 0) := (others => '1');
+  signal s_back_now_done   : std_logic_vector(c_back_num-1 downto 0);
+  signal s_back_cleared    : std_logic_vector(c_back_num-1 downto 0);
   
-  signal r_stat_issued   : std_logic_vector(c_stations-1 downto 0) := (others => '1');
-  signal r_stat_readya   : std_logic_vector(c_stations-1 downto 0);
-  signal r_stat_readyb   : std_logic_vector(c_stations-1 downto 0);
-  signal r_stat_typ      : t_opa_matrix(c_stations-1 downto 0, c_types    -1 downto 0);
-  signal r_stat_rega     : t_opa_matrix(c_stations-1 downto 0, c_back_wide-1 downto 0);
-  signal r_stat_regb     : t_opa_matrix(c_stations-1 downto 0, c_back_wide-1 downto 0);
-  signal r_stat_regx     : t_opa_matrix(c_stations-1 downto 0, c_back_wide-1 downto 0);
-  signal s_stat_readya   : std_logic_vector(c_stations-1 downto 0);
-  signal s_stat_readyb   : std_logic_vector(c_stations-1 downto 0);
-  signal s_stat_pending  : std_logic_vector(c_stations-1 downto 0);
+  signal r_stat_issued     : std_logic_vector(c_stations-1 downto 0) := (others => '1');
+  signal r_stat_readya     : std_logic_vector(c_stations-1 downto 0);
+  signal r_stat_readyb     : std_logic_vector(c_stations-1 downto 0);
+  signal r_stat_readya_mux : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0); -- might be optimized away
+  signal r_stat_readyb_mux : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0);
+  signal r_stat_typ        : t_opa_matrix(c_stations-1 downto 0, c_types    -1 downto 0);
+  signal r_stat_rega       : t_opa_matrix(c_stations-1 downto 0, c_back_wide-1 downto 0);
+  signal r_stat_regb       : t_opa_matrix(c_stations-1 downto 0, c_back_wide-1 downto 0);
+  signal r_stat_regx       : t_opa_matrix(c_stations-1 downto 0, c_back_wide-1 downto 0);
+  signal s_stat_readya_now : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0);
+  signal s_stat_readyb_now : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0);
+  signal s_stat_readya     : std_logic_vector(c_stations-1 downto 0);
+  signal s_stat_readyb     : std_logic_vector(c_stations-1 downto 0);
+  signal s_stat_pending    : std_logic_vector(c_stations-1 downto 0);
   
   -- Need to curry this matrix when passed to opa_satadd
   type t_pending_typ  is array (c_types-1 downto 0) of std_logic_vector(  c_stations-1 downto 0);
@@ -82,7 +98,7 @@ architecture rtl of opa_issue is
   signal s_stat_sums         : t_sums;
   signal s_pick_index        : t_pick_index;
   signal s_pick_one          : t_pick_one;
-  signal s_schedule          : t_opa_matrix(c_executers-1 downto 0,   c_stations-1 downto 0);
+  signal s_schedule          : t_opa_matrix(c_executers-1 downto 0, c_stations-1 downto 0);
   
 begin
 
@@ -101,16 +117,24 @@ begin
   end process;
   
   -- Calculate what the just-completed registers affect
-  s_stat_readya   <= f_opa_match(r_stat_rega, r_done_regx) or r_stat_readya;
-  s_stat_readyb   <= f_opa_match(r_stat_regb, r_done_regx) or r_stat_readyb;
-  s_back_now_done <= f_opa_match_index(c_back_num, r_done_regx);
-  s_back_cleared  <= f_opa_match_index(c_back_num, r_dec_regx);
+  s_stat_readya_now <= f_opa_match(r_stat_rega, r_done_regx);
+  s_stat_readyb_now <= f_opa_match(r_stat_regb, r_done_regx);
+  s_stat_readya   <= f_opa_product(s_stat_readya_now, c_ones) or r_stat_readya;
+  s_stat_readyb   <= f_opa_product(s_stat_readyb_now, c_ones) or r_stat_readyb;
+  
+  -- Effect on the backing store
+  s_back_now_done <= f_opa_product(f_opa_match_index(c_back_num, r_done_regx), c_ones);
+  s_back_cleared  <= f_opa_product(f_opa_match_index(c_back_num, r_dec_regx), c_ones_dec);
   
   -- Are the inputs for newly decoded instructions ready?
   --   They were already ready (careful of new op cross-dependencies)
   --   They are about to be made ready by completing operations
-  s_dec_done_a <= f_opa_compose(r_back_ready and not s_back_cleared, r_dec_rega) or f_opa_match(r_dec_rega, r_done_regx);
-  s_dec_done_b <= f_opa_compose(r_back_ready and not s_back_cleared, r_dec_regb) or f_opa_match(r_dec_regb, r_done_regx);
+  s_dec_already_a <= f_opa_compose(r_back_ready and not s_back_cleared, r_dec_rega);
+  s_dec_already_b <= f_opa_compose(r_back_ready and not s_back_cleared, r_dec_regb);
+  s_dec_now_a <= f_opa_match(r_dec_rega, r_done_regx);
+  s_dec_now_b <= f_opa_match(r_dec_regb, r_done_regx);
+  s_dec_done_a <= s_dec_already_a or f_opa_product(s_dec_now_a, c_ones);
+  s_dec_done_b <= s_dec_already_b or f_opa_product(s_dec_now_b, c_ones);
   
   -- Edge 2: Update reservation stations and backing readiness
   edge2r : process(clk_i, rst_n_i) is
@@ -130,6 +154,9 @@ begin
       r_stat_readya <= s_stat_readya;
       r_stat_readyb <= s_stat_readyb;
       
+      r_stat_readya_mux <= r_stat_readya_mux or s_stat_readya_now;
+      r_stat_readyb_mux <= r_stat_readyb_mux or s_stat_readyb_now;
+      
       -- Each station has only one decoder source
       for i in 0 to c_decoders-1 loop
         index := to_integer(unsigned(f_opa_select_row(r_dec_stat, i)))*c_decoders + i;
@@ -138,6 +165,10 @@ begin
           r_stat_issued(index) <= '0';
           r_stat_readya(index) <= s_dec_done_a(i);
           r_stat_readyb(index) <= s_dec_done_b(i);
+          for b in r_stat_readya_mux'range(2) loop
+            r_stat_readya_mux(index, b) <= '0';
+            r_stat_readyb_mux(index, b) <= '0';
+          end loop;
           for b in r_stat_typ'range(2) loop
             r_stat_typ (index, b) <= r_dec_typ (i, b);
             r_stat_rega(index, b) <= r_dec_rega(i, b);
@@ -191,5 +222,11 @@ begin
   eu_next_regx_o <= not f_opa_product(s_schedule, not r_stat_regx);
   eu_next_rega_o <= not f_opa_product(s_schedule, not r_stat_rega);
   eu_next_regb_o <= not f_opa_product(s_schedule, not r_stat_regb);
+  
+  -- Make it easier for the register file to pick the output
+  reg_bypass_a_o <= f_opa_product(s_schedule, s_stat_readya_now);
+  reg_bypass_b_o <= f_opa_product(s_schedule, s_stat_readyb_now);
+  reg_mux_a_o <= f_opa_product(s_schedule, r_stat_readya_mux);
+  reg_mux_b_o <= f_opa_product(s_schedule, r_stat_readyb_mux);
 
 end rtl;
