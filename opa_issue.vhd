@@ -14,13 +14,13 @@ entity opa_issue is
     clk_i          : in  std_logic;
     rst_n_i        : in  std_logic;
     
-    -- Values the decoder needs to provide us
-    dec_stb_i      : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    dec_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
-    dec_stat_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    dec_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
-    dec_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    dec_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    -- Values the renamer needs to provide us
+    ren_stb_i      : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    ren_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
+    ren_stat_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+    ren_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
+    ren_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    ren_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
     -- EU should execute this next
     eu_next_regx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
@@ -54,19 +54,19 @@ architecture rtl of opa_issue is
   constant c_ones     : std_logic_vector(c_executers-1 downto 0) := (others => '1');
   constant c_ones_dec : std_logic_vector(c_decoders-1  downto 0) := (others => '1');
 
-  signal r_dec_stb         : std_logic_vector(c_decoders-1 downto 0);
-  signal r_dec_typ         : t_opa_matrix(c_decoders -1 downto 0, c_types    -1 downto 0);
-  signal r_dec_stat        : t_opa_matrix(c_decoders -1 downto 0, c_stat_wide-1 downto 0);
-  signal r_dec_regx        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
-  signal r_dec_rega        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
-  signal r_dec_regb        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
+  signal r_ren_stb         : std_logic_vector(c_decoders-1 downto 0);
+  signal r_ren_typ         : t_opa_matrix(c_decoders -1 downto 0, c_types    -1 downto 0);
+  signal r_ren_stat        : t_opa_matrix(c_decoders -1 downto 0, c_stat_wide-1 downto 0);
+  signal r_ren_regx        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
+  signal r_ren_rega        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
+  signal r_ren_regb        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
   signal r_done_regx       : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
-  signal s_dec_already_a   : std_logic_vector(c_decoders-1 downto 0);
-  signal s_dec_already_b   : std_logic_vector(c_decoders-1 downto 0);
-  signal s_dec_now_a       : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
-  signal s_dec_now_b       : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
-  signal s_dec_done_a      : std_logic_vector(c_decoders-1 downto 0);
-  signal s_dec_done_b      : std_logic_vector(c_decoders-1 downto 0);
+  signal s_ren_already_a   : std_logic_vector(c_decoders-1 downto 0);
+  signal s_ren_already_b   : std_logic_vector(c_decoders-1 downto 0);
+  signal s_ren_now_a       : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_ren_now_b       : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_ren_done_a      : std_logic_vector(c_decoders-1 downto 0);
+  signal s_ren_done_b      : std_logic_vector(c_decoders-1 downto 0);
   
   signal r_back_ready      : std_logic_vector(c_back_num-1 downto 0) := (others => '1');
   signal s_back_now_done   : std_logic_vector(c_back_num-1 downto 0);
@@ -106,12 +106,12 @@ begin
   edge1a : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_dec_stb  <= dec_stb_i;
-      r_dec_typ  <= dec_typ_i;
-      r_dec_stat <= dec_stat_i;
-      r_dec_regx <= dec_regx_i;
-      r_dec_rega <= dec_rega_i;
-      r_dec_regb <= dec_regb_i;
+      r_ren_stb  <= ren_stb_i;
+      r_ren_typ  <= ren_typ_i;
+      r_ren_stat <= ren_stat_i;
+      r_ren_regx <= ren_regx_i;
+      r_ren_rega <= ren_rega_i;
+      r_ren_regb <= ren_regb_i;
       r_done_regx <= eu_done_regx_i; -- fans out like crazy -- duplicate it !!!
     end if;
   end process;
@@ -124,17 +124,17 @@ begin
   
   -- Effect on the backing store
   s_back_now_done <= f_opa_product(f_opa_match_index(c_back_num, r_done_regx), c_ones);
-  s_back_cleared  <= f_opa_product(f_opa_match_index(c_back_num, r_dec_regx), c_ones_dec);
+  s_back_cleared  <= f_opa_product(f_opa_match_index(c_back_num, r_ren_regx), c_ones_dec);
   
   -- Are the inputs for newly decoded instructions ready?
   --   They were already ready (careful of new op cross-dependencies)
   --   They are about to be made ready by completing operations
-  s_dec_already_a <= f_opa_compose(r_back_ready and not s_back_cleared, r_dec_rega);
-  s_dec_already_b <= f_opa_compose(r_back_ready and not s_back_cleared, r_dec_regb);
-  s_dec_now_a <= f_opa_match(r_dec_rega, r_done_regx);
-  s_dec_now_b <= f_opa_match(r_dec_regb, r_done_regx);
-  s_dec_done_a <= s_dec_already_a or f_opa_product(s_dec_now_a, c_ones);
-  s_dec_done_b <= s_dec_already_b or f_opa_product(s_dec_now_b, c_ones);
+  s_ren_already_a <= f_opa_compose(r_back_ready and not s_back_cleared, r_ren_rega);
+  s_ren_already_b <= f_opa_compose(r_back_ready and not s_back_cleared, r_ren_regb);
+  s_ren_now_a <= f_opa_match(r_ren_rega, r_done_regx);
+  s_ren_now_b <= f_opa_match(r_ren_regb, r_done_regx);
+  s_ren_done_a <= s_ren_already_a or f_opa_product(s_ren_now_a, c_ones);
+  s_ren_done_b <= s_ren_already_b or f_opa_product(s_ren_now_b, c_ones);
   
   -- Edge 2: Update reservation stations and backing readiness
   edge2r : process(clk_i, rst_n_i) is
@@ -159,21 +159,21 @@ begin
       
       -- Each station has only one decoder source
       for i in 0 to c_decoders-1 loop
-        index := to_integer(unsigned(f_opa_select_row(r_dec_stat, i)))*c_decoders + i;
+        index := to_integer(unsigned(f_opa_select_row(r_ren_stat, i)))*c_decoders + i;
         
-        if r_dec_stb(i) = '1' then
+        if r_ren_stb(i) = '1' then
           r_stat_issued(index) <= '0';
-          r_stat_readya(index) <= s_dec_done_a(i);
-          r_stat_readyb(index) <= s_dec_done_b(i);
+          r_stat_readya(index) <= s_ren_done_a(i);
+          r_stat_readyb(index) <= s_ren_done_b(i);
           for b in r_stat_readya_mux'range(2) loop
             r_stat_readya_mux(index, b) <= '0';
             r_stat_readyb_mux(index, b) <= '0';
           end loop;
           for b in r_stat_typ'range(2) loop
-            r_stat_typ (index, b) <= r_dec_typ (i, b);
-            r_stat_rega(index, b) <= r_dec_rega(i, b);
-            r_stat_regb(index, b) <= r_dec_regb(i, b);
-            r_stat_regx(index, b) <= r_dec_regx(i, b);
+            r_stat_typ (index, b) <= r_ren_typ (i, b);
+            r_stat_rega(index, b) <= r_ren_rega(i, b);
+            r_stat_regb(index, b) <= r_ren_regb(i, b);
+            r_stat_regx(index, b) <= r_ren_regx(i, b);
           end loop;
         end if;
       end loop;

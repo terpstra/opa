@@ -58,13 +58,13 @@ package opa_components_pkg is
       clk_i          : in  std_logic;
       rst_n_i        : in  std_logic;
       
-      -- Values the decoder needs to provide us
-      dec_stb_i      : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      dec_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
-      dec_stat_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      dec_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
-      dec_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      dec_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      -- Values the renamer needs to provide us
+      ren_stb_i      : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      ren_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
+      ren_stat_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+      ren_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
+      ren_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      ren_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
       -- EU should execute this next
       eu_next_regx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
@@ -85,11 +85,69 @@ package opa_components_pkg is
       commit_done_o  : out std_logic_vector(  g_config.num_stat-1 downto 0));
   end component;
   
-  -- TODO:
+  component opa_regfile is
+    generic(
+      g_config       : t_opa_config);
+    port(
+      clk_i          : in  std_logic;
+      rst_n_i        : in  std_logic;
+      
+      -- Which registers to read for each EU
+      iss_rega_i     : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      iss_regb_i     : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      -- Hints that can be used to implement multiported RAM
+      iss_bypass_a_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+      iss_bypass_b_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+      iss_mux_a_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+      iss_mux_b_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
+
+      -- The resulting register data
+      eu_data_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, 2**g_config.log_width-1 downto 0);
+      eu_datb_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, 2**g_config.log_width-1 downto 0);
+      -- The results to record
+      eu_regx_i      : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      eu_datx_i      : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, 2**g_config.log_width-1 downto 0)); 
+  end component;
+  
+  component opa_ieu is
+    generic(
+      g_config   : t_opa_config);
+    port(
+      clk_i      : in  std_logic;
+      rst_n_i    : in  std_logic;
+      
+      iss_regx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+      iss_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+      
+      reg_data_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
+      reg_datb_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
+      reg_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+      reg_datx_o : out std_logic_vector(2**g_config.log_width-1 downto 0));
+  end component;
+
+  component opa_mul is
+    generic(
+      g_config   : t_opa_config);
+    port(
+      clk_i      : in  std_logic;
+      rst_n_i    : in  std_logic;
+      
+      iss_regx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+      iss_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+      
+      reg_data_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
+      reg_datb_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
+      reg_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+      reg_datx_o : out std_logic_vector(2**g_config.log_width-1 downto 0));
+  end component;
+
+  -- TODO (then can run it!):
+  -- renamer (move optimization)
+  -- commiter
+
+  -- Then (for real programs):
   -- fetcher
   -- decoder (constants, op decode)
-  -- renamer (move optimization)
-  -- memory
-  -- commiter
+  -- MMU + cache miss core
 
 end package;
