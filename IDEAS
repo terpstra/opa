@@ -1,0 +1,44 @@
+issue - reduce satadder width
+  right now, we do this:
+    #   #
+    b   #
+    b   #  - not this
+    b   #  / and this
+    b   #
+    #   #
+    b   #
+    b   #
+    b   #
+    b   #
+  instead of producing all the numbers in the last column, we could:
+    b 
+    b
+    # \
+    b |
+    b \ not this
+    # - and this
+    b
+    b
+    #
+  the idea being to combine the calculation of two adjacent "#" comparisons into one LUT
+  this lets us reduce the final satadd width result by factor 3 and remove one layer
+  it means we need to have a few more interior nodes in the satadd_ks
+
+issue - precompute dependencies for completion
+  right now, we use a CAM to find which stations become ready[ab]
+  instead: on decode, prepare a dependant vector
+  when the instruction completes, just index an MLAB to get the dependant vector
+  ... the reason i didn't do this already is that clearing the MLABs is hard
+
+issue - remove reg* from reservation stations
+  if we don't need a CAM (see above), we can eliminate these registers
+  ... this may or may not mean an additional stage before register/muxing
+      => increases load latency from CACHE by 1 (hit uncertainty 1 cycle longer)
+
+issue - if none of that makes it fast enough, add a pipeline stage
+  the only absolute requirements are:
+    the feedback from ready=>ready is 1 cycle
+    the feedback from issued<=>pending is 1 cycle
+  ... can thus decouple the "ready" stage and the "schedule" stage
+  => increases the MINIMUM latency to 2 (for adders/etc)
+  ... is a last resort!
