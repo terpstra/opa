@@ -7,6 +7,7 @@ files = [
  "opa_satadd_tb.vhd",
  "opa_satadd.vhd",
  "opa_issue.vhd",
+ "opa_regfile.vhd",
  "opa_ieu.vhd",
  "opa_mul.vhd",
  "opa_sim_tb.vhd",
