@@ -6,6 +6,7 @@ files = [
  "opa_satadd_ks.vhd",
  "opa_satadd_tb.vhd",
  "opa_satadd.vhd",
+ "opa_renamer.vhd",
  "opa_issue.vhd",
  "opa_regfile.vhd",
  "opa_ieu.vhd",

@@ -13,17 +13,18 @@ entity opa_issue is
   port(
     clk_i          : in  std_logic;
     rst_n_i        : in  std_logic;
+    mispredict_i   : in  std_logic;
     
     -- Values the renamer needs to provide us
-    ren_stb_i      : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    ren_stb_i      : in  std_logic;
+    ren_stat_i     : in  std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
     ren_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
-    ren_stat_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    ren_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
+    ren_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     ren_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     ren_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
     -- EU should execute this next
-    eu_next_regx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
+    eu_next_regx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- 0=idle
     eu_next_rega_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     eu_next_regb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     -- EU is committed to completion in 2 cycles (after stb_o) [ latency1: connect regx_i=regx_o ]
@@ -37,8 +38,7 @@ entity opa_issue is
     reg_mux_b_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
     
     -- Connections to/from the committer
-    commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0); -- must be a register
-    commit_done_o  : out std_logic_vector(  g_config.num_stat-1 downto 0));
+    commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0)); -- must be a register
 end opa_issue;
 
 architecture rtl of opa_issue is
@@ -54,9 +54,9 @@ architecture rtl of opa_issue is
   constant c_ones     : std_logic_vector(c_executers-1 downto 0) := (others => '1');
   constant c_ones_dec : std_logic_vector(c_decoders-1  downto 0) := (others => '1');
 
-  signal r_ren_stb         : std_logic_vector(c_decoders-1 downto 0);
+  signal r_ren_stb         : std_logic;
+  signal r_ren_stat        : std_logic_vector(c_stat_wide-1 downto 0);
   signal r_ren_typ         : t_opa_matrix(c_decoders -1 downto 0, c_types    -1 downto 0);
-  signal r_ren_stat        : t_opa_matrix(c_decoders -1 downto 0, c_stat_wide-1 downto 0);
   signal r_ren_regx        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
   signal r_ren_rega        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
   signal r_ren_regb        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
@@ -137,9 +137,9 @@ begin
   s_ren_done_b <= s_ren_already_b or f_opa_product(s_ren_now_b, c_ones);
   
   -- Edge 2: Update reservation stations and backing readiness
-  edge2r : process(clk_i, rst_n_i) is
+  edge2r : process(clk_i, mispredict_i) is
   begin
-    if rst_n_i = '0' then
+    if mispredict_i = '1' then
       r_back_ready  <= (others => '1'); -- reseting just these suffices
       r_stat_issued <= (others => '1');
     elsif rising_edge(clk_i) then
@@ -157,11 +157,11 @@ begin
       r_stat_readya_mux <= r_stat_readya_mux or s_stat_readya_now;
       r_stat_readyb_mux <= r_stat_readyb_mux or s_stat_readyb_now;
       
-      -- Each station has only one decoder source
-      for i in 0 to c_decoders-1 loop
-        index := to_integer(unsigned(f_opa_select_row(r_ren_stat, i)))*c_decoders + i;
+      if r_ren_stb = '1' then
+        for i in 0 to c_decoders-1 loop
+          -- Each station has only one decoder source
+          index := to_integer(unsigned(r_ren_stat))*c_decoders + i;
         
-        if r_ren_stb(i) = '1' then
           r_stat_issued(index) <= '0';
           r_stat_readya(index) <= s_ren_done_a(i);
           r_stat_readyb(index) <= s_ren_done_b(i);
@@ -175,8 +175,8 @@ begin
             r_stat_regb(index, b) <= r_ren_regb(i, b);
             r_stat_regx(index, b) <= r_ren_regx(i, b);
           end loop;
-        end if;
-      end loop;
+        end loop;
+      end if;
     end if;
   end process;
   
@@ -218,15 +218,15 @@ begin
   end generate;
   
   -- Compute the result via matrix product
-  -- We use inverted logic so the result is -1 when s_schedule assigns nothing
-  eu_next_regx_o <= not f_opa_product(s_schedule, not r_stat_regx);
-  eu_next_rega_o <= not f_opa_product(s_schedule, not r_stat_rega);
-  eu_next_regb_o <= not f_opa_product(s_schedule, not r_stat_regb);
+  -- Note: an idle executer will read+write the trash register (0)
+  eu_next_regx_o <= f_opa_product(s_schedule, r_stat_regx);
+  eu_next_rega_o <= f_opa_product(s_schedule, r_stat_rega);
+  eu_next_regb_o <= f_opa_product(s_schedule, r_stat_regb);
   
   -- Make it easier for the register file to pick the output
   reg_bypass_a_o <= f_opa_product(s_schedule, s_stat_readya_now);
   reg_bypass_b_o <= f_opa_product(s_schedule, s_stat_readyb_now);
   reg_mux_a_o <= f_opa_product(s_schedule, r_stat_readya_mux);
   reg_mux_b_o <= f_opa_product(s_schedule, r_stat_readyb_mux);
-
+  
 end rtl;

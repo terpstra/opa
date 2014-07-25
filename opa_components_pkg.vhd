@@ -51,23 +51,57 @@ package opa_components_pkg is
       good_o : out std_logic);
   end component;
 
+  component opa_renamer is
+    generic(
+      g_config : t_opa_config);
+    port(
+      clk_i          : in  std_logic;
+      rst_n_i        : in  std_logic;
+      mispredict_i   : in  std_logic;
+      
+      -- What does the commiter have to say?
+      commit_map_i   : in  t_opa_matrix(2**g_config.log_arch-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      fifo_ready_i   : in  std_logic;
+      fifo_bak_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      
+      -- Values the decoder needs to provide us
+      dec_stall_o    : out std_logic; -- warning: a VERY slow signal; register it and use a skid pad
+      dec_stb_i      : in  std_logic;
+      dec_setx_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      dec_geta_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      dec_getb_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      dec_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1           downto 0);
+      dec_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+      dec_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+      dec_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+
+      -- Values we provide to the issuer
+      iss_stb_o      : out std_logic;
+      iss_stat_o     : out std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+      iss_typ_o      : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
+      iss_regx_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      iss_rega_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      iss_regb_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
+  end component;
+
   component opa_issue is
     generic(
       g_config       : t_opa_config);
     port(
       clk_i          : in  std_logic;
       rst_n_i        : in  std_logic;
+      mispredict_i   : in  std_logic;
       
       -- Values the renamer needs to provide us
-      ren_stb_i      : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      ren_stb_i      : in  std_logic;
+      ren_stat_i     : in  std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
       ren_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
-      ren_stat_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      ren_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
+      ren_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       ren_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       ren_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
       -- EU should execute this next
-      eu_next_regx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- -1 on no-op
+      eu_next_regx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- 0=idle
       eu_next_rega_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       eu_next_regb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       -- EU is committed to completion in 2 cycles (after stb_o) [ latency1: connect regx_i=regx_o ]
@@ -81,8 +115,7 @@ package opa_components_pkg is
       reg_mux_b_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
       
       -- Connections to/from the committer
-      commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0); -- must be a register
-      commit_done_o  : out std_logic_vector(  g_config.num_stat-1 downto 0));
+      commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0)); -- must be a register
   end component;
   
   component opa_regfile is

@@ -42,3 +42,17 @@ issue - if none of that makes it fast enough, add a pipeline stage
   ... can thus decouple the "ready" stage and the "schedule" stage
   => increases the MINIMUM latency to 2 (for adders/etc)
   ... is a last resort!
+
+renamer - for c_decoders=1, use 2x dpram
+
+renamer - if optimizing copies: leave them in place for commit to see
+
+-- For memory unit (later):
+-- B+W are always in-order
+-- R is allowed to commute freely, EXCEPT:
+-- it may only skip at most 'x' Ws
+
+-- Assumption: reads are side-effect free (even on devices!)
+-- Write-through cache ... want spills to be hot
+-- reads specify if they can be cached and how far they commute
+-- ... how does this interact with calling ABI? (callee/caller-saved)

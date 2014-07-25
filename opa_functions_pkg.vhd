@@ -36,6 +36,11 @@ package opa_functions_pkg is
   
   function f_opa_select_row(x : t_opa_matrix; i : natural) return std_logic_vector;
   function f_opa_select_col(x : t_opa_matrix; j : natural) return std_logic_vector;
+  function f_opa_dup_row(n : natural; r : std_logic_vector) return t_opa_matrix;
+  
+  function f_opa_concat(x, y : t_opa_matrix) return t_opa_matrix;
+  function f_opa_split2(n : natural; x : t_opa_matrix) return t_opa_matrix;
+  
   function f_opa_transpose(x : t_opa_matrix) return t_opa_matrix;
   function f_opa_product(x : t_opa_matrix; y : std_logic_vector) return std_logic_vector;
   function f_opa_product(x, y : t_opa_matrix) return t_opa_matrix;
@@ -43,6 +48,11 @@ package opa_functions_pkg is
   function f_opa_match(x, y : t_opa_matrix) return t_opa_matrix; -- do any rows match?
   function f_opa_match_index(n : natural; x : t_opa_matrix) return t_opa_matrix;
   function f_opa_compose(x : std_logic_vector; y : t_opa_matrix) return std_logic_vector;
+  function f_opa_compose(x, y : t_opa_matrix) return t_opa_matrix;
+  
+  -- Take the last '1' in the row
+  function f_opa_pick(x : std_logic_vector) return std_logic_vector;
+  function f_opa_pick(x : t_opa_matrix) return t_opa_matrix;
 
 end package;
 
@@ -128,15 +138,6 @@ package body opa_functions_pkg is
   
   --------------------------------------------------------------------------------------
   
-  function f_opa_select_row(x : t_opa_matrix; i : natural) return std_logic_vector is
-    variable result : std_logic_vector(x'range(2));
-  begin
-    for j in result'range loop
-      result(j) := x(i, j);
-    end loop;
-    return result;
-  end f_opa_select_row;
-  
   function "not"(x : t_opa_matrix) return t_opa_matrix is
     variable result : t_opa_matrix(x'range(1), x'range(2));
   begin
@@ -178,6 +179,15 @@ package body opa_functions_pkg is
     return result;
   end "and";
   
+  function f_opa_select_row(x : t_opa_matrix; i : natural) return std_logic_vector is
+    variable result : std_logic_vector(x'range(2));
+  begin
+    for j in result'range loop
+      result(j) := x(i, j);
+    end loop;
+    return result;
+  end f_opa_select_row;
+  
   function f_opa_select_col(x : t_opa_matrix; j : natural) return std_logic_vector is
     variable result : std_logic_vector(x'range(1));
   begin
@@ -187,6 +197,45 @@ package body opa_functions_pkg is
     return result;
   end f_opa_select_col;
   
+  function f_opa_dup_row(n : natural; r : std_logic_vector) return t_opa_matrix is
+    variable result : t_opa_matrix(n-1 downto 0, r'range);
+  begin
+    for i in result'range(1) loop
+      for j in result'range(2) loop
+        result(i, j) := r(j);
+      end loop;
+    end loop;
+    return result;
+  end f_opa_dup_row;
+  
+  function f_opa_concat(x, y : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), y'high(2)+x'length(2) downto y'low(2));
+  begin
+    assert (x'low(1)  = y'low(1))  report "matrix-matrix dimension mismatch" severity failure;
+    assert (x'high(1) = y'high(1)) report "matrix-matrix dimension mismatch" severity failure;
+    
+    for i in result'range(1) loop
+      for j in x'length(2)-1 downto 0 loop
+        result(i,j+y'high(2)+1) := x(i,j+x'low(2));
+      end loop;
+      for j in y'range(2) loop
+        result(i,j) := y(i,j);
+      end loop;
+    end loop;
+    return result;
+  end f_opa_concat;
+  
+  function f_opa_split2(n : natural; x : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'high(2)-n downto x'low(2));
+  begin
+    for i in result'range(1) loop
+      for j in result'range(2) loop
+        result(i, j) := x(i, j);
+      end loop;
+    end loop;
+    return result;
+  end f_opa_split2;
+
   function f_opa_transpose(x : t_opa_matrix) return t_opa_matrix is
     variable result : t_opa_matrix(x'range(2), x'range(1));
   begin
@@ -265,5 +314,40 @@ package body opa_functions_pkg is
     end loop;
     return result;
   end f_opa_compose;
+  
+  function f_opa_compose(x, y : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(y'range(1), x'range(2));
+    variable index : integer;
+  begin
+    for i in result'range(1) loop
+      index := to_integer(unsigned(f_opa_select_row(y, i)));
+      for j in result'range(2) loop
+        result(i, j) := x(index, j);
+      end loop;
+    end loop;
+    return result;
+  end f_opa_compose;
+  
+  function f_opa_pick(x : std_logic_vector) return std_logic_vector is
+    constant u : unsigned(x'range) := unsigned(x);
+  begin
+    return std_logic_vector(u and not (u-1));
+  end f_opa_pick;
+  
+  function f_opa_pick(x : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'range(2));
+    variable u : unsigned(result'range(2));
+  begin
+    for i in x'range(1) loop
+      for j in x'range(2) loop
+        u(j) := x(i, j);
+      end loop;
+      u := u and not (u-1);
+      for j in x'range(2) loop
+        result(i, j) := u(j);
+      end loop;
+    end loop;
+    return result;
+  end f_opa_pick;
   
 end opa_functions_pkg;
