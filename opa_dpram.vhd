@@ -29,6 +29,7 @@ architecture rtl of opa_dpram is
   signal r_addr : std_logic_vector(r_addr_i'range);
 begin
 
+  -- !!! bad ==> implies "new data" mode. want "dont care".
   r_data_o <= r_memory(to_integer(unsigned(r_addr)));
   
   main : process(clk_i) is

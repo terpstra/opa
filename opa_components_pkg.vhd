@@ -61,8 +61,15 @@ package opa_components_pkg is
       
       -- What does the commiter have to say?
       commit_map_i   : in  t_opa_matrix(2**g_config.log_arch-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      
+      -- FIFO feeds us backing registers
+      fifo_pop_o     : out std_logic;
       fifo_ready_i   : in  std_logic;
       fifo_bak_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      -- We feed it architectural registers
+      fifo_stb_o     : out std_logic;
+      fifo_setx_o    : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      fifo_regx_o    : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
       
       -- Values the decoder needs to provide us
       dec_stall_o    : out std_logic; -- warning: a VERY slow signal; register it and use a skid pad
