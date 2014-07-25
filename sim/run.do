@@ -1,5 +1,5 @@
 make -f Makefile
-vsim -L unisim -t 1ns work.opa_sim_tb -voptargs="+acc"
+vsim -t 1ns work.opa_sim_tb -voptargs="+acc"
 set StdArithNoWarnings 1
 set NumericStdNoWarnings 1
 do wave.do

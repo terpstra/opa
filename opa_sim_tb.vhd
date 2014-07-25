@@ -16,7 +16,7 @@ architecture rtl of opa_sim_tb is
 
    signal good   : std_logic_vector(0 to 0);
    signal r_good : std_logic_vector(good'range);
-   signal r_ok   : std_logic;
+   signal r_ok   : std_logic := '1';
    
    constant c_good : std_logic_vector(good'range) := (others => '1');
 begin
