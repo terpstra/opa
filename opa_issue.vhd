@@ -140,17 +140,22 @@ begin
   edge2r : process(clk_i, mispredict_i) is
   begin
     if mispredict_i = '1' then
-      r_back_ready  <= (others => '1'); -- reseting just these suffices
-      r_stat_issued <= (others => '1');
+      r_stat_issued <= (others => '1'); -- stop all work
     elsif rising_edge(clk_i) then
-      r_back_ready  <= (s_back_now_done or r_back_ready) and not s_back_cleared;
       r_stat_issued <= r_stat_issued or f_opa_product(f_opa_transpose(s_schedule), c_ones);
+      if r_ren_stb = '1' then
+        for i in 0 to c_decoders-1 loop
+          r_stat_issued(to_integer(unsigned(r_ren_stat))*c_decoders + i) <= '0';
+        end loop;
+      end if;
     end if;
   end process;
   edge2a : process(clk_i) is
     variable index : integer;
   begin
     if rising_edge(clk_i) then
+      r_back_ready  <= (s_back_now_done or r_back_ready) and not s_back_cleared;
+      
       r_stat_readya <= s_stat_readya;
       r_stat_readyb <= s_stat_readyb;
       
@@ -162,7 +167,6 @@ begin
           -- Each station has only one decoder source
           index := to_integer(unsigned(r_ren_stat))*c_decoders + i;
         
-          r_stat_issued(index) <= '0';
           r_stat_readya(index) <= s_ren_done_a(i);
           r_stat_readyb(index) <= s_ren_done_b(i);
           for b in r_stat_readya_mux'range(2) loop
