@@ -54,7 +54,7 @@ architecture rtl of opa_renamer is
   constant c_one       : std_logic_vector(0 downto 0) := "1";
   
   -- Same-cycle dependencies
-  function f_LR_triangle(n : natural) return t_opa_matrix is
+  function f_LL_triangle(n : natural) return t_opa_matrix is
     variable result : t_opa_matrix(n-1 downto 0, n-1 downto 0);
   begin
     for i in result'range(1) loop
@@ -67,9 +67,9 @@ architecture rtl of opa_renamer is
       end loop;
     end loop;
     return result;
-  end f_LR_triangle;
+  end f_LL_triangle;
   
-  constant c_LR_triangle : t_opa_matrix := f_LR_triangle(c_decoders);
+  constant c_LL_triangle : t_opa_matrix := f_LL_triangle(c_decoders);
 
   signal r_map         : t_opa_matrix(c_regs-1 downto 0, c_back_wide-1 downto 0);
   signal s_map_writers : t_opa_matrix(c_regs-1 downto 0, c_decoders-1  downto 0);
@@ -202,8 +202,8 @@ begin
   -- Rename the inputs, watching out for same-cycle dependencies
   s_old_baka <= f_opa_compose(r_map, r_dec_rega);
   s_old_bakb <= f_opa_compose(r_map, r_dec_regb);
-  s_match_a  <= f_opa_match(r_dec_rega, r_dec_regx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_LR_triangle;
-  s_match_b  <= f_opa_match(r_dec_regb, r_dec_regx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_LR_triangle;
+  s_match_a  <= f_opa_match(r_dec_rega, r_dec_regx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_LL_triangle;
+  s_match_b  <= f_opa_match(r_dec_regb, r_dec_regx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_LL_triangle;
   s_source_a <= f_opa_pick(f_opa_concat(f_opa_dup_row(c_decoders, c_one), s_match_a));
   s_source_b <= f_opa_pick(f_opa_concat(f_opa_dup_row(c_decoders, c_one), s_match_b));
   s_new_baka <= f_opa_product(f_opa_split2(1, s_source_a), r_bakx);
