@@ -38,7 +38,9 @@ entity opa_issue is
     reg_mux_b_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
     
     -- Connections to/from the committer
-    commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0)); -- must be a register
+    commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0); -- must be a register
+    commit_regx_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    commit_bak_o   : out std_logic_vector(f_opa_back_num(g_config)-1 downto 0));
 end opa_issue;
 
 architecture rtl of opa_issue is
@@ -183,6 +185,10 @@ begin
       end if;
     end if;
   end process;
+  
+  -- Let the committer snoop our state
+  commit_regx_o <= r_done_regx;
+  commit_bak_o <= r_back_ready;
   
   -------------------------------------------------------------------------------------------------
   -- Instruction selection begins here                                                           --

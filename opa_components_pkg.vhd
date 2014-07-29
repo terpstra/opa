@@ -51,6 +51,28 @@ package opa_components_pkg is
       good_o : out std_logic);
   end component;
 
+  component opa_fifo is
+    generic(
+      g_config : t_opa_config);
+    port(
+      clk_i         : in  std_logic;
+      rst_n_i       : in  std_logic;
+      mispredict_i  : in  std_logic;
+      
+      commit_step_i : in  std_logic;
+      commit_bakx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      commit_setx_o : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      commit_regx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+      
+      commit_we_i   : in  std_logic;
+      commit_bakx_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      
+      rename_step_i : in  std_logic;
+      rename_bakx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      rename_setx_i : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_regx_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0));
+  end component;
+
   component opa_renamer is
     generic(
       g_config : t_opa_config);
@@ -120,34 +142,37 @@ package opa_components_pkg is
       reg_mux_b_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
       
       -- Connections to/from the committer
-      commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0)); -- must be a register
+      commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0); -- must be a register
+      commit_regx_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      commit_bak_o   : out std_logic_vector(f_opa_back_num(g_config)-1 downto 0));
   end component;
   
   component opa_commit is
     generic(
       g_config : t_opa_config);
     port(
-      clk_i          : in  std_logic;
-      rst_n_i        : in  std_logic;
-      mispredict_o   : out std_logic;
+      clk_i        : in  std_logic;
+      rst_n_i      : in  std_logic;
+      mispredict_o : out std_logic;
       
       -- Let the renamer see our map for rollback and tell it when commiting
-      rename_map_o   : out t_opa_matrix(2**g_config.log_arch-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      rename_stb_o   : out std_logic;
+      rename_map_o : out t_opa_matrix(2**g_config.log_arch-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      rename_stb_o : out std_logic;
       
       -- Snoop on the issuer state to make commit decisions
-      issue_regx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      issue_backing_i : in  std_logic_vector(f_opa_back_num(g_config)-1 downto 0);
+      issue_regx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      issue_bak_i  : in  std_logic_vector(f_opa_back_num(g_config)-1 downto 0);
+      issue_mask_o : out std_logic_vector(2*g_config.num_stat-1 downto 0);
       
       -- FIFO feeds us registers for permuting into arch map
-      fifo_step_o    : out std_logic;
-      fifo_bakx_i    : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      fifo_setx_i    : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      fifo_regx_i    : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+      fifo_step_o  : out std_logic;
+      fifo_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      fifo_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      fifo_regx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
       
       -- We pump out to the FIFO
-      fifo_we_o      : out std_logic;
-      fifo_bakx_o    : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
+      fifo_we_o    : out std_logic;
+      fifo_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
   end component;
 
   component opa_regfile is

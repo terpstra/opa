@@ -11,27 +11,28 @@ entity opa_commit is
   generic(
     g_config : t_opa_config);
   port(
-    clk_i          : in  std_logic;
-    rst_n_i        : in  std_logic;
-    mispredict_o   : out std_logic;
+    clk_i        : in  std_logic;
+    rst_n_i      : in  std_logic;
+    mispredict_o : out std_logic;
     
     -- Let the renamer see our map for rollback and tell it when commiting
-    rename_map_o   : out t_opa_matrix(2**g_config.log_arch-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    rename_stb_o   : out std_logic;
+    rename_map_o : out t_opa_matrix(2**g_config.log_arch-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    rename_stb_o : out std_logic;
     
     -- Snoop on the issuer state to make commit decisions
-    issue_regx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    issue_backing_i : in  std_logic_vector(f_opa_back_num(g_config)-1 downto 0);
+    issue_regx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    issue_bak_i  : in  std_logic_vector(f_opa_back_num(g_config)-1 downto 0);
+    issue_mask_o : out std_logic_vector(2*g_config.num_stat-1 downto 0);
     
     -- FIFO feeds us registers for permuting into arch map
-    fifo_step_o    : out std_logic;
-    fifo_bakx_i    : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    fifo_setx_i    : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    fifo_regx_i    : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+    fifo_step_o  : out std_logic;
+    fifo_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    fifo_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    fifo_regx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
     
     -- We pump out to the FIFO
-    fifo_we_o      : out std_logic;
-    fifo_bakx_o    : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
+    fifo_we_o    : out std_logic;
+    fifo_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
 end opa_commit;
 
 architecture rtl of opa_commit is
@@ -75,11 +76,13 @@ architecture rtl of opa_commit is
   signal s_match        : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0);
   signal s_overwrites   : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0);
   signal s_useless      : std_logic_vector(c_decoders-1 downto 0);
+  
+  signal r_mask         : std_logic_vector(2*g_config.num_stat-1 downto 0);
 
 begin
 
   -- Calculate if we can commit.
-  s_already_done <= f_opa_compose(issue_backing_i, fifo_regx_i);
+  s_already_done <= f_opa_compose(issue_bak_i, fifo_regx_i);
   s_now_done <= f_opa_product(f_opa_match(fifo_regx_i, issue_regx_i), c_ones2);
   s_done <= f_opa_bit((s_already_done or s_now_done) = c_ones1);
   
@@ -119,9 +122,22 @@ begin
   end generate;
   
   -- Write the new architectural state
-  edge2 : process(clk_i) is
+  edge2 : process(rst_n_i, clk_i) is
+    variable value : std_logic_vector(r_map'range(2));
   begin
-    if rising_edge(clk_i) then
+    if rst_n_i = '0' then
+      for i in r_map'range(1) loop
+        -- backing register 0 = the garbage register
+        value := std_logic_vector(to_unsigned(i+1, r_map'length(2)));
+        for j in r_map'range(2) loop
+          r_map(i,j) <= value(j);
+        end loop;
+      end loop;
+      r_mask <= (others => '0');
+      for i in 0 to g_config.num_stat-1 loop
+        r_mask(i) <= '1';
+      end loop;
+    elsif rising_edge(clk_i) then
       for i in r_map'range(1) loop
         if (r_we and s_map_source(i, c_decoders)) = '1' then
           for j in r_map'range(2) loop
@@ -129,10 +145,20 @@ begin
           end loop;
         end if;
       end loop;
+      if r_we = '1' then
+        if r_mask(2*g_config.num_stat-c_decoders-1) = '1' then
+          r_mask <= (others => '0');
+          for i in 0 to g_config.num_stat-1 loop
+            r_mask(i) <= '1';
+          end loop;
+        else
+          r_mask <= std_logic_vector(unsigned(r_mask) rol c_decoders);
+        end if;
+      end if;
     end if;
   end process;
   
   -- For now: !!!
-  mispredict_o <= '0';
+  mispredict_o <= rst_n_i;
   
 end rtl;

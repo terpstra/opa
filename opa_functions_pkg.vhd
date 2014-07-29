@@ -82,13 +82,17 @@ package body opa_functions_pkg is
   end f_opa_executers;
   
   function f_opa_back_num(conf : t_opa_config) return natural is
+    constant min  : natural := 2**conf.log_arch + conf.num_stat + 1;
+    constant dec  : natural := 2**conf.log_decode;
+    constant deep : natural := (min+dec-1)/dec;
+    constant pipe : natural := deep + 3; -- !!! maybe less?
   begin
-    return 2**conf.log_arch + conf.num_stat + 2**conf.log_decode*5; -- !!! 5? find the truth
+    return pipe*dec;
   end f_opa_back_num;
   
   function f_opa_back_wide(conf : t_opa_config) return natural is
   begin
-    return f_opa_log2(f_opa_back_num(conf) + 2); -- !!! is 2 the best way to do this?
+    return f_opa_log2(f_opa_back_num(conf));
   end f_opa_back_wide;
   
   function f_opa_stat_wide(conf : t_opa_config) return natural is

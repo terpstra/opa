@@ -47,6 +47,9 @@ renamer - for c_decoders=1, use 2x dpram
 
 renamer - if optimizing copies: leave them in place for commit to see
 
+commit+issue - can save c_decoders fan-in from regfile
+  ... last c_decoders bits of mask_i are always 0
+
 -- For memory unit (later):
 -- B+W are always in-order
 -- R is allowed to commute freely, EXCEPT:
@@ -56,3 +59,4 @@ renamer - if optimizing copies: leave them in place for commit to see
 -- Write-through cache ... want spills to be hot
 -- reads specify if they can be cached and how far they commute
 -- ... how does this interact with calling ABI? (callee/caller-saved)
+

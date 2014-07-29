@@ -137,4 +137,7 @@ begin
   eu_data_o <= s_bypass_a or s_ram_a;
   eu_datb_o <= s_bypass_b or s_ram_b;
   
+  -- !!! i think there is a gap in pipeline
+  -- in simulation, check if regfile gives wrong data when 2 cycles between
+  
 end rtl;
