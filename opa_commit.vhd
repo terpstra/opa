@@ -166,6 +166,7 @@ begin
       end if;
     end if;
   end process;
+  issue_mask_o <= r_mask;
   
   -- Pulse mispredict for one cycle once reset ends
   mispredict_o <= r_mispredict and rst_n_i;
