@@ -141,7 +141,7 @@ begin
   s_ren_done_b <= s_ren_already_b or f_opa_product(s_ren_now_b, c_ones);
   
   -- Edge 2: Update reservation stations and backing readiness
-  edge2r : process(clk_i, mispredict_i) is
+  edge2m : process(clk_i, mispredict_i) is
   begin
     if mispredict_i = '1' then
       r_stat_issued <= (others => '1'); -- stop all work
@@ -154,12 +154,18 @@ begin
       end if;
     end if;
   end process;
+  edge2r : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_back_ready <= (others => '1');
+    elsif rising_edge(clk_i) then
+      r_back_ready <= (s_back_now_done or r_back_ready) and not s_back_cleared;
+    end if;
+  end process;
   edge2a : process(clk_i) is
     variable index : integer;
   begin
     if rising_edge(clk_i) then
-      r_back_ready  <= (s_back_now_done or r_back_ready) and not s_back_cleared;
-      
       r_stat_readya <= s_stat_readya;
       r_stat_readyb <= s_stat_readyb;
       

@@ -78,6 +78,7 @@ architecture rtl of opa_commit is
   signal s_useless      : std_logic_vector(c_decoders-1 downto 0);
   
   signal r_mask         : std_logic_vector(2*g_config.num_stat-1 downto 0);
+  signal r_mispredict   : std_logic;
 
 begin
 
@@ -122,7 +123,7 @@ begin
   end generate;
   
   -- Write the new architectural state
-  edge2 : process(rst_n_i, clk_i) is
+  edge2r : process(rst_n_i, clk_i) is
     variable value : std_logic_vector(r_map'range(2));
   begin
     if rst_n_i = '0' then
@@ -133,10 +134,6 @@ begin
           r_map(i,j) <= value(j);
         end loop;
       end loop;
-      r_mask <= (others => '0');
-      for i in 0 to g_config.num_stat-1 loop
-        r_mask(i) <= '1';
-      end loop;
     elsif rising_edge(clk_i) then
       for i in r_map'range(1) loop
         if (r_we and s_map_source(i, c_decoders)) = '1' then
@@ -145,6 +142,18 @@ begin
           end loop;
         end if;
       end loop;
+    end if;
+  end process;
+  
+  -- Advance the priority mask
+  edge2m : process(r_mispredict, clk_i) is
+  begin
+    if r_mispredict = '1' then
+      r_mask <= (others => '0');
+      for i in 0 to g_config.num_stat-1 loop
+        r_mask(i) <= '1';
+      end loop;
+    elsif rising_edge(clk_i) then
       if r_we = '1' then
         if r_mask(2*g_config.num_stat-c_decoders-1) = '1' then
           r_mask <= (others => '0');
@@ -158,7 +167,15 @@ begin
     end if;
   end process;
   
-  -- For now: !!!
-  mispredict_o <= rst_n_i;
+  -- Pulse mispredict for one cycle once reset ends
+  mispredict_o <= r_mispredict and rst_n_i;
+  mispredict : process(rst_n_i, clk_i) is
+  begin
+    if rst_n_i = '0' then
+      r_mispredict <= '1';
+    elsif rising_edge(clk_i) then
+      r_mispredict <= '0';
+    end if;
+  end process;
   
 end rtl;

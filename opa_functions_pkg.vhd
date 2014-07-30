@@ -20,6 +20,7 @@ package opa_functions_pkg is
   -- Decode config into useful values
   function f_opa_decoders (conf : t_opa_config) return natural;
   function f_opa_executers(conf : t_opa_config) return natural;
+  function f_opa_fifo_deep(conf : t_opa_config) return natural;
   function f_opa_back_num (conf : t_opa_config) return natural;
   function f_opa_back_wide(conf : t_opa_config) return natural;
   function f_opa_stat_wide(conf : t_opa_config) return natural;
@@ -77,7 +78,7 @@ package body opa_functions_pkg is
   
   function f_opa_decoders(conf : t_opa_config) return natural is
   begin
-    return 2**conf.log_decode;
+    return conf.num_decode;
   end f_opa_decoders;
   
   function f_opa_executers(conf : t_opa_config) return natural is
@@ -85,13 +86,17 @@ package body opa_functions_pkg is
     return conf.num_ieu + conf.num_mul + 1 + 1;
   end f_opa_executers;
   
-  function f_opa_back_num(conf : t_opa_config) return natural is
-    constant min  : natural := 2**conf.log_arch + conf.num_stat + 1;
-    constant dec  : natural := 2**conf.log_decode;
-    constant deep : natural := (min+dec-1)/dec;
-    constant pipe : natural := deep + 3; -- !!! maybe less?
+  function f_opa_fifo_deep(conf : t_opa_config) return natural is
+    constant pipeline_depth : natural := 3;
   begin
-    return pipe*dec;
+    return (conf.num_stat / conf.num_decode) + pipeline_depth;
+  end f_opa_fifo_deep;
+  
+  function f_opa_back_num(conf : t_opa_config) return natural is
+  begin
+    return 1                                     + -- garbage register
+           2**conf.log_arch                      + -- arch map
+           f_opa_fifo_deep(conf)*conf.num_decode;  -- stations+fifo
   end f_opa_back_num;
   
   function f_opa_back_wide(conf : t_opa_config) return natural is

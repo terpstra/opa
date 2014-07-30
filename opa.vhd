@@ -84,6 +84,31 @@ architecture rtl of opa is
 
 begin
 
+  check_divisible : 
+    assert (g_config.num_stat mod g_config.num_decode = 0) 
+    report "num_stat must be divisible by num_decode"
+    severity failure;
+  
+  check_decode :
+    assert (g_config.num_decode >= 1)
+    report "num_decode must be >= 1"
+    severity failure;
+  
+  check_stat :
+    assert (g_config.num_stat >= 1)
+    report "num_stat must be >= 1"
+    severity failure;
+
+  check_ieu :
+    assert (g_config.num_ieu >= 1)
+    report "num_ieu must be >= 1"
+    severity failure;
+
+  check_mul :
+    assert (g_config.num_mul >= 1)
+    report "num_mul must be >= 1"
+    severity failure;
+
   fifo : opa_fifo
     generic map(
       g_config => g_config)

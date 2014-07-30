@@ -8,7 +8,7 @@ package opa_pkg is
   type t_opa_config is record
     log_arch   : natural; -- 2**log_arch   = # of architectural registers
     log_width  : natural; -- 2**log_width  = # of bits in registers
-    log_decode : natural; -- 2**log_decode = decode width
+    num_decode : natural; -- # of instructions decoded concurrently
     num_stat   : natural; -- # of reservation stations (must be divisible by num_decode)
     num_ieu    : natural; -- # of IEUs (logic, add/sub, ...)
     num_mul    : natural; -- # of multipliers (mulhi, mullo, <<, >>, rol, ...)
@@ -18,13 +18,13 @@ package opa_pkg is
   constant c_lut_width : natural := 6;
   
   -- 16-bit processor, 1-issue
-  constant c_opa_tiny : t_opa_config := ( 4, 4, 0,  4, 1, 1);
+  constant c_opa_tiny : t_opa_config := ( 4, 4, 1,  4, 1, 1);
   
   -- 32-bit processor, 2-issue
-  constant c_opa_mid  : t_opa_config := ( 4, 5, 1,  8, 1, 1);
+  constant c_opa_mid  : t_opa_config := ( 4, 5, 2,  8, 1, 1);
   
   -- 64-bit processor, 4-issue
-  constant c_opa_full : t_opa_config := ( 4, 6, 2, 24, 3, 2);
+  constant c_opa_full : t_opa_config := ( 4, 6, 4, 24, 3, 2);
   
   component opa is
     generic(
@@ -36,7 +36,7 @@ package opa_pkg is
       -- Incoming data
       stb_i          : in  std_logic;
       stall_o        : out std_logic;
-      data_i         : in  std_logic_vector(2**g_config.log_decode*16-1 downto 0));
+      data_i         : in  std_logic_vector(g_config.num_decode*16-1 downto 0));
   end component;
   
   -- good sizes for reservation stations on a 6-lut system: 4, 9, 24, 69
