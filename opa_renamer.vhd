@@ -143,7 +143,7 @@ begin
       if s_dec_jammed = '0' then
         r_dec_setx <= dec_setx_i;
         r_dec_geta <= dec_geta_i;
-        r_dec_getb <= dec_geta_i;
+        r_dec_getb <= dec_getb_i;
         r_dec_typ  <= dec_typ_i;
         r_dec_rega <= dec_rega_i;
         r_dec_regb <= dec_regb_i;
@@ -212,7 +212,7 @@ begin
   rows : for i in s_baka'range(1) generate
     cols : for j in s_baka'range(2) generate
       s_baka(i,j) <= s_old_baka(i,j) when s_source_a(i, c_decoders) = '1' else s_new_baka(i,j);
-      s_bakb(i,j) <= s_old_baka(i,j) when s_source_a(i, c_decoders) = '1' else s_new_baka(i,j);
+      s_bakb(i,j) <= s_old_bakb(i,j) when s_source_b(i, c_decoders) = '1' else s_new_bakb(i,j);
     end generate;
   end generate;
   
