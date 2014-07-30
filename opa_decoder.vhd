@@ -89,7 +89,7 @@ begin
   
   parse : for i in 0 to f_opa_decoders(g_config)-1 generate
   
-    s_typ(i) <= f_typ(data_i(16*i+3 downto 16*i));
+    s_typ(i) <= f_typ(data_i(16*i+15 downto 16*i+12));
     
     rename_setx_o(i) <= f_setx(s_typ(i));
     rename_geta_o(i) <= f_geta(s_typ(i));
@@ -100,9 +100,9 @@ begin
     end generate;
   
     bits : for b in 0 to 3 generate
-      rename_regx_o(i,b) <= data_i(16*i+ 4+b);
-      rename_rega_o(i,b) <= data_i(16*i+ 8+b);
-      rename_regb_o(i,b) <= data_i(16*i+12+b);
+      rename_regx_o(i,b) <= data_i(16*i+8+b);
+      rename_rega_o(i,b) <= data_i(16*i+4+b);
+      rename_regb_o(i,b) <= data_i(16*i+0+b);
     end generate;
   end generate;
   

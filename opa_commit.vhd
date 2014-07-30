@@ -46,18 +46,18 @@ architecture rtl of opa_commit is
   constant c_ones2 : std_logic_vector(c_executers-1 downto 0) := (others => '1');
   constant c_one   : std_logic_vector(0 downto 0)             := "1";
   
-  function f_UR_triangle(n : natural) return t_opa_matrix is
+  function f_LL_triangle(n : natural) return t_opa_matrix is
     variable result : t_opa_matrix(n-1 downto 0, n-1 downto 0);
   begin
     for i in result'range(1) loop
       for j in result'range(2) loop
-        result(i,j) := f_opa_bit(i < j);
+        result(i,j) := f_opa_bit(i > j);
       end loop;
     end loop;
     return result;
-  end f_UR_triangle;
+  end f_LL_triangle;
   
-  constant c_UR_triangle : t_opa_matrix := f_UR_triangle(c_decoders);
+  constant c_LL_triangle : t_opa_matrix := f_LL_triangle(c_decoders);
   
   signal s_already_done : std_logic_vector(c_decoders-1 downto 0);
   signal s_now_done     : std_logic_vector(c_decoders-1 downto 0);
@@ -111,7 +111,7 @@ begin
   -- Calculate which backing registers are released upon commit
   s_old_map    <= f_opa_compose(r_map, r_regx);
   s_match      <= f_opa_match(r_regx, r_regx);
-  s_overwrites <= s_match and f_opa_dup_row(c_decoders, r_setx) and c_UR_triangle;
+  s_overwrites <= s_match and f_opa_dup_row(c_decoders, r_setx) and c_LL_triangle;
   s_useless    <= f_opa_product(s_overwrites, c_ones1) or not r_setx;
   
   -- Feed the FIFO
