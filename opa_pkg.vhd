@@ -26,6 +26,19 @@ package opa_pkg is
   -- 64-bit processor, 4-issue
   constant c_opa_full : t_opa_config := ( 4, 6, 2, 24, 3, 2);
   
+  component opa is
+    generic(
+      g_config : t_opa_config);
+    port(
+      clk_i          : in  std_logic;
+      rst_n_i        : in  std_logic;
+
+      -- Incoming data
+      stb_i          : in  std_logic;
+      stall_o        : out std_logic;
+      data_i         : in  std_logic_vector(2**g_config.log_decode*16-1 downto 0));
+  end component;
+  
   -- good sizes for reservation stations on a 6-lut system: 4, 9, 24, 69
   
   -- instruction format:

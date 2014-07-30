@@ -14,7 +14,7 @@ architecture rtl of opa_sim_tb is
    constant period : time := 1 ns;
    signal clk, rstn : std_logic;
 
-   signal good   : std_logic_vector(0 to 0);
+   signal good   : std_logic_vector(1 downto 0);
    signal r_good : std_logic_vector(good'range);
    signal r_ok   : std_logic := '1';
    
@@ -42,6 +42,12 @@ begin
       clk_i  => clk,
       rstn_i => rstn,
       good_o => good(0));
+  
+  opa_tb : opa_core_tb
+    port map(
+      clk_i  => clk,
+      rstn_i => rstn,
+      good_o => good(1));
   
   test : process(clk, rstn) is
   begin

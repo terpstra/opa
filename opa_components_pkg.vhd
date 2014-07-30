@@ -73,6 +73,30 @@ package opa_components_pkg is
       rename_regx_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0));
   end component;
 
+  component opa_decoder is
+    generic(
+      g_config : t_opa_config);
+    port(
+      clk_i          : in  std_logic;
+      rst_n_i        : in  std_logic;
+
+      -- Incoming data
+      stb_i          : in  std_logic;
+      stall_o        : out std_logic;
+      data_i         : in  std_logic_vector(f_opa_decoders(g_config)*16-1 downto 0);
+      
+      -- Parsed
+      rename_stb_o   : out std_logic;
+      rename_stall_i : in  std_logic;
+      rename_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_geta_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_getb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_typ_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1           downto 0);
+      rename_regx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+      rename_rega_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+      rename_regb_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0));
+  end component;
+  
   component opa_renamer is
     generic(
       g_config : t_opa_config);
@@ -231,6 +255,13 @@ package opa_components_pkg is
       reg_datx_o : out std_logic_vector(2**g_config.log_width-1 downto 0));
   end component;
 
+  component opa_core_tb is
+    port(
+      clk_i  : in std_logic;
+      rstn_i : in std_logic;
+      good_o : out std_logic);
+  end component;
+  
   -- TODO (for real programs):
   -- fetcher
   -- decoder (constants, op decode)
