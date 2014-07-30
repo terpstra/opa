@@ -54,15 +54,15 @@ architecture rtl of opa_regfile is
   signal r_mux_a    : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
   signal r_mux_b    : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
   
-  signal s_ram_a    : t_opa_matrix(c_executers-1 downto 0, 2**c_width-1 downto 0);
-  signal s_ram_b    : t_opa_matrix(c_executers-1 downto 0, 2**c_width-1 downto 0);
+  signal s_ram_a    : t_opa_matrix(c_executers-1 downto 0, c_width-1 downto 0);
+  signal s_ram_b    : t_opa_matrix(c_executers-1 downto 0, c_width-1 downto 0);
   
-  signal s_bypass_a : t_opa_matrix(c_executers-1 downto 0, 2**c_width-1 downto 0);
-  signal s_bypass_b : t_opa_matrix(c_executers-1 downto 0, 2**c_width-1 downto 0);
+  signal s_bypass_a : t_opa_matrix(c_executers-1 downto 0, c_width-1 downto 0);
+  signal s_bypass_b : t_opa_matrix(c_executers-1 downto 0, c_width-1 downto 0);
   
   function f_my_dot(d : t_data_out; m : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0)) 
     return t_opa_matrix is
-    variable result : t_opa_matrix(c_executers-1 downto 0, 2**c_width-1 downto 0);
+    variable result : t_opa_matrix(c_executers-1 downto 0, c_width-1 downto 0);
   begin
     for u in result'range(1) loop
       for b in result'range(2) loop

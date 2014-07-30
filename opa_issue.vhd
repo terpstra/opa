@@ -73,6 +73,7 @@ architecture rtl of opa_issue is
   signal r_back_ready      : std_logic_vector(c_back_num-1 downto 0) := (others => '1');
   signal s_back_now_done   : std_logic_vector(c_back_num-1 downto 0);
   signal s_back_cleared    : std_logic_vector(c_back_num-1 downto 0);
+  signal s_still_ready     : std_logic_vector(c_back_num-1 downto 0);
   
   signal r_stat_issued     : std_logic_vector(c_stations-1 downto 0) := (others => '1');
   signal r_stat_readya     : std_logic_vector(c_stations-1 downto 0);
@@ -127,12 +128,13 @@ begin
   -- Effect on the backing store
   s_back_now_done <= f_opa_product(f_opa_match_index(c_back_num, r_done_regx), c_ones);
   s_back_cleared  <= f_opa_product(f_opa_match_index(c_back_num, r_ren_regx), c_ones_dec);
+  s_still_ready   <= r_back_ready and not s_back_cleared;
   
   -- Are the inputs for newly decoded instructions ready?
   --   They were already ready (careful of new op cross-dependencies)
   --   They are about to be made ready by completing operations
-  s_ren_already_a <= f_opa_compose(r_back_ready and not s_back_cleared, r_ren_rega);
-  s_ren_already_b <= f_opa_compose(r_back_ready and not s_back_cleared, r_ren_regb);
+  s_ren_already_a <= f_opa_compose(s_still_ready, r_ren_rega);
+  s_ren_already_b <= f_opa_compose(s_still_ready, r_ren_regb);
   s_ren_now_a <= f_opa_match(r_ren_rega, r_done_regx);
   s_ren_now_b <= f_opa_match(r_ren_regb, r_done_regx);
   s_ren_done_a <= s_ren_already_a or f_opa_product(s_ren_now_a, c_ones);

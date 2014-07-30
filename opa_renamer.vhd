@@ -223,8 +223,8 @@ begin
   s_skid_typ  <= r_dec_typ;
   s_skid_regx <= r_bakx;
   -- Backing register 0 is the unused "trash" register.
-  s_skid_rega <= f_opa_dup_row(c_back_wide, r_dec_geta) and s_baka;
-  s_skid_regb <= f_opa_dup_row(c_back_wide, r_dec_getb) and s_bakb;
+  s_skid_rega <= f_opa_transpose(f_opa_dup_row(c_back_wide, r_dec_geta)) and s_baka;
+  s_skid_regb <= f_opa_transpose(f_opa_dup_row(c_back_wide, r_dec_getb)) and s_bakb;
   
   --- Implement back pressure for issuer ---------------------------------------
   

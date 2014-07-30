@@ -82,8 +82,8 @@ architecture rtl of opa_commit is
 begin
 
   -- Calculate if we can commit.
-  s_already_done <= f_opa_compose(issue_bak_i, fifo_regx_i);
-  s_now_done <= f_opa_product(f_opa_match(fifo_regx_i, issue_regx_i), c_ones2);
+  s_already_done <= f_opa_compose(issue_bak_i, fifo_bakx_i);
+  s_now_done <= f_opa_product(f_opa_match(fifo_bakx_i, issue_regx_i), c_ones2);
   s_done <= f_opa_bit((s_already_done or s_now_done) = c_ones1);
   
   -- Let the renamer see the committed state
@@ -108,10 +108,10 @@ begin
   s_map         <= f_opa_product(f_opa_split2(1, s_map_source), r_bakx);
   
   -- Calculate which backing registers are released upon commit
-  s_old_map    <= f_opa_compose(r_map, fifo_regx_i);
-  s_match      <= f_opa_match(fifo_regx_i, fifo_regx_i);
-  s_overwrites <= s_match and f_opa_dup_row(c_decoders, fifo_setx_i) and c_UR_triangle;
-  s_useless    <= f_opa_product(s_overwrites, c_ones1) or not fifo_setx_i;
+  s_old_map    <= f_opa_compose(r_map, r_regx);
+  s_match      <= f_opa_match(r_regx, r_regx);
+  s_overwrites <= s_match and f_opa_dup_row(c_decoders, r_setx) and c_UR_triangle;
+  s_useless    <= f_opa_product(s_overwrites, c_ones1) or not r_setx;
   
   -- Feed the FIFO
   fifo_we_o <= r_we;
