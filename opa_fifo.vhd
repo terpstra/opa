@@ -134,8 +134,8 @@ begin
   s_bak_i <= s_bak_ext when rst_n_i='1' else s_bak_rom;
   
   regx_rows : for i in rename_regx_i'range(1) generate
-    commit_setx_o(i) <= s_reg_i((i+1)*(rename_regx_i'length(2))-1);
-    s_reg_i((i+1)*(rename_regx_i'length(2))-1) <= rename_setx_i(i);
+    commit_setx_o(i) <= s_reg_i((i+1)*(rename_regx_i'length(2)+1)-1);
+    s_reg_i((i+1)*(rename_regx_i'length(2)+1)-1) <= rename_setx_i(i);
     regx_cols : for j in rename_regx_i'range(2) generate
       commit_regx_o(i,j) <= s_reg_o(i*(rename_regx_i'length(2)+1) + j);
       s_reg_i(i*(rename_regx_i'length(2)+1) + j) <= rename_regx_i(i,j);
