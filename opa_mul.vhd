@@ -27,6 +27,7 @@ architecture rtl of opa_mul is
 
   signal r_data : std_logic_vector(reg_data_i'range);
   signal r_datb : std_logic_vector(reg_datb_i'range);
+  signal r_datx : std_logic_vector(reg_data_i'length*2-1 downto 0);
   signal r_regx : std_logic_vector(iss_regx_i'range);
   signal r_regy : std_logic_vector(iss_regx_i'range);
 
@@ -43,8 +44,10 @@ begin
       r_regy <= r_regx;
       
       reg_regx_o <= r_regy;
-      reg_datx_o <= std_logic_vector(unsigned(r_data) * unsigned(r_datb));
+      r_datx <= std_logic_vector(unsigned(r_data) * unsigned(r_datb));
     end if;
   end process;
+  
+  reg_datx_o <= r_datx(reg_datx_o'range);
 
 end rtl;

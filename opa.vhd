@@ -71,6 +71,16 @@ architecture rtl of opa is
   signal eu_issue_regx          : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal eu_regfile_regx        : t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
   signal eu_regfile_datx        : t_opa_matrix(f_opa_executers(g_config)-1 downto 0, 2**g_config.log_width-1 downto 0);
+  
+  type t_dat is array (c_executers-1 downto 0) of std_logic_vector(2**g_config.log_width-1 downto 0);
+  type t_reg is array (c_executers-1 downto 0) of std_logic_vector(c_back_wide-1 downto 0);
+  
+  signal s_issue_eu_regx   : t_reg;
+  signal s_eu_issue_regx   : t_reg;
+  signal s_regfile_eu_data : t_dat;
+  signal s_regfile_eu_datb : t_dat;
+  signal s_eu_regfile_regx : t_reg;
+  signal s_eu_regfile_datx : t_dat;
 
 begin
 
@@ -199,23 +209,35 @@ begin
       eu_regx_i      => eu_regfile_regx,
       eu_datx_i      => eu_regfile_datx);
   
---  ieus : for i in 0 to g_config.num_ieu generate
---    ieu : opa_ieu
---      generic map(
---        g_config => g_config)
---      port map(
---        clk_i      => clk_i,
---        rst_n_i    => rst_n_i,
---        iss_regx_i =>
---        iss_regx_o =>
---        reg_data_i =>
---        reg_datb_i =>
---        reg_regx_o =>
---        reg_datx_o => );
---  end generate;
+  ieus : for i in 0 to g_config.num_ieu-1 generate
+    ieu : opa_ieu
+      generic map(
+        g_config => g_config)
+      port map(
+        clk_i      => clk_i,
+        rst_n_i    => rst_n_i,
+        iss_regx_i => s_issue_eu_regx(f_opa_ieu_index(g_config, i)),
+        iss_regx_o => s_eu_issue_regx(f_opa_ieu_index(g_config, i)),
+        reg_data_i => s_regfile_eu_data(f_opa_ieu_index(g_config, i)),
+        reg_datb_i => s_regfile_eu_datb(f_opa_ieu_index(g_config, i)),
+        reg_regx_o => s_eu_regfile_regx(f_opa_ieu_index(g_config, i)),
+        reg_datx_o => s_eu_regfile_datx(f_opa_ieu_index(g_config, i)));
+  end generate;
   
---  muls : for i in 0 to g_config.num_ieu generate
---  end generate;
+  muls : for i in 0 to g_config.num_mul-1 generate
+    mul : opa_mul
+      generic map(
+        g_config => g_config)
+      port map(
+        clk_i      => clk_i,
+        rst_n_i    => rst_n_i,
+        iss_regx_i => s_issue_eu_regx(f_opa_mul_index(g_config, i)),
+        iss_regx_o => s_eu_issue_regx(f_opa_mul_index(g_config, i)),
+        reg_data_i => s_regfile_eu_data(f_opa_mul_index(g_config, i)),
+        reg_datb_i => s_regfile_eu_datb(f_opa_mul_index(g_config, i)),
+        reg_regx_o => s_eu_regfile_regx(f_opa_mul_index(g_config, i)),
+        reg_datx_o => s_eu_regfile_datx(f_opa_mul_index(g_config, i)));
+  end generate;
   
   -- loadstore :
   
