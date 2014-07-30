@@ -95,7 +95,8 @@ begin
     rename_geta_o(i) <= f_geta(s_typ(i));
     rename_getb_o(i) <= f_getb(s_typ(i));
     
-    typ : for b in 0 to c_types-1 generate
+    rename_typ_o(i,0) <= '1';
+    typ : for b in 1 to c_types-1 generate
       rename_typ_o(i,b) <= '0'; -- !!! f_typ(s_typ(i))(b);
     end generate;
   
