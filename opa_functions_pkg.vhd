@@ -30,8 +30,8 @@ package opa_functions_pkg is
   function f_opa_unit_index(conf : t_opa_config; u : natural) return natural;
   function f_opa_ieu_index(conf : t_opa_config; u : natural) return natural;
   function f_opa_mul_index(conf : t_opa_config; u : natural) return natural;
-  function f_opa_load_index(conf : t_opa_config; u : natural) return natural;
-  function f_opa_store_index(conf : t_opa_config; u : natural) return natural;
+  function f_opa_load_index(conf : t_opa_config) return natural;
+  function f_opa_store_index(conf : t_opa_config) return natural;
 
   type t_opa_matrix is array(natural range <>, natural range <>) of std_logic;
   
@@ -159,14 +159,14 @@ package body opa_functions_pkg is
     return u + conf.num_ieu;
   end f_opa_mul_index;
   
-  function f_opa_load_index(conf : t_opa_config; u : natural) return natural is
+  function f_opa_load_index(conf : t_opa_config) return natural is
   begin
-    return u + conf.num_ieu + conf.num_mul;
+    return conf.num_ieu + conf.num_mul;
   end f_opa_load_index;
   
-  function f_opa_store_index(conf : t_opa_config; u : natural) return natural is
+  function f_opa_store_index(conf : t_opa_config) return natural is
   begin
-    return u + conf.num_ieu + conf.num_mul + 1;
+    return conf.num_ieu + conf.num_mul + 1;
   end f_opa_store_index;
   
   --------------------------------------------------------------------------------------

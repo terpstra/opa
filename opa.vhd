@@ -236,6 +236,20 @@ begin
       eu_regx_i      => eu_regfile_regx,
       eu_datx_i      => eu_regfile_datx);
   
+  -- Relabel matrix between issue+regfile and EUs
+  eus : for u in 0 to c_executers-1 generate
+    dat : for b in 0 to 2**g_config.log_width-1 generate
+      s_regfile_eu_data(u)(b) <= regfile_eu_data(u,b);
+      s_regfile_eu_datb(u)(b) <= regfile_eu_datb(u,b);
+      eu_regfile_datx(u,b) <= s_eu_regfile_datx(u)(b);
+    end generate;
+    reg : for b in 0 to c_back_wide-1 generate
+      s_issue_eu_regx(u)(b) <= issue_eu_regx(u,b);
+      eu_issue_regx(u,b) <= s_eu_issue_regx(u)(b);
+      eu_regfile_regx(u,b) <= s_eu_regfile_regx(u)(b);
+    end generate;
+  end generate;
+  
   ieus : for i in 0 to g_config.num_ieu-1 generate
     ieu : opa_ieu
       generic map(
@@ -266,6 +280,30 @@ begin
         reg_datx_o => s_eu_regfile_datx(f_opa_mul_index(g_config, i)));
   end generate;
   
-  -- loadstore :
+  -- !!! loadstore goes here:
+  load : opa_ieu
+    generic map(
+      g_config => g_config)
+    port map(
+      clk_i      => clk_i,
+      rst_n_i    => rst_n_i,
+      iss_regx_i => s_issue_eu_regx(f_opa_load_index(g_config)),
+      iss_regx_o => s_eu_issue_regx(f_opa_load_index(g_config)),
+      reg_data_i => s_regfile_eu_data(f_opa_load_index(g_config)),
+      reg_datb_i => s_regfile_eu_datb(f_opa_load_index(g_config)),
+      reg_regx_o => s_eu_regfile_regx(f_opa_load_index(g_config)),
+      reg_datx_o => s_eu_regfile_datx(f_opa_load_index(g_config)));
+  store : opa_ieu
+    generic map(
+      g_config => g_config)
+    port map(
+      clk_i      => clk_i,
+      rst_n_i    => rst_n_i,
+      iss_regx_i => s_issue_eu_regx(f_opa_store_index(g_config)),
+      iss_regx_o => s_eu_issue_regx(f_opa_store_index(g_config)),
+      reg_data_i => s_regfile_eu_data(f_opa_store_index(g_config)),
+      reg_datb_i => s_regfile_eu_datb(f_opa_store_index(g_config)),
+      reg_regx_o => s_eu_regfile_regx(f_opa_store_index(g_config)),
+      reg_datx_o => s_eu_regfile_datx(f_opa_store_index(g_config)));
   
 end rtl;
