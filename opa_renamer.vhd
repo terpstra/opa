@@ -109,7 +109,6 @@ architecture rtl of opa_renamer is
   signal s_baka        : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_bakb        : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
 
-  signal s_skid_stb    : std_logic;
   signal s_skid_stall  : std_logic;
   signal s_skid_stat   : std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
   signal s_skid_typ    : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
@@ -189,7 +188,7 @@ begin
       else
         -- Update the map, if it was changed
         for i in r_map'range(1) loop
-          if (not s_dec_jammed and s_map_source(i, c_decoders)) = '1' then
+          if (r_dec_full and not r_skid_full and not s_map_source(i, c_decoders)) = '1' then
             for j in r_map'range(2) loop
               r_map(i,j) <= s_map(i,j);
             end loop;
@@ -218,7 +217,6 @@ begin
   end generate;
   
   -- Forward the instruction to the skid pad
-  s_skid_stb  <= r_dec_full;
   s_skid_stat <= std_logic_vector(r_push_at);
   s_skid_typ  <= r_dec_typ;
   s_skid_regx <= r_bakx;
@@ -259,7 +257,7 @@ begin
     if mispredict_i = '1' then
       r_skid_full <= '0';
     elsif rising_edge(clk_i) then
-      r_skid_full <= (s_skid_stb or r_skid_full) and s_skid_stall;
+      r_skid_full <= (r_dec_full or r_skid_full) and s_skid_stall;
     end if;
   end process;
   skida : process(clk_i) is
@@ -275,7 +273,7 @@ begin
     end if;
   end process;
   
-  iss_stb_o  <= (s_skid_stb or r_skid_full) and not s_skid_stall;
+  iss_stb_o  <= (r_dec_full or r_skid_full) and not s_skid_stall;
   iss_stat_o <= r_skid_stat when r_skid_full='1' else s_skid_stat;
   iss_typ_o  <= r_skid_typ  when r_skid_full='1' else s_skid_typ;
   iss_regx_o <= r_skid_regx when r_skid_full='1' else s_skid_regx;
