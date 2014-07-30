@@ -106,10 +106,17 @@ architecture rtl of opa_issue is
 begin
 
   -- Edge 1: register decoded instructions and just-finished registers
+  edge1r : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_ren_stb <= '0';
+    elsif rising_edge(clk_i) then
+      r_ren_stb <= ren_stb_i;
+    end if;
+  end process;
   edge1a : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_ren_stb  <= ren_stb_i;
       r_ren_typ  <= ren_typ_i;
       r_ren_stat <= ren_stat_i;
       r_ren_regx <= ren_regx_i;
@@ -185,6 +192,8 @@ begin
           end loop;
           for b in r_stat_typ'range(2) loop
             r_stat_typ (index, b) <= r_ren_typ (i, b);
+          end loop;
+          for b in r_ren_rega'range(2) loop
             r_stat_rega(index, b) <= r_ren_rega(i, b);
             r_stat_regb(index, b) <= r_ren_regb(i, b);
             r_stat_regx(index, b) <= r_ren_regx(i, b);
