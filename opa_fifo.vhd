@@ -39,6 +39,8 @@ architecture rtl of opa_fifo is
   constant c_width_reg  : natural := c_decoders*(g_config.log_arch + 1);
   constant c_index_bits : natural := f_opa_log2(c_size);
   
+  constant c_zeros : unsigned(c_index_bits-1 downto 0) := (others => '0');
+  
   type t_rom is array(c_size-1 downto 0) of std_logic_vector(c_width_bak-1 downto 0);
   function f_rom return t_rom is
     variable result : t_rom;
@@ -65,11 +67,13 @@ architecture rtl of opa_fifo is
   signal s_reg_i        : std_logic_vector(c_width_reg-1 downto 0);
   signal s_reg_o        : std_logic_vector(c_width_reg-1 downto 0);
   
-  signal r_commit       : unsigned(c_index_bits-1 downto 0);
+  signal r_commit       : unsigned(c_index_bits-1 downto 0) := (others => '0');
   signal s_commit1      : unsigned(c_index_bits-1 downto 0);
+  signal s_commitx      : unsigned(c_index_bits-1 downto 0);
   signal s_commit       : unsigned(c_index_bits-1 downto 0);
-  signal r_rename       : unsigned(c_index_bits-1 downto 0);
+  signal r_rename       : unsigned(c_index_bits-1 downto 0) := (others => '0');
   signal s_rename1      : unsigned(c_index_bits-1 downto 0);
+  signal s_renamex      : unsigned(c_index_bits-1 downto 0);
   signal s_rename       : unsigned(c_index_bits-1 downto 0);
   
 begin
@@ -140,15 +144,14 @@ begin
   
   s_commit1 <= to_unsigned(0, r_commit'length) when r_commit=c_size-1 else (r_commit+1);
   s_rename1 <= to_unsigned(0, r_rename'length) when r_rename=c_size-1 else (r_rename+1);
-  s_commit <= s_commit1 when commit_step_i='1' else r_commit;
-  s_rename <= s_rename1 when rename_step_i='1' else r_rename;
+  s_commitx <= s_commit1 when commit_step_i='1' else r_commit;
+  s_renamex <= s_rename1 when rename_step_i='1' else r_rename;
+  s_rename <= c_zeros when mispredict_i='1' else s_renamex;
+  s_commit <= c_zeros when mispredict_i='1' else s_commitx;
   
   main : process(clk_i, mispredict_i) is
   begin
-    if mispredict_i = '1' then
-      r_commit <= (others => '0');
-      r_rename <= (others => '0');
-    elsif rising_edge(clk_i) then
+    if rising_edge(clk_i) then
       r_commit <= s_commit;
       r_rename <= s_rename;
     end if;
