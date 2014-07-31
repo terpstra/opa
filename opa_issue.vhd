@@ -73,6 +73,7 @@ architecture rtl of opa_issue is
   signal r_back_ready      : std_logic_vector(c_back_num-1 downto 0) := (others => '1');
   signal s_back_now_done   : std_logic_vector(c_back_num-1 downto 0);
   signal s_back_cleared    : std_logic_vector(c_back_num-1 downto 0);
+  signal s_back_strobed    : std_logic_vector(c_back_num-1 downto 0);
   signal s_still_ready     : std_logic_vector(c_back_num-1 downto 0);
   
   signal r_stat_issued     : std_logic_vector(c_stations-1 downto 0) := (others => '1');
@@ -133,6 +134,7 @@ begin
   s_stat_readyb   <= f_opa_product(s_stat_readyb_now, c_ones) or r_stat_readyb;
   
   -- Effect on the backing store
+  s_back_strobed  <= (others => r_ren_stb);
   s_back_now_done <= f_opa_product(f_opa_match_index(c_back_num, r_done_regx), c_ones);
   s_back_cleared  <= f_opa_product(f_opa_match_index(c_back_num, r_ren_regx), c_ones_dec);
   s_still_ready   <= r_back_ready and not s_back_cleared;
@@ -166,7 +168,8 @@ begin
     if rst_n_i = '0' then
       r_back_ready <= (others => '1');
     elsif rising_edge(clk_i) then
-      r_back_ready <= (s_back_now_done or r_back_ready) and not s_back_cleared;
+      r_back_ready <= (s_back_now_done or r_back_ready) and 
+                      (not s_back_cleared or not s_back_strobed);
     end if;
   end process;
   edge2a : process(clk_i) is
