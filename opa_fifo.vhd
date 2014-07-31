@@ -68,6 +68,7 @@ architecture rtl of opa_fifo is
   signal s_reg_o        : std_logic_vector(c_width_reg-1 downto 0);
   
   signal r_commit       : unsigned(c_index_bits-1 downto 0) := (others => '0');
+  signal r_commit1      : unsigned(c_index_bits-1 downto 0);
   signal s_commit1      : unsigned(c_index_bits-1 downto 0);
   signal s_commitx      : unsigned(c_index_bits-1 downto 0);
   signal s_commit       : unsigned(c_index_bits-1 downto 0);
@@ -105,7 +106,7 @@ begin
       r_addr_i => std_logic_vector(s_commit),
       r_data_o => s_bak_commit_o,
       w_en_i   => commit_we_i,
-      w_addr_i => std_logic_vector(r_commit),
+      w_addr_i => std_logic_vector(r_commit1),
       w_data_i => s_bak_i);
       
   bak_rename : opa_dpram
@@ -119,7 +120,7 @@ begin
       r_addr_i => std_logic_vector(s_rename),
       r_data_o => s_bak_rename_o,
       w_en_i   => commit_we_i,
-      w_addr_i => std_logic_vector(r_commit),
+      w_addr_i => std_logic_vector(r_commit1),
       w_data_i => s_bak_i);
   
   bakx_rows : for i in commit_bakx_i'range(1) generate
@@ -152,8 +153,9 @@ begin
   main : process(clk_i, mispredict_i) is
   begin
     if rising_edge(clk_i) then
-      r_commit <= s_commit;
-      r_rename <= s_rename;
+      r_commit  <= s_commit;
+      r_commit1 <= r_commit;
+      r_rename  <= s_rename;
     end if;
   end process;
   
