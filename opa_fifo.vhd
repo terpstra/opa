@@ -67,6 +67,7 @@ architecture rtl of opa_fifo is
   signal s_bak_i        : std_logic_vector(c_width_bak-1 downto 0);
   signal s_reg_i        : std_logic_vector(c_width_reg-1 downto 0);
   signal s_reg_o        : std_logic_vector(c_width_reg-1 downto 0);
+  signal s_bak_wen      : std_logic;
   
   signal r_commit       : unsigned(c_index_bits-1 downto 0) := (others => '0');
   signal r_commit1      : unsigned(c_index_bits-1 downto 0);
@@ -74,6 +75,7 @@ architecture rtl of opa_fifo is
   signal s_commitx      : unsigned(c_index_bits-1 downto 0);
   signal s_commit       : unsigned(c_index_bits-1 downto 0);
   signal r_rename       : unsigned(c_index_bits-1 downto 0) := (others => '0');
+  signal r_rename1      : unsigned(c_index_bits-1 downto 0);
   signal s_rename1      : unsigned(c_index_bits-1 downto 0);
   signal s_renamex      : unsigned(c_index_bits-1 downto 0);
   signal s_rename       : unsigned(c_index_bits-1 downto 0);
@@ -96,17 +98,19 @@ begin
       w_data_i => s_reg_i);
 
   -- Two read-ports for bak
+  s_bak_wen <= commit_we_i or not rst_n_i;
+    
   bak_commit : opa_dpram
     generic map(
       g_width => c_width_bak,
       g_size  => c_size)
     port map(
       clk_i    => clk_i,
-      rst_n_i  => rst_n_i,
+      rst_n_i  => '1',
       r_en_i   => '1',
       r_addr_i => std_logic_vector(s_commit),
       r_data_o => s_bak_commit_o,
-      w_en_i   => commit_we_i,
+      w_en_i   => s_bak_wen,
       w_addr_i => std_logic_vector(r_commit1),
       w_data_i => s_bak_i);
       
@@ -116,11 +120,11 @@ begin
       g_size  => c_size)
     port map(
       clk_i    => clk_i,
-      rst_n_i  => rst_n_i,
+      rst_n_i  => '1',
       r_en_i   => '1',
       r_addr_i => std_logic_vector(s_rename),
       r_data_o => s_bak_rename_o,
-      w_en_i   => commit_we_i,
+      w_en_i   => s_bak_wen,
       w_addr_i => std_logic_vector(r_commit1),
       w_data_i => s_bak_i);
   
@@ -146,20 +150,37 @@ begin
   
   s_commit1 <= to_unsigned(0, r_commit'length) when r_commit=c_size-1 else (r_commit+1);
   s_rename1 <= to_unsigned(0, r_rename'length) when r_rename=c_size-1 else (r_rename+1);
-  s_commitx <= s_commit1 when commit_step_i='1' else r_commit;
-  s_renamex <= s_rename1 when rename_step_i='1' else r_rename;
+  s_commitx <= s_commit1 when (not rst_n_i or commit_step_i)='1' else r_commit;
+  s_renamex <= s_rename1 when (not rst_n_i or rename_step_i)='1' else r_rename;
   s_rename <= c_zeros when mispredict_i='1' else s_renamex;
   s_commit <= c_zeros when mispredict_i='1' else s_commitx;
   
-  main : process(clk_i, mispredict_i) is
+  edge1r : process(clk_i) is
+  begin
+    if rst_n_i = '0' then
+      commit_valid_o <= '0';
+    elsif rising_edge(clk_i) then
+      -- reflects changes to commit index immediately
+      -- reacts to changes from renamer after 3 cycles
+      commit_valid_o <= f_opa_bit(s_commit /= r_rename1) and not mispredict_i;
+    end if;
+  end process;
+  edge1m : process(clk_i, mispredict_i) is
+  begin
+    if mispredict_i = '1' then
+      r_commit1 <= (others => '0');
+      r_rename1 <= (others => '0');
+    elsif rising_edge(clk_i) then
+      r_commit1 <= r_commit;
+      r_rename1 <= r_rename;
+    end if;
+  end process;
+  edge1a : process(clk_i) is
   begin
     if rising_edge(clk_i) then
       r_commit  <= s_commit;
-      r_commit1 <= r_commit;
       r_rename  <= s_rename;
     end if;
   end process;
-  
-  commit_valid_o <= '1'; -- !!!
-  
+    
 end rtl;
