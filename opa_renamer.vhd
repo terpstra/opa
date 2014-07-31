@@ -106,18 +106,24 @@ architecture rtl of opa_renamer is
   signal s_bakb        : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
 
   signal s_skid_stall  : std_logic;
-  signal s_skid_stat   : std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
-  signal s_skid_typ    : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
-  signal s_skid_regx   : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-  signal s_skid_rega   : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-  signal s_skid_regb   : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+  signal s_skid_page   : std_logic;
+  signal s_skid_stat   : unsigned(c_stat_wide-1 downto 0);
+  signal s_skid_typ    : t_opa_matrix(c_decoders-1 downto 0, c_types-1                   downto 0);
+  signal s_skid_regx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal s_skid_rega   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal s_skid_regb   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   
   signal r_skid_full   : std_logic;
-  signal r_skid_stat   : std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
-  signal r_skid_typ    : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
-  signal r_skid_regx   : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-  signal r_skid_rega   : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-  signal r_skid_regb   : t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+  signal r_skid_page   : std_logic;
+  signal r_skid_stat   : unsigned(c_stat_wide-1 downto 0);
+  signal r_skid_typ    : t_opa_matrix(c_decoders-1 downto 0, c_types-1                   downto 0);
+  signal r_skid_regx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal r_skid_rega   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal r_skid_regb   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  
+  signal s_iss_stat    : unsigned(c_stat_wide-1 downto 0);
+  signal s_iss_page    : std_logic;
+
 begin
 
   --- Typical pipeline stage with stall=r_skid_full ----------------------------
@@ -213,7 +219,8 @@ begin
   end generate;
   
   -- Forward the instruction to the skid pad
-  s_skid_stat <= std_logic_vector(r_push_at);
+  s_skid_stat <= r_push_at;
+  s_skid_page <= r_push_page;
   s_skid_typ  <= r_dec_typ;
   s_skid_regx <= r_bakx;
   -- Backing register 0 is the unused "trash" register.
@@ -243,8 +250,8 @@ begin
    
   s_skid_stall <= 
     not commit_stb_i and f_opa_bit(
-      (r_push_at    = s_pop_at) and
-      (r_push_page /= s_pop_page));
+      (s_iss_stat  = s_pop_at) and
+      (s_iss_page /= s_pop_page));
   
   --- Skid pad to cut commit_stb_i latency -------------------------------------
   
@@ -261,6 +268,7 @@ begin
     if rising_edge(clk_i) then
       if r_skid_full = '0' then
         r_skid_stat <= s_skid_stat;
+        r_skid_page <= s_skid_page;
         r_skid_typ  <= s_skid_typ;
         r_skid_regx <= s_skid_regx;
         r_skid_rega <= s_skid_rega;
@@ -269,8 +277,11 @@ begin
     end if;
   end process;
   
+  s_iss_stat <= r_skid_stat when r_skid_full='1' else s_skid_stat;
+  s_iss_page <= r_skid_page when r_skid_full='1' else s_skid_page;
+  
   iss_stb_o  <= (r_dec_full or r_skid_full) and not s_skid_stall;
-  iss_stat_o <= r_skid_stat when r_skid_full='1' else s_skid_stat;
+  iss_stat_o <= std_logic_vector(s_iss_stat);
   iss_typ_o  <= r_skid_typ  when r_skid_full='1' else s_skid_typ;
   iss_regx_o <= r_skid_regx when r_skid_full='1' else s_skid_regx;
   iss_rega_o <= r_skid_rega when r_skid_full='1' else s_skid_rega;
