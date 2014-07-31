@@ -136,7 +136,7 @@ begin
       end loop;
     elsif rising_edge(clk_i) then
       for i in r_map'range(1) loop
-        if (r_we and s_map_source(i, c_decoders)) = '1' then
+        if (r_we and not s_map_source(i, c_decoders)) = '1' then
           for j in r_map'range(2) loop
             r_map(i,j) <= s_map(i,j);
           end loop;
