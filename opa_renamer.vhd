@@ -156,7 +156,7 @@ begin
   end process;
   
   -- Pump the FIFO
-  fifo_step_o <= not s_dec_jammed;
+  fifo_step_o <= dec_stb_i and not s_dec_jammed;
   fifo_setx_o <= dec_setx_i;
   fifo_regx_o <= dec_regx_i;
 
