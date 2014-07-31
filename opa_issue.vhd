@@ -182,7 +182,7 @@ begin
       if r_ren_stb = '1' then
         for i in 0 to c_decoders-1 loop
           -- Each station has only one decoder source
-          index := to_integer(unsigned(r_ren_stat))*c_decoders + i;
+          index := to_integer(unsigned(r_ren_stat))*c_decoders + (c_decoders-1-i);
         
           r_stat_readya(index) <= s_ren_done_a(i);
           r_stat_readyb(index) <= s_ren_done_b(i);
