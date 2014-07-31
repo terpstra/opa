@@ -188,7 +188,7 @@ begin
           r_stat_readyb(index) <= s_ren_done_b(i);
           for b in r_stat_readya_mux'range(2) loop
             r_stat_readya_mux(index, b) <= '0';
-            r_stat_readyb_mux(index, b) <= '0';
+            r_stat_readyb_mux(index, b) <= '0'; -- ... !!! 
           end loop;
           for b in r_stat_typ'range(2) loop
             r_stat_typ (index, b) <= r_ren_typ (i, b);
@@ -234,10 +234,10 @@ begin
       s_pick_index(u)(r) <= 
         f_opa_bit(
           f_opa_select_row(s_stat_sums(f_opa_unit_type(g_config, u)), r) = 
-          std_logic_vector(to_unsigned(f_opa_unit_index(g_config, u), c_unit_wide)));
+          std_logic_vector(to_unsigned(f_opa_unit_index(g_config, u)+1, c_unit_wide)));
     end generate;
     
-    s_pick_one(u) <= (s_pick_index(u) & '0') and not ('0' & s_pick_index(u));
+    s_pick_one(u) <= ('0' & s_pick_index(u)) and not (s_pick_index(u) & '0');
     
     real_stations : for r in 0 to c_stations-1 generate
       s_schedule(u,r) <= s_pick_one(u)(r) or s_pick_one(u)(r+c_stations);
