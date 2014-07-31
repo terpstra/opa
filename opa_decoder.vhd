@@ -39,10 +39,10 @@ architecture rtl of opa_decoder is
   function f_typ(x : std_logic_vector(3 downto 0)) return t_code is
   begin
     case x is
-      when "0000" => return T_IEU;
-      when "0001" => return T_MUL;
-      when "0010" => return T_LOAD;
-      when "0011" => return T_STORE;
+      when "0001" => return T_IEU;
+      when "0010" => return T_MUL;
+      when "0100" => return T_LOAD;
+      when "1000" => return T_STORE;
       when others => return T_SLEEP;
     end case;
   end f_typ;
@@ -95,9 +95,8 @@ begin
     rename_geta_o(i) <= f_geta(s_typ(i));
     rename_getb_o(i) <= f_getb(s_typ(i));
     
-    rename_typ_o(i,0) <= '1';
-    typ : for b in 1 to c_types-1 generate
-      rename_typ_o(i,b) <= '0'; -- !!! f_typ(s_typ(i))(b);
+    typ : for b in 0 to c_types-1 generate
+      rename_typ_o(i,b) <= data_i(16*i+12+b);
     end generate;
   
     bits : for b in 0 to 3 generate

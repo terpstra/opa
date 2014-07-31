@@ -24,7 +24,7 @@ begin
       rst_n_i => rstn_i,
       stb_i   => '1',
       stall_o => open,
-      data_i  => x"0201032104210700");
+      data_i  => x"1201132114211400");
 
   good_o <= '1';
 
