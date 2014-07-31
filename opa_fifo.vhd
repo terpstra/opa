@@ -16,6 +16,7 @@ entity opa_fifo is
     mispredict_i  : in  std_logic;
     
     commit_step_i : in  std_logic;
+    commit_valid_o: out std_logic;
     commit_bakx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     commit_setx_o : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     commit_regx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
@@ -158,5 +159,7 @@ begin
       r_rename  <= s_rename;
     end if;
   end process;
+  
+  commit_valid_o <= '1'; -- !!!
   
 end rtl;

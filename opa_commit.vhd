@@ -26,6 +26,7 @@ entity opa_commit is
     
     -- FIFO feeds us registers for permuting into arch map
     fifo_step_o  : out std_logic;
+    fifo_valid_i : in  std_logic;
     fifo_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     fifo_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     fifo_regx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
@@ -85,7 +86,7 @@ begin
   -- Calculate if we can commit.
   s_already_done <= f_opa_compose(issue_bak_i, fifo_bakx_i);
   s_now_done <= f_opa_product(f_opa_match(fifo_bakx_i, issue_regx_i), c_ones2);
-  s_done <= f_opa_bit((s_already_done or s_now_done) = c_ones1);
+  s_done <= f_opa_bit((s_already_done or s_now_done) = c_ones1) and fifo_valid_i;
   
   -- Let the renamer see the committed state
   rename_map_o <= r_map;

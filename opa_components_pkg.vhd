@@ -60,6 +60,7 @@ package opa_components_pkg is
       mispredict_i  : in  std_logic;
       
       commit_step_i : in  std_logic;
+      commit_valid_o: out std_logic;
       commit_bakx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       commit_setx_o : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       commit_regx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
@@ -190,6 +191,7 @@ package opa_components_pkg is
       
       -- FIFO feeds us registers for permuting into arch map
       fifo_step_o  : out std_logic;
+      fifo_valid_i : in  std_logic;
       fifo_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       fifo_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       fifo_regx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
@@ -263,6 +265,7 @@ package opa_components_pkg is
   end component;
   
   -- TODO (for real programs):
+  -- immediate values
   -- fetcher
   -- decoder (constants, op decode)
   -- MMU + cache miss core

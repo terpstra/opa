@@ -29,6 +29,7 @@ architecture rtl of opa is
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   
   signal s_mispredict           : std_logic;
+  signal fifo_commit_valid      : std_logic;
   signal fifo_commit_bakx       : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal fifo_commit_setx       : std_logic_vector(c_decoders-1 downto 0);
   signal fifo_commit_regx       : t_opa_matrix(c_decoders-1 downto 0, g_config.log_arch-1 downto 0);
@@ -117,6 +118,7 @@ begin
       rst_n_i       => rst_n_i,
       mispredict_i  => s_mispredict,
       commit_step_i => commit_fifo_step,
+      commit_valid_o=> fifo_commit_valid,
       commit_bakx_o => fifo_commit_bakx,
       commit_setx_o => fifo_commit_setx,
       commit_regx_o => fifo_commit_regx,
@@ -213,6 +215,7 @@ begin
       issue_bak_i  => issue_commit_bak,
       issue_mask_o => commit_issue_mask,
       fifo_step_o  => commit_fifo_step,
+      fifo_valid_i => fifo_commit_valid,
       fifo_bakx_i  => fifo_commit_bakx,
       fifo_setx_i  => fifo_commit_setx,
       fifo_regx_i  => fifo_commit_regx,
