@@ -94,7 +94,7 @@ begin
       r_addr_i => std_logic_vector(s_commit),
       r_data_o => s_reg_o,
       w_en_i   => rename_step_i,
-      w_addr_i => std_logic_vector(s_rename),
+      w_addr_i => std_logic_vector(r_rename),
       w_data_i => s_reg_i);
 
   -- Two read-ports for bak
