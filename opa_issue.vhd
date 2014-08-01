@@ -53,7 +53,7 @@ architecture rtl of opa_issue is
   constant c_back_wide : natural := f_opa_back_wide(g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_stations  : natural := g_config.num_stat;
-  constant c_unit_wide : natural := f_opa_log2(f_opa_max_typ(g_config));
+  constant c_unit_wide : natural := f_opa_log2(f_opa_max_typ(g_config)+1);
   
   constant c_ones     : std_logic_vector(c_executers-1 downto 0) := (others => '1');
   constant c_ones_dec : std_logic_vector(c_decoders-1  downto 0) := (others => '1');
