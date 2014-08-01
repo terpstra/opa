@@ -53,6 +53,8 @@ architecture rtl of opa is
   signal rename_issue_regx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_rega      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_regb      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal rename_issue_confa     : std_logic_vector(c_decoders-1 downto 0);
+  signal rename_issue_confb     : std_logic_vector(c_decoders-1 downto 0);
   signal issue_eu_regx          : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_rega     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_regb     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
@@ -178,7 +180,9 @@ begin
       iss_typ_o    => rename_issue_typ,
       iss_regx_o   => rename_issue_regx,
       iss_rega_o   => rename_issue_rega,
-      iss_regb_o   => rename_issue_regb);
+      iss_regb_o   => rename_issue_regb,
+      iss_confa_o  => rename_issue_confa,
+      iss_confb_o  => rename_issue_confb);
   
   issue : opa_issue
     generic map(
@@ -193,6 +197,8 @@ begin
       ren_regx_i     => rename_issue_regx,
       ren_rega_i     => rename_issue_rega,
       ren_regb_i     => rename_issue_regb,
+      ren_confa_i    => rename_issue_confa,
+      ren_confb_i    => rename_issue_confb,
       eu_next_regx_o => issue_eu_regx,
       eu_next_rega_o => issue_regfile_rega,
       eu_next_regb_o => issue_regfile_regb,

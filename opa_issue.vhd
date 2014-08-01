@@ -22,6 +22,8 @@ entity opa_issue is
     ren_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     ren_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     ren_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    ren_confa_i    : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    ren_confb_i    : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     
     -- EU should execute this next
     eu_next_regx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- 0=idle
@@ -62,25 +64,31 @@ architecture rtl of opa_issue is
   signal r_ren_regx        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
   signal r_ren_rega        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
   signal r_ren_regb        : t_opa_matrix(c_decoders -1 downto 0, c_back_wide-1 downto 0);
+  signal r_ren_confa       : std_logic_vector(c_decoders-1 downto 0);
+  signal r_ren_confb       : std_logic_vector(c_decoders-1 downto 0);
   signal r_done_regx       : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
-  signal s_ren_already_a   : std_logic_vector(c_decoders-1 downto 0);
-  signal s_ren_already_b   : std_logic_vector(c_decoders-1 downto 0);
+  signal s_ren_already_a   : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_ren_already_b   : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
   signal s_ren_now_a       : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
   signal s_ren_now_b       : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
-  signal s_ren_done_a      : std_logic_vector(c_decoders-1 downto 0);
-  signal s_ren_done_b      : std_logic_vector(c_decoders-1 downto 0);
+  signal s_ren_clear_a     : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_ren_clear_b     : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_ren_done_a      : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_ren_done_b      : t_opa_matrix(c_decoders-1 downto 0, c_executers-1 downto 0);
+  signal s_ren_ready_a     : std_logic_vector(c_decoders-1 downto 0);
+  signal s_ren_ready_b     : std_logic_vector(c_decoders-1 downto 0);
   
-  signal r_back_ready      : std_logic_vector(c_back_num-1 downto 0) := (others => '1');
-  signal s_back_now_done   : std_logic_vector(c_back_num-1 downto 0);
-  signal s_back_cleared    : std_logic_vector(c_back_num-1 downto 0);
+  signal r_back_mux        : t_opa_matrix(c_back_num-1 downto 0, c_executers-1 downto 0);
+  signal s_back_now_done   : t_opa_matrix(c_back_num-1 downto 0, c_executers-1 downto 0);
+  signal s_back_matched    : std_logic_vector(c_back_num-1 downto 0);
   signal s_back_strobed    : std_logic_vector(c_back_num-1 downto 0);
-  signal s_still_ready     : std_logic_vector(c_back_num-1 downto 0);
+  signal s_back_cleared    : t_opa_matrix(c_back_num-1 downto 0, c_executers-1 downto 0);
   
   signal r_stat_issued     : std_logic_vector(c_stations-1 downto 0) := (others => '1');
   signal r_stat_readya     : std_logic_vector(c_stations-1 downto 0);
   signal r_stat_readyb     : std_logic_vector(c_stations-1 downto 0);
-  signal r_stat_readya_mux : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0); -- might be optimized away
-  signal r_stat_readyb_mux : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0);
+  signal r_stat_muxa       : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0);
+  signal r_stat_muxb       : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0);
   signal r_stat_typ        : t_opa_matrix(c_stations-1 downto 0, c_types    -1 downto 0);
   signal r_stat_rega       : t_opa_matrix(c_stations-1 downto 0, c_back_wide-1 downto 0);
   signal r_stat_regb       : t_opa_matrix(c_stations-1 downto 0, c_back_wide-1 downto 0);
@@ -118,11 +126,13 @@ begin
   edge1a : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_ren_typ  <= ren_typ_i;
-      r_ren_stat <= ren_stat_i;
-      r_ren_regx <= ren_regx_i;
-      r_ren_rega <= ren_rega_i;
-      r_ren_regb <= ren_regb_i;
+      r_ren_typ   <= ren_typ_i;
+      r_ren_stat  <= ren_stat_i;
+      r_ren_regx  <= ren_regx_i;
+      r_ren_rega  <= ren_rega_i;
+      r_ren_regb  <= ren_regb_i;
+      r_ren_confa <= ren_confa_i;
+      r_ren_confb <= ren_confb_i;
       r_done_regx <= eu_done_regx_i; -- fans out like crazy -- duplicate it !!!
     end if;
   end process;
@@ -135,19 +145,21 @@ begin
   
   -- Effect on the backing store
   s_back_strobed  <= (others => r_ren_stb);
-  s_back_now_done <= f_opa_product(f_opa_match_index(c_back_num, r_done_regx), c_ones);
-  s_back_cleared  <= f_opa_product(f_opa_match_index(c_back_num, r_ren_regx), c_ones_dec);
-  s_still_ready   <= r_back_ready and not s_back_cleared;
+  s_back_matched  <= f_opa_product(f_opa_match_index(c_back_num, r_ren_regx), c_ones_dec);
+  s_back_cleared  <= f_opa_dup_col(c_executers, s_back_matched and s_back_strobed);
+  s_back_now_done <= f_opa_match_index(c_back_num, r_done_regx);
   
   -- Are the inputs for newly decoded instructions ready?
-  --   They were already ready (careful of new op cross-dependencies)
-  --   They are about to be made ready by completing operations
-  s_ren_already_a <= f_opa_compose(s_still_ready, r_ren_rega);
-  s_ren_already_b <= f_opa_compose(s_still_ready, r_ren_regb);
-  s_ren_now_a <= f_opa_match(r_ren_rega, r_done_regx);
-  s_ren_now_b <= f_opa_match(r_ren_regb, r_done_regx);
-  s_ren_done_a <= s_ren_already_a or f_opa_product(s_ren_now_a, c_ones);
-  s_ren_done_b <= s_ren_already_b or f_opa_product(s_ren_now_b, c_ones);
+  s_ren_already_a <= f_opa_compose(r_back_mux, r_ren_rega);
+  s_ren_already_b <= f_opa_compose(r_back_mux, r_ren_regb);
+  s_ren_now_a     <= f_opa_match(r_ren_rega, r_done_regx);
+  s_ren_now_b     <= f_opa_match(r_ren_regb, r_done_regx);
+  s_ren_clear_a   <= f_opa_dup_col(c_executers, r_ren_confa);
+  s_ren_clear_b   <= f_opa_dup_col(c_executers, r_ren_confb);
+  s_ren_done_a    <= (s_ren_already_a or s_ren_now_a) and not s_ren_clear_a;
+  s_ren_done_b    <= (s_ren_already_b or s_ren_now_b) and not s_ren_clear_b;
+  s_ren_ready_a   <= f_opa_product(s_ren_done_a, c_ones);
+  s_ren_ready_b   <= f_opa_product(s_ren_done_b, c_ones);
   
   -- Edge 2: Update reservation stations and backing readiness
   edge2m : process(clk_i, mispredict_i) is
@@ -166,10 +178,9 @@ begin
   edge2r : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_back_ready <= (others => '1');
+      r_back_mux <= (others => (others => '1'));
     elsif rising_edge(clk_i) then
-      r_back_ready <= (s_back_now_done or r_back_ready) and 
-                      (not s_back_cleared or not s_back_strobed);
+      r_back_mux <= (s_back_now_done or r_back_mux) and not s_back_cleared;
     end if;
   end process;
   edge2a : process(clk_i) is
@@ -179,19 +190,19 @@ begin
       r_stat_readya <= s_stat_readya;
       r_stat_readyb <= s_stat_readyb;
       
-      r_stat_readya_mux <= r_stat_readya_mux or s_stat_readya_now;
-      r_stat_readyb_mux <= r_stat_readyb_mux or s_stat_readyb_now;
+      r_stat_muxa <= r_stat_muxa or s_stat_readya_now;
+      r_stat_muxb <= r_stat_muxb or s_stat_readyb_now;
       
       if r_ren_stb = '1' then
         for i in 0 to c_decoders-1 loop
           -- Each station has only one decoder source
           index := to_integer(unsigned(r_ren_stat))*c_decoders + (c_decoders-1-i);
         
-          r_stat_readya(index) <= s_ren_done_a(i);
-          r_stat_readyb(index) <= s_ren_done_b(i);
-          for b in r_stat_readya_mux'range(2) loop
-            r_stat_readya_mux(index, b) <= '0';
-            r_stat_readyb_mux(index, b) <= '0'; -- ... !!! 
+          r_stat_readya(index) <= s_ren_ready_a(i);
+          r_stat_readyb(index) <= s_ren_ready_b(i);
+          for b in r_stat_muxa'range(2) loop
+            r_stat_muxa(index, b) <= s_ren_done_a(i, b);
+            r_stat_muxb(index, b) <= s_ren_done_b(i, b);
           end loop;
           for b in r_stat_typ'range(2) loop
             r_stat_typ (index, b) <= r_ren_typ (i, b);
@@ -208,7 +219,7 @@ begin
   
   -- Let the committer snoop our state
   commit_regx_o <= r_done_regx;
-  commit_bak_o <= r_back_ready;
+  commit_bak_o <= f_opa_product(r_back_mux, c_ones);
   
   -------------------------------------------------------------------------------------------------
   -- Instruction selection begins here                                                           --
@@ -256,7 +267,7 @@ begin
   -- Make it easier for the register file to pick the output
   reg_bypass_a_o <= f_opa_product(s_schedule, s_stat_readya_now);
   reg_bypass_b_o <= f_opa_product(s_schedule, s_stat_readyb_now);
-  reg_mux_a_o <= f_opa_product(s_schedule, r_stat_readya_mux);
-  reg_mux_b_o <= f_opa_product(s_schedule, r_stat_readyb_mux);
+  reg_mux_a_o <= f_opa_product(s_schedule, r_stat_muxa);
+  reg_mux_b_o <= f_opa_product(s_schedule, r_stat_muxb);
   
 end rtl;

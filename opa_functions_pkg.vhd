@@ -42,6 +42,7 @@ package opa_functions_pkg is
   function f_opa_select_row(x : t_opa_matrix; i : natural) return std_logic_vector;
   function f_opa_select_col(x : t_opa_matrix; j : natural) return std_logic_vector;
   function f_opa_dup_row(n : natural; r : std_logic_vector) return t_opa_matrix;
+  function f_opa_dup_col(n : natural; r : std_logic_vector) return t_opa_matrix;
   
   function f_opa_concat(x, y : t_opa_matrix) return t_opa_matrix;
   function f_opa_split2(n : natural; x : t_opa_matrix) return t_opa_matrix;
@@ -240,6 +241,17 @@ package body opa_functions_pkg is
     end loop;
     return result;
   end f_opa_dup_row;
+  
+  function f_opa_dup_col(n : natural; r : std_logic_vector) return t_opa_matrix is
+    variable result : t_opa_matrix(r'range, n-1 downto 0);
+  begin
+    for i in result'range(1) loop
+      for j in result'range(2) loop
+        result(i, j) := r(i);
+      end loop;
+    end loop;
+    return result;
+  end f_opa_dup_col;
   
   function f_opa_concat(x, y : t_opa_matrix) return t_opa_matrix is
     variable result : t_opa_matrix(x'range(1), y'high(2)+x'length(2) downto y'low(2));

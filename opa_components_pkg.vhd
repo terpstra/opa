@@ -133,7 +133,9 @@ package opa_components_pkg is
       iss_typ_o      : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
       iss_regx_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       iss_rega_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      iss_regb_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
+      iss_regb_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      iss_confa_o    : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      iss_confb_o    : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0));
   end component;
 
   component opa_issue is
@@ -151,6 +153,8 @@ package opa_components_pkg is
       ren_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       ren_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       ren_regb_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      ren_confa_i    : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      ren_confb_i    : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       
       -- EU should execute this next
       eu_next_regx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); -- 0=idle
