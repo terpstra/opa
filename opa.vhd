@@ -29,6 +29,7 @@ architecture rtl of opa is
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   
   signal s_mispredict           : std_logic;
+  signal s_stall                : std_logic;
   signal fifo_commit_valid      : std_logic;
   signal fifo_commit_bakx       : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal fifo_commit_setx       : std_logic_vector(c_decoders-1 downto 0);
@@ -85,6 +86,8 @@ architecture rtl of opa is
 
 begin
 
+  stall_o <= s_stall or not rst_n_i or s_mispredict;
+
   check_divisible : 
     assert (g_config.num_stat mod g_config.num_decode = 0) 
     report "num_stat must be divisible by num_decode"
@@ -136,7 +139,7 @@ begin
       clk_i          => clk_i,
       rst_n_i        => rst_n_i,
       stb_i          => stb_i,
-      stall_o        => stall_o,
+      stall_o        => s_stall,
       data_i         => data_i,
       rename_stb_o   => decode_rename_stb,
       rename_stall_i => rename_decode_stall,
