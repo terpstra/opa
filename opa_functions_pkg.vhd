@@ -88,7 +88,7 @@ package body opa_functions_pkg is
   end f_opa_executers;
   
   function f_opa_fifo_deep(conf : t_opa_config) return natural is
-    constant pipeline_depth : natural := 3;
+    constant pipeline_depth : natural := 4;
   begin
     return (conf.num_stat / conf.num_decode) + pipeline_depth;
   end f_opa_fifo_deep;
