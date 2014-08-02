@@ -61,6 +61,7 @@ architecture rtl of opa_issue is
   
   constant c_ones     : std_logic_vector(c_executers-1 downto 0) := (others => '1');
   constant c_ones_dec : std_logic_vector(c_decoders-1  downto 0) := (others => '1');
+  constant c_ones_stat: std_logic_vector(c_stations/c_decoders-1 downto 0) := (others => '1');
 
   signal r_ren_stb         : std_logic;
   signal r_ren_stat        : std_logic_vector(c_stat_wide-1 downto 0);
@@ -290,7 +291,7 @@ begin
   
     -- The actual work
     s_aux_stat(u) <= f_opa_1hot_dec(f_opa_product(s_schedule_m(u), c_ones_dec));
-    s_aux_dec(u)  <= f_opa_product(f_opa_transpose(s_schedule_m(u)), c_ones);
+    s_aux_dec(u)  <= f_opa_product(f_opa_transpose(s_schedule_m(u)), c_ones_stat);
     
     -- Relabel as output
     stat : for b in 0 to c_stat_wide-1 generate
