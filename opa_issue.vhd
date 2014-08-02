@@ -41,7 +41,7 @@ entity opa_issue is
     
     -- Auxiliary data address
     aux_stat_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    aux_dec_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, c_aux_wide-1 downto 0);
+    aux_dec_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_decoders(g_config)-1 downto 0);
     
     -- Connections to/from the committer
     commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0); -- must be a register
