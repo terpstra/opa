@@ -84,7 +84,7 @@ package opa_components_pkg is
       -- Incoming data
       stb_i          : in  std_logic;
       stall_o        : out std_logic;
-      data_i         : in  std_logic_vector(f_opa_decoders(g_config)*16-1 downto 0);
+      data_i         : in  std_logic_vector(f_opa_decoders(g_config)*c_op_wide-1 downto 0);
       
       -- Parsed
       rename_stb_o   : out std_logic;
@@ -298,7 +298,6 @@ package opa_components_pkg is
   
   -- TODO (for real programs):
   -- fetcher
-  -- decoder (constants, op decode)
   -- MMU + cache miss core
 
 end package;

@@ -16,6 +16,8 @@ package opa_pkg is
   
   -- target modern FPGAs with 6-input LUTs
   constant c_lut_width : natural := 6;
+  -- current ISA has 16-bit sized instructions
+  constant c_op_wide   : natural := 16;
   
   -- 16-bit processor, 1-issue
   constant c_opa_tiny : t_opa_config := ( 4, 4, 1,  4, 1, 1);
@@ -36,7 +38,7 @@ package opa_pkg is
       -- Incoming data
       stb_i          : in  std_logic;
       stall_o        : out std_logic;
-      data_i         : in  std_logic_vector(g_config.num_decode*16-1 downto 0));
+      data_i         : in  std_logic_vector(g_config.num_decode*c_op_wide-1 downto 0));
   end component;
   
   -- good sizes for reservation stations on a 6-lut system: 4, 9, 24, 69
