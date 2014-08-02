@@ -16,6 +16,7 @@ package opa_functions_pkg is
   constant c_type_load  : natural := 2;
   constant c_type_store : natural := 3;
   constant c_types      : natural := 4;
+  constant c_aux_wide   : natural := 10;
   
   -- Decode config into useful values
   function f_opa_decoders (conf : t_opa_config) return natural;

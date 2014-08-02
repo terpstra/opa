@@ -239,6 +239,7 @@ package opa_components_pkg is
       iss_regx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       iss_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       
+      aux_data_i : in  std_logic_vector(c_aux_wide-1 downto 0);
       reg_data_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
       reg_datb_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
       reg_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
@@ -255,6 +256,7 @@ package opa_components_pkg is
       iss_regx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       iss_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       
+      aux_data_i : in  std_logic_vector(c_aux_wide-1 downto 0);
       reg_data_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
       reg_datb_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
       reg_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
