@@ -145,7 +145,7 @@ package body opa_functions_pkg is
   
   function f_opa_stat_wide(conf : t_opa_config) return natural is
   begin
-    return f_opa_log2(conf.num_stat);
+    return f_opa_log2(conf.num_stat/conf.num_decode);
   end f_opa_stat_wide;
   
   function f_opa_max_typ(conf : t_opa_config) return natural is
