@@ -82,21 +82,23 @@ package body opa_functions_pkg is
   end f_opa_bit;
   
   function f_opa_or(x : std_logic_vector) return std_logic is
-    constant c_mid : natural := (x'high + x'low) / 2;
+    alias y : std_logic_vector(x'length-1 downto 0) is x;
+    constant c_mid : natural := (y'high + y'low) / 2;
   begin
-    if x'length = 0 then return '0'; end if;
-    if x'length = 1 then return x(x'left); end if;
-    return f_opa_or(x(x'high downto c_mid+1)) or
-           f_opa_or(x(c_mid downto x'low));
+    if y'length = 0 then return '0'; end if;
+    if y'length = 1 then return y(y'low); end if;
+    return f_opa_or(y(y'high downto c_mid+1)) or
+           f_opa_or(y(c_mid downto y'low));
   end f_opa_or;
   
   function f_opa_and(x : std_logic_vector) return std_logic is
-    constant c_mid : natural := (x'high + x'low) / 2;
+    alias y : std_logic_vector(x'length-1 downto 0) is x;
+    constant c_mid : natural := (y'high + y'low) / 2;
   begin
-    if x'length = 0 then return '1'; end if;
-    if x'length = 1 then return x(x'left); end if;
-    return f_opa_and(x(x'high downto c_mid+1)) and
-           f_opa_and(x(c_mid downto x'low));
+    if y'length = 0 then return '1'; end if;
+    if y'length = 1 then return y(y'left); end if;
+    return f_opa_and(y(y'high downto c_mid+1)) and
+           f_opa_and(y(c_mid downto y'low));
   end f_opa_and;
   
   function f_opa_1hot_dec(x : std_logic_vector) return std_logic_vector is
