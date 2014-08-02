@@ -86,7 +86,7 @@ begin
   -- Calculate if we can commit.
   s_already_done <= f_opa_compose(issue_bak_i, fifo_bakx_i);
   s_now_done <= f_opa_product(f_opa_match(fifo_bakx_i, issue_regx_i), c_ones2);
-  s_done <= f_opa_bit((s_already_done or s_now_done) = c_ones1) and fifo_valid_i;
+  s_done <= f_opa_and(s_already_done or s_now_done) and fifo_valid_i;
   
   -- Let the renamer see the committed state
   rename_map_o <= r_map;

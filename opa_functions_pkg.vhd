@@ -9,6 +9,9 @@ package opa_functions_pkg is
 
   function f_opa_log2(x : natural) return natural;
   function f_opa_bit(x : boolean) return std_logic;
+  function f_opa_or(x : std_logic_vector) return std_logic;
+  function f_opa_and(x : std_logic_vector) return std_logic;
+  function f_opa_1hot_dec(x : std_logic_vector) return std_logic_vector;
   
   -- Types of execution units; if you modify, update f_opa_unit_{type,index}
   constant c_type_ieu   : natural := 0;
@@ -77,6 +80,38 @@ package body opa_functions_pkg is
   begin
     if x then return '1'; else return '0'; end if;
   end f_opa_bit;
+  
+  function f_opa_or(x : std_logic_vector) return std_logic is
+    constant c_mid : natural := (x'high + x'low) / 2;
+  begin
+    if x'length = 0 then return '0'; end if;
+    if x'length = 1 then return x(x'left); end if;
+    return f_opa_or(x(x'high downto c_mid+1)) or
+           f_opa_or(x(c_mid downto x'low));
+  end f_opa_or;
+  
+  function f_opa_and(x : std_logic_vector) return std_logic is
+    constant c_mid : natural := (x'high + x'low) / 2;
+  begin
+    if x'length = 0 then return '1'; end if;
+    if x'length = 1 then return x(x'left); end if;
+    return f_opa_and(x(x'high downto c_mid+1)) and
+           f_opa_and(x(c_mid downto x'low));
+  end f_opa_and;
+  
+  function f_opa_1hot_dec(x : std_logic_vector) return std_logic_vector is
+    constant c_log2 : natural := f_opa_log2(x'length);
+    variable wide   : natural := 2**c_log2;
+    variable mask   : std_logic_vector(x'range) := (others => '1');
+    variable result : std_logic_vector(c_log2-1 downto 0);
+  begin
+    for i in result'range loop
+      wide := wide / 2;
+      mask := mask xor std_logic_vector(unsigned(mask) srl wide);
+      result(i) := f_opa_or(x and mask);
+    end loop;
+    return result;
+  end f_opa_1hot_dec;
   
   function f_opa_decoders(conf : t_opa_config) return natural is
   begin
@@ -293,33 +328,33 @@ package body opa_functions_pkg is
     return result;
   end f_opa_transpose;
   
-  -- Assumption: synthesis tool can recognize a chain of ORs and do something intelligent
-  
   function f_opa_product(x : t_opa_matrix; y : std_logic_vector) return std_logic_vector is
+    variable chunk  : std_logic_vector(x'range(2));
     variable result : std_logic_vector(x'range(1));
   begin
     assert (x'low(2)  = y'low)  report "matrix-vector dimension mismatch" severity failure;
     assert (x'high(2) = y'high) report "matrix-vector dimension mismatch" severity failure;
     for i in result'range loop
-      result(i) := '0';
       for j in x'range(2) loop
-        result(i) := result(i) or (x(i, j) and y(j));
+        chunk(j) := x(i, j) and y(j);
       end loop;
+      result(i) := f_opa_or(chunk);
     end loop;
     return result;
   end f_opa_product;
   
   function f_opa_product(x, y : t_opa_matrix) return t_opa_matrix is
+    variable chunk  : std_logic_vector(y'range(1));
     variable result : t_opa_matrix(x'range(1), y'range(2));
   begin
     assert (x'low(2)  = y'low(1))  report "matrix-matrix dimension mismatch" severity failure;
     assert (x'high(2) = y'high(1)) report "matrix-matrix dimension mismatch" severity failure;
     for i in x'range(1) loop
       for j in y'range(2) loop
-        result(i,j) := '0';
         for k in y'range(1) loop
-          result(i,j) := result(i,j) or (x(i,k) and y(k,j));
+          chunk(k) := x(i,k) and y(k,j);
         end loop;
+        result(i,j) := f_opa_or(chunk);
       end loop;
     end loop;
     return result;
