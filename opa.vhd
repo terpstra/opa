@@ -213,6 +213,8 @@ begin
       reg_bypass_b_o => issue_regfile_bypass_b,
       reg_mux_a_o    => issue_regfile_mux_a,
       reg_mux_b_o    => issue_regfile_mux_b,
+      aux_stat_o     => issue_aux_stat,
+      aux_dec_o      => issue_aux_dec,
       commit_mask_i  => commit_issue_mask,
       commit_regx_o  => issue_commit_regx,
       commit_bak_o   => issue_commit_bak);

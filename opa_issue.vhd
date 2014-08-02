@@ -39,6 +39,10 @@ entity opa_issue is
     reg_mux_a_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
     reg_mux_b_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_executers(g_config)-1 downto 0);
     
+    -- Auxiliary data address
+    aux_stat_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+    aux_dec_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, c_aux_wide-1 downto 0);
+    
     -- Connections to/from the committer
     commit_mask_i  : in  std_logic_vector(2*g_config.num_stat-1 downto 0); -- must be a register
     commit_regx_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
@@ -105,12 +109,18 @@ architecture rtl of opa_issue is
   type t_sums         is array (c_types-1 downto 0) of t_opa_matrix(2*c_stations-1 downto 0, c_unit_wide-1 downto 0);
   type t_pick_index   is array (c_executers-1 downto 0) of std_logic_vector(2*c_stations-1 downto 0);
   type t_pick_one     is array (c_executers-1 downto 0) of std_logic_vector(2*c_stations   downto 0);
+  type t_schedule_m   is array (c_executers-1 downto 0) of t_opa_matrix(c_stations/c_decoders-1 downto 0, c_decoders-1 downto 0);
+  type t_aux_stat     is array (c_executers-1 downto 0) of std_logic_vector(c_stat_wide-1 downto 0);
+  type t_aux_dec      is array (c_executers-1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
   signal s_stat_pending_typ  : t_pending_typ;
   signal s_stat_pending_prio : t_pending_prio;
   signal s_stat_sums         : t_sums;
   signal s_pick_index        : t_pick_index;
   signal s_pick_one          : t_pick_one;
   signal s_schedule          : t_opa_matrix(c_executers-1 downto 0, c_stations-1 downto 0);
+  signal s_schedule_m        : t_schedule_m;
+  signal s_aux_stat          : t_aux_stat;
+  signal s_aux_dec           : t_aux_dec;
   
 begin
 
@@ -269,5 +279,26 @@ begin
   reg_bypass_b_o <= f_opa_product(s_schedule, s_stat_readyb_now);
   reg_mux_a_o <= f_opa_product(s_schedule, r_stat_muxa);
   reg_mux_b_o <= f_opa_product(s_schedule, r_stat_muxb);
+  
+  -- Decode the auxiliary station data required
+  decode : for u in 0 to c_executers-1 generate
+    -- Relabel to matrix form
+    res : for s in 0 to c_stations-1 generate
+      s_schedule_m(u)(s / c_decoders, c_decoders-1 - (s mod c_decoders)) 
+        <= s_schedule(u, s);
+    end generate;
+  
+    -- The actual work
+    s_aux_stat(u) <= f_opa_1hot_dec(f_opa_product(s_schedule_m(u), c_ones_dec));
+    s_aux_dec(u)  <= f_opa_product(f_opa_transpose(s_schedule_m(u)), c_ones);
+    
+    -- Relabel as output
+    stat : for b in 0 to c_stat_wide-1 generate
+      aux_stat_o(u,b) <= s_aux_stat(u)(b);
+    end generate;
+    dec : for b in 0 to c_decoders-1 generate
+      aux_dec_o(u,b) <= s_aux_dec(u)(b);
+    end generate;
+  end generate;
   
 end rtl;
