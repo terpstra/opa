@@ -109,8 +109,8 @@ package body opa_functions_pkg is
   begin
     for i in result'range loop
       wide := wide / 2;
-      mask := mask xor std_logic_vector(unsigned(mask) srl wide);
-      result(i) := f_opa_or(x and mask);
+      mask := mask xor std_logic_vector(unsigned(mask) sll wide);
+      result(i) := f_opa_or(x and not mask);
     end loop;
     return result;
   end f_opa_1hot_dec;
