@@ -11,6 +11,7 @@ files = [
  "opa_renamer.vhd",
  "opa_issue.vhd",
  "opa_commit.vhd",
+ "opa_aux.vhd",
  "opa_regfile.vhd",
  "opa_ieu.vhd",
  "opa_mul.vhd",

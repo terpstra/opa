@@ -17,7 +17,7 @@ entity opa_ieu is
     iss_regx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
     iss_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
     
-    aux_data_i : in  std_logic_vector(c_aux_wide-1 downto 0);
+    aux_dat_i  : in  std_logic_vector(c_aux_wide-1 downto 0);
     reg_data_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
     reg_datb_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
     reg_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
@@ -28,7 +28,7 @@ architecture rtl of opa_ieu is
 
   signal r_data : std_logic_vector(reg_data_i'range);
   signal r_datb : std_logic_vector(reg_datb_i'range);
-  signal r_aux  : std_logic_vector(aux_data_i'range);
+  signal r_aux  : std_logic_vector(aux_dat_i'range);
   signal r_regx : std_logic_vector(iss_regx_i'range);
   signal r_regy : std_logic_vector(iss_regx_i'range);
 
@@ -53,7 +53,7 @@ begin
     if rising_edge(clk_i) then
       r_data <= reg_data_i; -- OR immediate
       r_datb <= reg_datb_i;
-      r_aux  <= aux_data_i;
+      r_aux  <= aux_dat_i;
       r_regx <= iss_regx_i;
       r_regy <= r_regx;
     end if;

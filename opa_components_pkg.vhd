@@ -205,6 +205,25 @@ package opa_components_pkg is
       fifo_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
   end component;
 
+  component opa_aux is
+    generic(
+      g_config       : t_opa_config);
+    port(
+      clk_i      : in  std_logic;
+      rst_n_i    : in  std_logic;
+      
+      -- What auxiliary data to record
+      ren_stb_i  : in  std_logic;
+      ren_stat_i : in  std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+      ren_aux_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1 downto 0);
+      
+      -- Which registers to read for each EU
+      iss_stat_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+      iss_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_decoders(g_config)-1 downto 0);
+      -- The resulting register data
+      eu_aux_o   : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, c_aux_wide-1 downto 0));
+  end component;
+
   component opa_regfile is
     generic(
       g_config       : t_opa_config);
@@ -239,7 +258,7 @@ package opa_components_pkg is
       iss_regx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       iss_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       
-      aux_data_i : in  std_logic_vector(c_aux_wide-1 downto 0);
+      aux_dat_i  : in  std_logic_vector(c_aux_wide-1 downto 0);
       reg_data_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
       reg_datb_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
       reg_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
@@ -256,7 +275,7 @@ package opa_components_pkg is
       iss_regx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       iss_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       
-      aux_data_i : in  std_logic_vector(c_aux_wide-1 downto 0);
+      aux_dat_i  : in  std_logic_vector(c_aux_wide-1 downto 0);
       reg_data_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
       reg_datb_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
       reg_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);

@@ -55,6 +55,9 @@ architecture rtl of opa is
   signal rename_issue_regb      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_confa     : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_confb     : std_logic_vector(c_decoders-1 downto 0);
+  signal rename_aux_dat         : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1 downto 0);
+  signal issue_aux_stat         : t_opa_matrix(c_executers-1 downto 0, c_stat_wide-1 downto 0);
+  signal issue_aux_dec          : t_opa_matrix(c_executers-1 downto 0, c_decoders -1 downto 0);
   signal issue_eu_regx          : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_rega     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_regb     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
@@ -72,12 +75,14 @@ architecture rtl of opa is
   signal commit_fifo_bakx       : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal regfile_eu_data        : t_opa_matrix(c_executers-1 downto 0, 2**g_config.log_width-1 downto 0);
   signal regfile_eu_datb        : t_opa_matrix(c_executers-1 downto 0, 2**g_config.log_width-1 downto 0);
+  signal aux_eu_dat             : t_opa_matrix(c_executers-1 downto 0, c_aux_wide-1 downto 0);
   signal eu_issue_regx          : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal eu_regfile_regx        : t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
   signal eu_regfile_datx        : t_opa_matrix(f_opa_executers(g_config)-1 downto 0, 2**g_config.log_width-1 downto 0);
   
   type t_dat is array (c_executers-1 downto 0) of std_logic_vector(2**g_config.log_width-1 downto 0);
   type t_reg is array (c_executers-1 downto 0) of std_logic_vector(c_back_wide-1 downto 0);
+  type t_aux is array (c_executers-1 downto 0) of std_logic_vector(c_aux_wide-1 downto 0);
   
   signal s_issue_eu_regx   : t_reg;
   signal s_eu_issue_regx   : t_reg;
@@ -85,6 +90,7 @@ architecture rtl of opa is
   signal s_regfile_eu_datb : t_dat;
   signal s_eu_regfile_regx : t_reg;
   signal s_eu_regfile_datx : t_dat;
+  signal s_aux_eu_dat      : t_aux;
 
 begin
 
@@ -231,6 +237,19 @@ begin
       fifo_we_o    => commit_fifo_we,
       fifo_bakx_o  => commit_fifo_bakx);
   
+  aux : opa_aux
+    generic map(
+      g_config => g_config)
+    port map(
+      clk_i      => clk_i,
+      rst_n_i    => rst_n_i,
+      ren_stb_i  => rename_issue_stb,
+      ren_stat_i => rename_issue_stat,
+      ren_aux_i  => rename_aux_dat,
+      iss_stat_i => issue_aux_stat,
+      iss_dec_i  => issue_aux_dec,
+      eu_aux_o   => aux_eu_dat);
+  
   regfile : opa_regfile
     generic map(
       g_config => g_config)
@@ -260,6 +279,9 @@ begin
       eu_issue_regx(u,b) <= s_eu_issue_regx(u)(b);
       eu_regfile_regx(u,b) <= s_eu_regfile_regx(u)(b);
     end generate;
+    aux : for b in 0 to c_aux_wide-1 generate
+      s_aux_eu_dat(u)(b) <= aux_eu_dat(u,b);
+    end generate;
   end generate;
   
   ieus : for i in 0 to g_config.num_ieu-1 generate
@@ -271,6 +293,7 @@ begin
         rst_n_i    => rst_n_i,
         iss_regx_i => s_issue_eu_regx(f_opa_ieu_index(g_config, i)),
         iss_regx_o => s_eu_issue_regx(f_opa_ieu_index(g_config, i)),
+        aux_dat_i  => s_aux_eu_dat(f_opa_ieu_index(g_config, i)),
         reg_data_i => s_regfile_eu_data(f_opa_ieu_index(g_config, i)),
         reg_datb_i => s_regfile_eu_datb(f_opa_ieu_index(g_config, i)),
         reg_regx_o => s_eu_regfile_regx(f_opa_ieu_index(g_config, i)),
@@ -286,6 +309,7 @@ begin
         rst_n_i    => rst_n_i,
         iss_regx_i => s_issue_eu_regx(f_opa_mul_index(g_config, i)),
         iss_regx_o => s_eu_issue_regx(f_opa_mul_index(g_config, i)),
+        aux_dat_i  => s_aux_eu_dat(f_opa_mul_index(g_config, i)),
         reg_data_i => s_regfile_eu_data(f_opa_mul_index(g_config, i)),
         reg_datb_i => s_regfile_eu_datb(f_opa_mul_index(g_config, i)),
         reg_regx_o => s_eu_regfile_regx(f_opa_mul_index(g_config, i)),
@@ -301,6 +325,7 @@ begin
       rst_n_i    => rst_n_i,
       iss_regx_i => s_issue_eu_regx(f_opa_load_index(g_config)),
       iss_regx_o => s_eu_issue_regx(f_opa_load_index(g_config)),
+      aux_dat_i  => s_aux_eu_dat(f_opa_load_index(g_config)),
       reg_data_i => s_regfile_eu_data(f_opa_load_index(g_config)),
       reg_datb_i => s_regfile_eu_datb(f_opa_load_index(g_config)),
       reg_regx_o => s_eu_regfile_regx(f_opa_load_index(g_config)),
@@ -313,6 +338,7 @@ begin
       rst_n_i    => rst_n_i,
       iss_regx_i => s_issue_eu_regx(f_opa_store_index(g_config)),
       iss_regx_o => s_eu_issue_regx(f_opa_store_index(g_config)),
+      aux_dat_i  => s_aux_eu_dat(f_opa_store_index(g_config)),
       reg_data_i => s_regfile_eu_data(f_opa_store_index(g_config)),
       reg_datb_i => s_regfile_eu_datb(f_opa_store_index(g_config)),
       reg_regx_o => s_eu_regfile_regx(f_opa_store_index(g_config)),
