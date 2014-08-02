@@ -76,7 +76,7 @@ begin
   s_widea(reg_data_i'left+2) <= '0';
   s_wideb(reg_data_i'left+2) <= '0';
   s_widea(reg_data_i'left+1 downto 1) <= r_data xor s_nota;
-  s_wideb(reg_data_i'left+1 downto 1) <= r_data xor s_notb;
+  s_wideb(reg_data_i'left+1 downto 1) <= r_datb xor s_notb;
   s_widea(0) <= '1';
   s_wideb(0) <= r_aux(2);
   s_widex <= std_logic_vector(unsigned(s_widea) + unsigned(s_wideb));

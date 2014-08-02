@@ -79,7 +79,7 @@ begin
 
   remap : for u in 0 to c_executers-1 generate
     s_ra_addr(u) <= f_opa_select_row(iss_rega_i, u);
-    s_rb_addr(u) <= f_opa_select_row(iss_rega_i, u);
+    s_rb_addr(u) <= f_opa_select_row(iss_regb_i, u);
     s_w_addr(u)  <= f_opa_select_row(eu_regx_i, u);
     s_w_data(u)  <= f_opa_select_row(eu_datx_i, u);
   end generate;
