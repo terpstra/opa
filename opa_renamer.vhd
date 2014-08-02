@@ -31,6 +31,7 @@ entity opa_renamer is
     dec_setx_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     dec_geta_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     dec_getb_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    dec_aux_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1        downto 0);
     dec_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1           downto 0);
     dec_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
     dec_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
@@ -39,6 +40,7 @@ entity opa_renamer is
     -- Values we provide to the issuer
     iss_stb_o      : out std_logic;
     iss_stat_o     : out std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+    aux_dat_o      : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
     iss_typ_o      : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
     iss_regx_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     iss_rega_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
@@ -91,6 +93,7 @@ architecture rtl of opa_renamer is
   signal r_dec_setx    : std_logic_vector(c_decoders-1 downto 0);
   signal r_dec_geta    : std_logic_vector(c_decoders-1 downto 0);
   signal r_dec_getb    : std_logic_vector(c_decoders-1 downto 0);
+  signal r_dec_aux     : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1        downto 0);
   signal r_dec_typ     : t_opa_matrix(c_decoders-1 downto 0, c_types-1           downto 0);
   signal r_dec_regx    : t_opa_matrix(c_decoders-1 downto 0, g_config.log_arch-1 downto 0);
   signal r_dec_rega    : t_opa_matrix(c_decoders-1 downto 0, g_config.log_arch-1 downto 0);
@@ -111,7 +114,8 @@ architecture rtl of opa_renamer is
   signal s_skid_stall  : std_logic;
   signal s_skid_page   : std_logic;
   signal s_skid_stat   : unsigned(c_stat_wide-1 downto 0);
-  signal s_skid_typ    : t_opa_matrix(c_decoders-1 downto 0, c_types-1                   downto 0);
+  signal s_skid_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
+  signal s_skid_typ    : t_opa_matrix(c_decoders-1 downto 0, c_types-1     downto 0);
   signal s_skid_regx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_skid_rega   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_skid_regb   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
@@ -121,7 +125,8 @@ architecture rtl of opa_renamer is
   signal r_skid_full   : std_logic;
   signal r_skid_page   : std_logic;
   signal r_skid_stat   : unsigned(c_stat_wide-1 downto 0);
-  signal r_skid_typ    : t_opa_matrix(c_decoders-1 downto 0, c_types-1                   downto 0);
+  signal r_skid_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
+  signal r_skid_typ    : t_opa_matrix(c_decoders-1 downto 0, c_types-1     downto 0);
   signal r_skid_regx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_skid_rega   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_skid_regb   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
@@ -153,6 +158,7 @@ begin
         r_dec_setx <= dec_setx_i;
         r_dec_geta <= dec_geta_i;
         r_dec_getb <= dec_getb_i;
+        r_dec_aux  <= dec_aux_i;
         r_dec_typ  <= dec_typ_i;
         r_dec_rega <= dec_rega_i;
         r_dec_regb <= dec_regb_i;
@@ -228,6 +234,7 @@ begin
   -- Forward the instruction to the skid pad
   s_skid_stat <= r_push_at;
   s_skid_page <= r_push_page;
+  s_skid_aux  <= r_skid_aux;
   s_skid_typ  <= r_dec_typ;
   s_skid_regx <= r_bakx;
   -- Backing register 0 is the unused "trash" register.
@@ -278,6 +285,7 @@ begin
       if r_skid_full = '0' then
         r_skid_stat  <= s_skid_stat;
         r_skid_page  <= s_skid_page;
+        r_skid_aux   <= s_skid_aux;
         r_skid_typ   <= s_skid_typ;
         r_skid_regx  <= s_skid_regx;
         r_skid_rega  <= s_skid_rega;
@@ -293,6 +301,7 @@ begin
   
   iss_stb_o   <= (r_dec_full or r_skid_full) and not s_skid_stall;
   iss_stat_o  <= std_logic_vector(s_iss_stat);
+  aux_dat_o   <= r_skid_aux   when r_skid_full='1' else s_skid_aux;
   iss_typ_o   <= r_skid_typ   when r_skid_full='1' else s_skid_typ;
   iss_regx_o  <= r_skid_regx  when r_skid_full='1' else s_skid_regx;
   iss_rega_o  <= r_skid_rega  when r_skid_full='1' else s_skid_rega;

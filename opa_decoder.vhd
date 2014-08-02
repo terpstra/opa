@@ -25,6 +25,7 @@ entity opa_decoder is
     rename_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_geta_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_getb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    rename_aux_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1        downto 0);
     rename_typ_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1           downto 0);
     rename_regx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
     rename_rega_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
@@ -105,5 +106,7 @@ begin
       rename_regb_o(i,b) <= data_i(16*i+0+b);
     end generate;
   end generate;
+  
+  rename_aux_o <= (others => (others => '0'));
   
 end rtl;

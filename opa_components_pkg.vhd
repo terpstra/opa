@@ -92,6 +92,7 @@ package opa_components_pkg is
       rename_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_geta_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_getb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_aux_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1        downto 0);
       rename_typ_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1           downto 0);
       rename_regx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
       rename_rega_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
@@ -122,6 +123,7 @@ package opa_components_pkg is
       dec_setx_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       dec_geta_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       dec_getb_i     : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      dec_aux_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1        downto 0);
       dec_typ_i      : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1           downto 0);
       dec_regx_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
       dec_rega_i     : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
@@ -130,6 +132,7 @@ package opa_components_pkg is
       -- Values we provide to the issuer
       iss_stb_o      : out std_logic;
       iss_stat_o     : out std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+      aux_dat_o      : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
       iss_typ_o      : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
       iss_regx_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       iss_rega_o     : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
@@ -294,7 +297,6 @@ package opa_components_pkg is
   end component;
   
   -- TODO (for real programs):
-  -- immediate values
   -- fetcher
   -- decoder (constants, op decode)
   -- MMU + cache miss core

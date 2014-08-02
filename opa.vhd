@@ -39,6 +39,7 @@ architecture rtl of opa is
   signal decode_rename_setx     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_geta     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_getb     : std_logic_vector(c_decoders-1 downto 0);
+  signal decode_rename_aux      : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1        downto 0);
   signal decode_rename_typ      : t_opa_matrix(c_decoders-1 downto 0, c_types-1           downto 0);
   signal decode_rename_regx     : t_opa_matrix(c_decoders-1 downto 0, g_config.log_arch-1 downto 0);
   signal decode_rename_rega     : t_opa_matrix(c_decoders-1 downto 0, g_config.log_arch-1 downto 0);
@@ -154,6 +155,7 @@ begin
       rename_setx_o  => decode_rename_setx,
       rename_geta_o  => decode_rename_geta,
       rename_getb_o  => decode_rename_getb,
+      rename_aux_o   => decode_rename_aux,
       rename_typ_o   => decode_rename_typ,
       rename_regx_o  => decode_rename_regx,
       rename_rega_o  => decode_rename_rega,
@@ -177,12 +179,14 @@ begin
       dec_setx_i   => decode_rename_setx,
       dec_geta_i   => decode_rename_geta,
       dec_getb_i   => decode_rename_getb,
+      dec_aux_i    => decode_rename_aux,
       dec_typ_i    => decode_rename_typ,
       dec_regx_i   => decode_rename_regx,
       dec_rega_i   => decode_rename_rega,
       dec_regb_i   => decode_rename_regb,
       iss_stb_o    => rename_issue_stb,
       iss_stat_o   => rename_issue_stat,
+      aux_dat_o    => rename_aux_dat,
       iss_typ_o    => rename_issue_typ,
       iss_regx_o   => rename_issue_regx,
       iss_rega_o   => rename_issue_rega,
