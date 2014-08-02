@@ -234,7 +234,7 @@ begin
   -- Forward the instruction to the skid pad
   s_skid_stat <= r_push_at;
   s_skid_page <= r_push_page;
-  s_skid_aux  <= r_skid_aux;
+  s_skid_aux  <= r_dec_aux;
   s_skid_typ  <= r_dec_typ;
   s_skid_regx <= r_bakx;
   -- Backing register 0 is the unused "trash" register.
