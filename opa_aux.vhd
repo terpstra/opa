@@ -72,8 +72,9 @@ begin
     rams_u : for u in 0 to c_executers-1 generate
       ramb : opa_dpram
         generic map(
-          g_width => c_aux_wide,
-          g_size  => 2**c_stat_wide)
+          g_width  => c_aux_wide,
+          g_size   => 2**c_stat_wide,
+          g_bypass => false)
         port map(
           clk_i    => clk_i,
           rst_n_i  => rst_n_i,

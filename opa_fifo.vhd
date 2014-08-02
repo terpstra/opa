@@ -85,8 +85,9 @@ begin
   -- One read-port for reg
   reg : opa_dpram
     generic map(
-      g_width => c_width_reg,
-      g_size  => c_size)
+      g_width  => c_width_reg,
+      g_size   => c_size,
+      g_bypass => false)
     port map(
       clk_i    => clk_i,
       rst_n_i  => rst_n_i,
@@ -102,8 +103,9 @@ begin
     
   bak_commit : opa_dpram
     generic map(
-      g_width => c_width_bak,
-      g_size  => c_size)
+      g_width  => c_width_bak,
+      g_size   => c_size,
+      g_bypass => false)
     port map(
       clk_i    => clk_i,
       rst_n_i  => '1',
@@ -116,8 +118,9 @@ begin
       
   bak_rename : opa_dpram
     generic map(
-      g_width => c_width_bak,
-      g_size  => c_size)
+      g_width  => c_width_bak,
+      g_size   => c_size,
+      g_bypass => false)
     port map(
       clk_i    => clk_i,
       rst_n_i  => '1',

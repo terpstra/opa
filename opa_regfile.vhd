@@ -88,8 +88,9 @@ begin
     ramsr : for r in 0 to c_executers-1 generate
       rama : opa_dpram
         generic map(
-          g_width => c_width,
-          g_size  => 2**f_opa_back_wide(g_config))-- NOT back_num
+          g_width  => c_width,
+          g_size   => 2**f_opa_back_wide(g_config),-- NOT back_num
+          g_bypass => true)
         port map(
           clk_i    => clk_i,
           rst_n_i  => rst_n_i,
@@ -101,8 +102,9 @@ begin
           w_data_i => s_w_data(w));
       ramb : opa_dpram
         generic map(
-          g_width => c_width,
-          g_size  => 2**f_opa_back_wide(g_config))
+          g_width  => c_width,
+          g_size   => 2**f_opa_back_wide(g_config),
+          g_bypass => true)
         port map(
           clk_i    => clk_i,
           rst_n_i  => rst_n_i,
