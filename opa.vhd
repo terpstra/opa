@@ -17,7 +17,8 @@ entity opa is
     -- Incoming data
     stb_i          : in  std_logic;
     stall_o        : out std_logic;
-    data_i         : in  std_logic_vector(f_opa_decoders(g_config)*c_op_wide-1 downto 0));
+    data_i         : in  std_logic_vector(f_opa_decoders(g_config)*c_op_wide-1 downto 0);
+    good_o         : out std_logic);
 end opa;
 
 architecture rtl of opa is
@@ -350,4 +351,6 @@ begin
       reg_regx_o => s_eu_regfile_regx(f_opa_store_index(g_config)),
       reg_datx_o => s_eu_regfile_datx(f_opa_store_index(g_config)));
   
+  good_o <= s_regfile_eu_data(0)(2**g_config.log_width-1);
+
 end rtl;

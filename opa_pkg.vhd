@@ -38,7 +38,8 @@ package opa_pkg is
       -- Incoming data
       stb_i          : in  std_logic;
       stall_o        : out std_logic;
-      data_i         : in  std_logic_vector(g_config.num_decode*c_op_wide-1 downto 0));
+      data_i         : in  std_logic_vector(g_config.num_decode*c_op_wide-1 downto 0);
+      good_o         : out std_logic);
   end component;
   
   -- good sizes for reservation stations on a 6-lut system: 4, 9, 24, 69

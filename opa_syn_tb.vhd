@@ -10,32 +10,67 @@ use work.opa_components_pkg.all;
 entity opa_syn_tb is
   port(
     clk_i  : in  std_logic;
-    bits_i : in  std_logic_vector(48 downto 0);
-    sums_o : out t_opa_matrix(48 downto 0, 1 downto 0));
+    rstn_i : in  std_logic;
+    good_o : out std_logic);
 end opa_syn_tb;
 
 architecture rtl of opa_syn_tb is
-  signal r_in : std_logic_vector(bits_i'range);
-  signal s_out, r_out : t_opa_matrix(bits_i'range, 1 downto 0);
+
+  constant c_config : t_opa_config := c_opa_mid;
+
+  type t_ops is array(15 downto 0) of std_logic_vector(67 downto 0);
+  constant c_op : t_ops := 
+    (0      => x"02000200020002000",
+     1      => x"12111211121112111",
+     2      => x"12666266626662666",
+     3      => x"12000200020002000",
+     4      => x"12000200020002000",
+     5      => x"12000200020002000",
+     6      => x"12000200020002000",
+     7      => x"12000200020002000",
+     10     => x"11101110111011101",
+     11     => x"11222133314441555",
+     others => x"02000200020002000");
+
+  signal r_off : unsigned(3 downto 0);
+  
+  signal s_out   : std_logic;
+  signal r_out   : std_logic;
+  
+  signal s_stall : std_logic;
+  signal s_stb   : std_logic;
+  signal s_op    : std_logic_vector(2**c_config.log_width-1 downto 0);
+  
 begin
 
-  satadd : opa_satadd
-    generic map(
-      g_state => 2,
-      g_size  => bits_i'length)
-    port map(
-      bits_i => r_in,
-      sums_o => s_out);
-
-  main : process(clk_i) is
+  test : process(clk_i, rstn_i) is
   begin
-    if rising_edge(clk_i) then
-      r_in  <= bits_i;
+    if rstn_i = '0' then
+      r_out <= '0';
+      r_off <= (others => '0');
+    elsif rising_edge(clk_i) then
       r_out <= s_out;
+      if s_stall = '0' then
+        r_off <= r_off + 1;
+      end if;
     end if;
   end process;
   
-  sums_o <= r_out;
+  s_stb <= c_op(to_integer(r_off))(64);
+  s_op  <= c_op(to_integer(r_off))(s_op'range);
+
+  opa_core : opa
+    generic map(
+      g_config => c_config)
+    port map(
+      clk_i   => clk_i,
+      rst_n_i => rstn_i,
+      stb_i   => s_stb,
+      stall_o => s_stall,
+      data_i  => s_op,
+      good_o  => s_out);
+
+  good_o <= r_out;
 
 end rtl;
     
