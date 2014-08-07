@@ -158,7 +158,7 @@ begin
   s_rename <= c_zeros when mispredict_i='1' else s_renamex;
   s_commit <= c_zeros when mispredict_i='1' else s_commitx;
   
-  edge1r : process(clk_i) is
+  edge1r : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
       commit_valid_o <= '0';
