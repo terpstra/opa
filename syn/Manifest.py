@@ -7,4 +7,5 @@ syn_package = "27"
 syn_top = "opa_syn_tb"
 syn_project = "opa_syn_tb"
 
+files = [ "opa_syn_tb.sdc" ]
 modules = { "local" : [ ".." ] }
