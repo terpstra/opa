@@ -51,7 +51,7 @@ begin
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_data <= reg_data_i; -- OR immediate
+      r_data <= reg_data_i;
       r_datb <= reg_datb_i;
       r_aux  <= aux_dat_i;
       r_regx <= iss_regx_i;
