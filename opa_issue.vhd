@@ -102,22 +102,22 @@ architecture rtl of opa_issue is
   signal s_stat_readyb_now : t_opa_matrix(c_stations-1 downto 0, c_executers-1 downto 0);
   signal s_stat_readya     : std_logic_vector(c_stations-1 downto 0);
   signal s_stat_readyb     : std_logic_vector(c_stations-1 downto 0);
-  signal s_stat_pending    : std_logic_vector(c_stations-1 downto 0);
   
   -- Need to curry this matrix when passed to opa_satadd
-  type t_pending_typ  is array (c_types-1 downto 0) of std_logic_vector(  c_stations-1 downto 0);
-  type t_pending_prio is array (c_types-1 downto 0) of std_logic_vector(2*c_stations-1 downto 0);
+  type t_pending      is array (c_types-1 downto 0) of std_logic_vector(2*c_stations-1 downto 0);
   type t_sums         is array (c_types-1 downto 0) of t_opa_matrix(2*c_stations-1 downto 0, c_unit_wide-1 downto 0);
-  type t_pick_index   is array (c_executers-1 downto 0) of std_logic_vector(2*c_stations-1 downto 0);
-  type t_pick_one     is array (c_executers-1 downto 0) of std_logic_vector(2*c_stations   downto 0);
+  type t_pick         is array (c_executers-1 downto 0) of std_logic_vector(2*c_stations-1 downto 0);
   type t_schedule_m   is array (c_executers-1 downto 0) of t_opa_matrix(c_stations/c_decoders-1 downto 0, c_decoders-1 downto 0);
   type t_aux_stat     is array (c_executers-1 downto 0) of std_logic_vector(c_stat_wide-1 downto 0);
   type t_aux_dec      is array (c_executers-1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
-  signal s_stat_pending_typ  : t_pending_typ;
-  signal s_stat_pending_prio : t_pending_prio;
+  signal s_stat_readya_wide  : std_logic_vector(2*c_stations-1 downto 0);
+  signal s_stat_readyb_wide  : std_logic_vector(2*c_stations-1 downto 0);
+  signal s_stat_issued_wide  : std_logic_vector(2*c_stations-1 downto 0);
+  signal s_stat_typ_wide     : t_pending;
+  signal s_stat_pending      : t_pending;
   signal s_stat_sums         : t_sums;
-  signal s_pick_index        : t_pick_index;
-  signal s_pick_one          : t_pick_one;
+  signal s_pick_index        : t_pick;
+  signal s_pick_one          : t_pick;
   signal s_schedule          : t_opa_matrix(c_executers-1 downto 0, c_stations-1 downto 0);
   signal s_schedule_m        : t_schedule_m;
   signal s_aux_stat          : t_aux_stat;
@@ -144,7 +144,7 @@ begin
       r_ren_regb  <= ren_regb_i;
       r_ren_confa <= ren_confa_i;
       r_ren_confb <= ren_confb_i;
-      r_done_regx <= eu_done_regx_i; -- fans out like crazy -- duplicate it !!!
+      r_done_regx <= eu_done_regx_i;
     end if;
   end process;
   
@@ -236,33 +236,42 @@ begin
   -- Instruction selection begins here                                                           --
   -------------------------------------------------------------------------------------------------
   
-  -- Which stations are pending execution?
-  s_stat_pending <= s_stat_readya and s_stat_readyb and not r_stat_issued;
+  -- We widen the signals before combining them
+  s_stat_readya_wide <= s_stat_readya & s_stat_readya;
+  s_stat_readyb_wide <= s_stat_readyb & s_stat_readyb;
+  s_stat_issued_wide <= r_stat_issued & r_stat_issued;
   
   -- Split pending instructions to unit types and count the incidence
   types : for t in 0 to c_types-1 generate
-    s_stat_pending_typ(t)  <= s_stat_pending and f_opa_select_col(r_stat_typ, t);
-    s_stat_pending_prio(t) <= (s_stat_pending_typ(t) & s_stat_pending_typ(t)) and commit_mask_i;
+    s_stat_typ_wide(t) <= f_opa_select_col(r_stat_typ, t) & f_opa_select_col(r_stat_typ, t);
+    -- The actual LUT that combines these signals
+    s_stat_pending(t) <= 
+      s_stat_readya_wide     and 
+      s_stat_readyb_wide     and 
+      not s_stat_issued_wide and
+      s_stat_typ_wide(t)     and
+      commit_mask_i;
     
     satadd : opa_satadd
       generic map(
         g_state => c_unit_wide,
         g_size  => c_stations*2)
       port map(
-        bits_i  => s_stat_pending_prio(t),
+        bits_i  => s_stat_pending(t),
         sums_o  => s_stat_sums(t));
   end generate;
   
   -- Assign one reservation station to each unit
   executers : for u in 0 to c_executers-1 generate
-    prio_stations : for r in 0 to 2*c_stations-1 generate
+    s_pick_index(u)(0) <= '0';
+    prio_stations : for r in 1 to 2*c_stations-1 generate
       s_pick_index(u)(r) <= 
         f_opa_bit(
-          f_opa_select_row(s_stat_sums(f_opa_unit_type(g_config, u)), r) = 
-          std_logic_vector(to_unsigned(f_opa_unit_index(g_config, u)+1, c_unit_wide)));
+          f_opa_select_row(s_stat_sums(f_opa_unit_type(g_config, u)), r-1) = 
+          std_logic_vector(to_unsigned(f_opa_unit_index(g_config, u), c_unit_wide)));
     end generate;
     
-    s_pick_one(u) <= ('0' & s_pick_index(u)) and not (s_pick_index(u) & '0');
+    s_pick_one(u) <= s_pick_index(u) and s_stat_pending(f_opa_unit_type(g_config, u));
     
     real_stations : for r in 0 to c_stations-1 generate
       s_schedule(u,r) <= s_pick_one(u)(r) or s_pick_one(u)(r+c_stations);
