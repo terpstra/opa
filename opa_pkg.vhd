@@ -36,13 +36,12 @@ package opa_pkg is
     lut_width : natural; -- How many inputs to combine at once
     max_rom   : natural; -- How big can a lookup table be
     mul_width : natural; -- Widest DSP multiplier block
-    neg_clock : boolean; -- Negative clock available (clk_n_i)
   end record;
   
   -- FPGA flavors supported
-  constant c_opa_cyclone_iv : t_opa_target := (4, 8192, 18, true);
-  constant c_opa_cyclone_v  : t_opa_target := (6, 8192, 18, true);
-  constant c_opa_asic       : t_opa_target := (4, 1,     1, true);
+  constant c_opa_cyclone_iv : t_opa_target := (4, 64, 18);
+  constant c_opa_cyclone_v  : t_opa_target := (6, 64, 18);
+  constant c_opa_asic       : t_opa_target := (4, 1,   1);
   
   -- current ISA has 16-bit sized instructions
   constant c_op_wide   : natural := 16;
