@@ -9,6 +9,8 @@ package opa_functions_pkg is
 
   function f_opa_log2(x : natural) return natural;
   function f_opa_bit(x : boolean) return std_logic;
+  function f_opa_choose(x : boolean; y : natural; z : natural) return natural; -- x?y:z
+  function f_opa_choose(x : boolean; y : string; z : string) return string;
   function f_opa_or(x : std_logic_vector) return std_logic;
   function f_opa_and(x : std_logic_vector) return std_logic;
   
@@ -35,6 +37,7 @@ package opa_functions_pkg is
   -- Mapping of execution units
   function f_opa_lsb_does_mul(conf : t_opa_config) return boolean;
   function f_opa_support_fp(conf : t_opa_config) return boolean;
+  function f_opa_max_typ(conf : t_opa_config) return natural;
   function f_opa_unit_type (conf : t_opa_config; u : natural) return natural;
   function f_opa_unit_index(conf : t_opa_config; u : natural) return natural;
   function f_opa_unit_count(conf : t_opa_config; t : natural) return natural;
@@ -87,6 +90,16 @@ package body opa_functions_pkg is
   begin
     if x then return '1'; else return '0'; end if;
   end f_opa_bit;
+  
+  function f_opa_choose(x : boolean; y : natural; z : natural) return natural is
+  begin
+    if x then return y; else return z; end if;
+  end f_opa_choose;
+  
+  function f_opa_choose(x : boolean; y : string; z : string) return string is
+  begin
+    if x then return y; else return z; end if;
+  end f_opa_choose;
   
   function f_opa_or(x : std_logic_vector) return std_logic is
     alias y : std_logic_vector(x'length-1 downto 0) is x;
@@ -171,6 +184,15 @@ package body opa_functions_pkg is
     return conf.num_fp /= 0;
   end f_opa_support_fp;
   
+  function f_opa_max_typ(conf : t_opa_config) return natural is
+    variable max : natural := 1; -- memory unit type
+  begin
+    if conf.num_ieu > max then max := conf.num_ieu; end if;
+    if conf.num_mul > max then max := conf.num_mul; end if;
+    if conf.num_fp  > max then max := conf.num_fp;  end if;
+    return max;
+  end f_opa_max_typ;
+   
   function f_opa_unit_type (conf : t_opa_config; u : natural) return natural is
     constant c_lsb   : natural := 0;
     constant c_ieu   : natural := c_lsb + 1;

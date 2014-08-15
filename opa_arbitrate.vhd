@@ -26,6 +26,8 @@ architecture rtl of opa_arbitrate is
   constant c_lut_wide  : natural := g_target.lut_width;
   constant c_num_stat  : natural := f_opa_num_stat(g_config);
   constant c_num_lut   : natural := 2**c_lut_wide;
+  constant c_max_type  : natural := f_opa_max_typ(g_config);
+  constant c_max_wide  : natural := 3; -- If you increase this, duplicate code below
 
   -- Thank VHDL's restriction on flexible array sub-types for this duplication:
   type t_lut_rom3 is array(c_num_lut-1 downto 0) of std_logic_vector(2 downto 0);
@@ -94,10 +96,10 @@ architecture rtl of opa_arbitrate is
   constant c_compress_rom1 : t_lut_rom1 := f_matrix_to_rom1(f_compress_table(1));
   
   function f_compress(bits : natural; x : std_logic_vector) return std_logic_vector is
-    variable widest : std_logic_vector(2 downto 0);
+    variable widest : std_logic_vector(c_max_wide-1 downto 0);
     variable result : std_logic_vector(bits-1 downto 0);
   begin
-    assert (bits >= 1 and bits <= 3) report "unsupported bit width" severity failure;
+    assert (bits >= 1 and bits <= c_max_wide) report "unsupported bit width" severity failure;
     if bits = 3 then widest :=        c_compress_rom3(to_integer(unsigned(x))); end if;
     if bits = 2 then widest :=  "0" & c_compress_rom2(to_integer(unsigned(x))); end if;
     if bits = 1 then widest := "00" & c_compress_rom1(to_integer(unsigned(x))); end if;
@@ -141,10 +143,10 @@ architecture rtl of opa_arbitrate is
   constant c_combine_rom1 : t_lut_rom1 := f_matrix_to_rom1(f_combine_table(1));
   
   function f_combine(bits : natural; x : std_logic_vector) return std_logic_vector is
-    variable widest : std_logic_vector(2 downto 0);
+    variable widest : std_logic_vector(c_max_wide-1 downto 0);
     variable result : std_logic_vector(bits-1 downto 0);
   begin
-    assert (bits >= 1 and bits <= 3) report "unsupported bit width" severity failure;
+    assert (bits >= 1 and bits <= c_max_wide) report "unsupported bit width" severity failure;
     if bits = 3 then widest :=        c_combine_rom3(to_integer(unsigned(x))); end if;
     if bits = 2 then widest :=  "0" & c_combine_rom2(to_integer(unsigned(x))); end if;
     if bits = 1 then widest := "00" & c_combine_rom1(to_integer(unsigned(x))); end if;
@@ -202,7 +204,7 @@ architecture rtl of opa_arbitrate is
   
   function f_satadd_pad(bits : natural; x : std_logic_vector) return t_opa_matrix is
     variable proper : t_opa_matrix(x'range(1), bits-1 downto 0);
-    variable result : t_opa_matrix(x'range(1), 2 downto 0) := (others => (others => '0'));
+    variable result : t_opa_matrix(x'range(1), c_max_wide-1 downto 0) := (others => (others => '0'));
   begin
     proper := f_satadd(bits, x);
     for i in proper'range(1) loop
@@ -230,25 +232,59 @@ architecture rtl of opa_arbitrate is
     return result;
   end f_select;
   
-  -- as many columns as units
---  function f_arbitrate_table(index) return t_opa_matrix -- (stb,stat),(stb,stat),(stb,stat),...
---  constant c_arbitrate_rom
+  constant c_use_rom  : boolean := 2**c_num_stat <= g_target.max_rom;
+  constant c_rom_wide : natural := f_opa_choose(c_use_rom, c_num_stat, c_lut_wide);
+  
+  -- For every input: (stb,stat) (stb,stat) * max_typ
+  type t_arbitrate_rom is array(2**c_rom_wide-1 downto 0) of std_logic_vector(c_max_type*(1+c_stat_wide)-1 downto 0);
+  function f_arbitrate_table return t_arbitrate_rom is
+    variable result   : t_arbitrate_rom;
+    variable row      : std_logic_vector(c_num_stat-1 downto 0);
+    variable satadd   : t_opa_matrix(row'range, c_max_wide-1 downto 0);
+    variable schedule : std_logic_vector(row'range);
+    variable stb      : std_logic;
+    variable index    : std_logic_vector(c_stat_wide-1 downto 0);
+  begin
+    for i in result'range(1) loop
+      row := std_logic_vector(to_unsigned(i, row'length));
+      satadd := f_satadd_pad(f_opa_log2(c_max_type+1), row);
+      for u in 0 to c_max_type-1 loop
+        schedule := f_select(row, satadd, u);
+        stb      := f_opa_or(schedule);
+        index    := f_opa_1hot_dec(schedule);
+        
+        result(i)(u*(1+c_stat_wide)) := stb;
+        for b in index'range loop
+          result(i)(u*(1+c_stat_wide)+b+1) := index(b);
+        end loop;
+      end loop;
+    end loop;
+    return result;
+  end f_arbitrate_table;
+  constant c_arbitrate_rom : t_arbitrate_rom := f_arbitrate_table;
   
   ---------------------------------------------------------------------------------------
   
-  type t_satadd   is array(c_types-1 downto 0) of t_opa_matrix(c_num_stat-1 downto 0, 2 downto 0);
+  type t_satadd   is array(c_types-1 downto 0) of t_opa_matrix(c_num_stat-1 downto 0, c_max_wide-1 downto 0);
   type t_schedule is array(c_executers-1 downto 0) of std_logic_vector(c_num_stat-1 downto 0);
   type t_stat     is array(c_executers-1 downto 0) of std_logic_vector(c_stat_wide-1 downto 0);
+  type t_rom      is array(c_types-1 downto 0) of std_logic_vector(c_max_type*(1+c_stat_wide)-1 downto 0);
   
   signal s_satadd   : t_satadd;
   signal s_schedule : t_schedule;
   signal r_stat     : t_stat;
+  signal r_rom      : t_rom;
   
 begin
 
+  check_width :
+    assert (f_opa_log2(c_max_type+1) <= c_max_wide)
+    report "More units of a single type than supported"
+    severity failure;
+
   ---------------------------------------------------------------------------------------
   -- Non-ROM implementation
-  combinational : if true generate -- 2**f_opa_num_issue(g_config) > g_target.max_rom generate
+  combinational : if not c_use_rom generate
     typ : for t in 0 to c_types-1 generate
       exists : if f_opa_unit_count(g_config, t) > 0 generate
         s_satadd(t) <= 
@@ -281,11 +317,28 @@ begin
   
   ---------------------------------------------------------------------------------------
   -- ROM implementation
---  generate types
---    s_rom(t) <= c_abitrate_rom(pending_i(t));
---    relabel stb+units from s_rom
+  rom : if c_use_rom generate
+  
+    main : process(clk_i) is
+    begin
+      if rising_edge(clk_i) then
+        for t in 0 to c_types-1 loop
+          r_rom(t) <= c_arbitrate_rom(to_integer(unsigned(f_opa_select_col(pending_i, t))));
+        end loop;
+      end if;
+    end process;
+    
+    mapit : for u in 0 to c_executers-1 generate
+      stb_o(u) <= r_rom(f_opa_unit_type(g_config, u))
+                       (f_opa_unit_index(g_config, u)*(1+c_stat_wide));
+      bits  : for b in 0 to c_stat_wide-1 generate
+        stat_o(u,b) <= r_rom(f_opa_unit_type(g_config, u))
+                            (f_opa_unit_index(g_config, u)*(1+c_stat_wide)+b+1);
+      end generate;
+    end generate;
+  
+  end generate;
 
--- !!! ROM version
 -- !!! don't include num_wait
 
 end rtl;
