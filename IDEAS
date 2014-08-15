@@ -1,10 +1,3 @@
-issue - use KS satadd directly ?
-
-issue - remove reg* from reservation stations
-  if we don't need a CAM (see above), we can eliminate these registers
-  ... this may or may not mean an additional stage before register/muxing
-      => increases load latency from CACHE by 1 (hit uncertainty 1 cycle longer)
-
 issue - if none of that makes it fast enough, add a pipeline stage
   the only absolute requirements are:
     the feedback from ready=>ready is 1 cycle
@@ -13,21 +6,7 @@ issue - if none of that makes it fast enough, add a pipeline stage
   => increases the MINIMUM latency to 2 (for adders/etc)
   ... is a last resort!
 
-renamer - for c_decoders=1, use 2x dpram
-
 renamer - if optimizing copies: leave them in place for commit to see
-
-commit+issue - can save c_decoders fan-in from regfile
-  ... last c_decoders bits of mask_i are always 0
-
-commit - track completion by station instead of backing register
-  ... much smaller fan-in
-  ... hard-address coded matcher with done_statx
-  ... f_opa_and(s_stat_done or mask) => commit decision
-
-renamer - garbage register is too costly
-  ... just tell issue to set ready[ab] instantly
-  ... can OR it right in s_ren_ready_[ab]
 
 -- For memory unit (later):
 -- B+W are always in-order
@@ -41,45 +20,14 @@ renamer - garbage register is too costly
 
 ---------------------------------------------------------------------------------------------------------------------
 
-single cycle (fucking horrible!)
-3  match done against stations => ready[ab]  stations* exec*6*2 = 48:1 fan-in
-1 ready[ab] & !issued & typ 1-hot & commit
-  ... can put register here at cost of +1 minimum latency (2 cycle add/logic)
-3   satadd the mess
-1   (compare with unit index #) and request
-    OR the two altenative positions
-  ... can cut this at the cost of +1 load/mispredict latency
-  fan out to station contents
-  fan in via OR
-
  64-bit adder at 333 MHz ... works!
 128-bit adder at 200 MHz ... works!
 
-88-91 MHz before
-... adding r_schedule     stage gets me to 105 MHz (cost = 1 mispredict/load)
-... adding r_pending_prio stage gets me to 140 MHz (cost = +1 min latency) ... pointless
-138 = normal effort + analysis for speed + standard fit
-132 = register retiming?!
-134 = register duplication
-138 = PS for density: combinational 
-
-
-
-
-improve commit decision speed
- ... limited by commit decision
- ... annoying because it fans in fucking every backing mux register
- problem is that stuff is completed by backing #
-   ... could easily report station # too; probably better for timing anyway
-   ... then track a completed bitmask
- ==> key point is that this
-
-optimize the multiplier to reach 200 range ...
-
----------------------------------------------------------------------------------------------------------------------
-
-180 MHz with r_schedule+satadd tweak+retiming
-==> because when eu_next_regx_o is delayed, can spread comb logic over 2 cycles!
-
-
-140 MHz window=6 + 150sdc
+TODO:
+  need to pipeline the multiplier to reach 200 range ...
+  eliminate num_wait from arbitration
+  remove 3D arrays from arbitration
+----
+memory unit
+fetcher
+branches
