@@ -32,17 +32,11 @@ begin
   reset : process
   begin
     rstn <= '0';
-    wait for period*256;
+    wait for period*8;
     rstn <= '1';
     wait until rstn = '0';
   end process;
   
---  satadd_tb : opa_satadd_tb
---    port map(
---      clk_i  => clk,
---      rstn_i => rstn,
---      good_o => good(1));
---  
   opa_tb : opa_core_tb
     port map(
       clk_i  => clk,
