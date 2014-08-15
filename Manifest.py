@@ -3,6 +3,7 @@ files = [
  "opa_functions_pkg.vhd",
  "opa_components_pkg.vhd",
  "opa_dpram_altera.vhd",
+ "opa_lcell_altera.vhd",
  "opa_arbitrate.vhd",
  "opa_decode.vhd",
  "opa_rename.vhd",

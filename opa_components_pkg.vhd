@@ -24,6 +24,13 @@ package opa_components_pkg is
       w_data_i : in  std_logic_vector(g_width-1 downto 0));
   end component;
   
+  -- Inhibit optimization between these points
+  component opa_lcell is
+    port(
+      a_i : in  std_logic;
+      b_o : out std_logic);
+  end component;
+  
   component opa_satadd_ks is
     generic(
       g_state : natural;  -- bits in the adder
