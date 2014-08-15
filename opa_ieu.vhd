@@ -9,53 +9,65 @@ use work.opa_components_pkg.all;
 
 entity opa_ieu is
   generic(
-    g_config   : t_opa_config);
+    g_config : t_opa_config;
+    g_target : t_opa_target);
   port(
-    clk_i      : in  std_logic;
-    rst_n_i    : in  std_logic;
+    clk_i          : in  std_logic;
+    rst_n_i        : in  std_logic;
     
-    iss_regx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
-    iss_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+    issue_shift_i  : in  std_logic;
+    issue_stb_i    : in  std_logic;
+    issue_stat_i   : in  std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+    issue_stb_o    : out std_logic;
+    issue_kill_o   : out std_logic;
+    issue_stat_o   : out std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
     
-    aux_dat_i  : in  std_logic_vector(c_aux_wide-1 downto 0);
-    reg_data_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
-    reg_datb_i : in  std_logic_vector(2**g_config.log_width-1 downto 0);
-    reg_regx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
-    reg_datx_o : out std_logic_vector(2**g_config.log_width-1 downto 0));
+    regfile_stb_i  : in  std_logic;
+    regfile_rega_i : in  std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
+    regfile_regb_i : in  std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
+    regfile_bakx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+    regfile_aux_i  : in  std_logic_vector(c_aux_wide-1 downto 0);
+    
+    regfile_stb_o  : out std_logic;
+    regfile_bakx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
+    regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0));
 end opa_ieu;
 
 architecture rtl of opa_ieu is
 
-  signal r_data : std_logic_vector(reg_data_i'range);
-  signal r_datb : std_logic_vector(reg_datb_i'range);
-  signal r_aux  : std_logic_vector(aux_dat_i'range);
-  signal r_regx : std_logic_vector(iss_regx_i'range);
-  signal r_regy : std_logic_vector(iss_regx_i'range);
+  signal r_rega : std_logic_vector(regfile_rega_i'range);
+  signal r_regb : std_logic_vector(regfile_regb_i'range);
+  signal r_aux  : std_logic_vector(regfile_aux_i'range);
 
-  type t_logic is array(reg_data_i'range) of unsigned(1 downto 0);
+  type t_logic is array(r_rega'range) of unsigned(1 downto 0);
   signal s_logic_in : t_logic;
   
-  signal s_immediate  : std_logic_vector(reg_data_i'range);
-  signal s_logic      : std_logic_vector(reg_data_i'range);
-  signal s_nota       : std_logic_vector(reg_data_i'range);
-  signal s_notb       : std_logic_vector(reg_data_i'range);
-  signal s_widea      : std_logic_vector(reg_data_i'left+2 downto 0);
-  signal s_wideb      : std_logic_vector(reg_data_i'left+2 downto 0);
-  signal s_widex      : std_logic_vector(reg_data_i'left+2 downto 0);
-  signal s_adder      : std_logic_vector(reg_data_i'range);
-  signal s_comparison : std_logic_vector(reg_data_i'range);
+  signal s_immediate  : std_logic_vector(r_rega'range);
+  signal s_logic      : std_logic_vector(r_rega'range);
+  signal s_nota       : std_logic_vector(r_rega'range);
+  signal s_notb       : std_logic_vector(r_rega'range);
+  signal s_widea      : std_logic_vector(r_rega'left+2 downto 0);
+  signal s_wideb      : std_logic_vector(r_rega'left+2 downto 0);
+  signal s_widex      : std_logic_vector(r_rega'left+2 downto 0);
+  signal s_adder      : std_logic_vector(r_rega'range);
+  signal s_comparison : std_logic_vector(r_rega'range);
 begin
 
-  iss_regx_o <= iss_regx_i; -- latency=1
+  -- Everything we do has latency=1
+  issue_stb_o  <= issue_stb_i;
+  issue_stat_o <= issue_stat_i;
+  issue_kill_o <= '0';
   
+  regfile_stb_o  <= regfile_stb_i;
+  regfile_bakx_o <= regfile_bakx_i;
+  
+  -- Register our inputs
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_data <= reg_data_i;
-      r_datb <= reg_datb_i;
-      r_aux  <= aux_dat_i;
-      r_regx <= iss_regx_i;
-      r_regy <= r_regx;
+      r_rega <= regfile_rega_i;
+      r_regb <= regfile_regb_i;
+      r_aux  <= regfile_aux_i;
     end if;
   end process;
   
@@ -64,31 +76,30 @@ begin
   s_immediate(s_immediate'left downto 8) <= (others => r_aux(7));
   
   -- Result is a logic function
-  logic : for i in reg_data_i'range generate
-    s_logic_in(i)(1) <= r_data(i);
-    s_logic_in(i)(0) <= r_datb(i);
+  logic : for i in r_rega'range generate
+    s_logic_in(i)(1) <= r_rega(i);
+    s_logic_in(i)(0) <= r_regb(i);
     s_logic(i) <= r_aux(to_integer(s_logic_in(i)));
   end generate;
   
   -- Result is an adder function
   s_nota <= (others => r_aux(0));
   s_notb <= (others => r_aux(1));
-  s_widea(reg_data_i'left+2) <= '0';
-  s_wideb(reg_data_i'left+2) <= '0';
-  s_widea(reg_data_i'left+1 downto 1) <= r_data xor s_nota;
-  s_wideb(reg_data_i'left+1 downto 1) <= r_datb xor s_notb;
+  s_widea(r_rega'left+2) <= '0';
+  s_wideb(r_rega'left+2) <= '0';
+  s_widea(r_rega'left+1 downto 1) <= r_rega xor s_nota;
+  s_wideb(r_rega'left+1 downto 1) <= r_regb xor s_notb;
   s_widea(0) <= '1';
   s_wideb(0) <= r_aux(2);
   s_widex <= std_logic_vector(unsigned(s_widea) + unsigned(s_wideb));
   
-  s_adder <= s_widex(reg_data_i'left+1 downto 1);
-  s_comparison(0) <= s_widex(reg_data_i'left+2);
-  s_comparison(reg_data_i'left downto 1) <= (others => '0');
+  s_adder <= s_widex(r_rega'left+1 downto 1);
+  s_comparison(0) <= s_widex(r_rega'left+2);
+  s_comparison(r_rega'left downto 1) <= (others => '0');
   
   -- Send result to regfile
-  reg_regx_o <= r_regy;
   with r_aux(r_aux'left downto r_aux'left-1) select
-  reg_datx_o <= 
+  regfile_regx_o <= 
     s_immediate     when "00",
     s_logic         when "01",
     s_adder         when "10",

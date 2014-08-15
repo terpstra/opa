@@ -7,35 +7,31 @@ use work.opa_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
-entity opa_decoder is
+entity opa_decode is
   generic(
-    g_config : t_opa_config);
+    g_config : t_opa_config;
+    g_target : t_opa_target);
   port(
     clk_i          : in  std_logic;
     rst_n_i        : in  std_logic;
 
-    -- Incoming data
-    stb_i          : in  std_logic;
-    stall_o        : out std_logic;
-    data_i         : in  std_logic_vector(f_opa_decoders(g_config)*c_op_wide-1 downto 0);
-    
-    -- Parsed
-    rename_stb_o   : out std_logic;
-    rename_stall_i : in  std_logic;
+    fetch_dat_i    : in  std_logic_vector(f_opa_decoders(g_config)*c_op_wide-1 downto 0);
     rename_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_geta_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_getb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_aux_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1        downto 0);
     rename_typ_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1           downto 0);
-    rename_regx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
-    rename_rega_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
-    rename_regb_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0));
-end opa_decoder;
+    rename_archx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+    rename_archa_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
+    rename_archb_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0));
+end opa_decode;
 
-architecture rtl of opa_decoder is
+architecture rtl of opa_decode is
 
   -- Instruction format: CoaB
   -- reg(b) = C(o,a,reg(a),reg(b))
+  
+  constant c_decoders : natural := f_opa_decoders(g_config);
 
   type t_code is (T_CONST, T_ADDER, T_LOGIC, T_MUL, T_LOAD, T_STORE, T_NOOP);
   type t_code_array is array(natural range <>) of t_code;
@@ -100,9 +96,14 @@ architecture rtl of opa_decoder is
       when T_CONST => y := c_type_ieu;
       when T_ADDER => y := c_type_ieu;
       when T_LOGIC => y := c_type_ieu;
-      when T_MUL   => y := c_type_mul;
-      when T_LOAD  => y := c_type_load;
-      when T_STORE => y := c_type_store;
+      when T_MUL   => 
+        if f_opa_lsb_does_mul(g_config) then
+          y := c_type_lsb;
+        else
+          y := c_type_mul;
+        end if;
+      when T_LOAD  => y := c_type_lsb;
+      when T_STORE => y := c_type_lsb;
       when T_NOOP  => y := c_type_ieu;
     end case;
     result(y) := '1';
@@ -131,16 +132,23 @@ architecture rtl of opa_decoder is
     return result;
   end f_aux;
   
-  signal s_typ : t_code_array(f_opa_decoders(g_config)-1 downto 0);
+  signal s_typ : t_code_array(c_decoders-1 downto 0);
+  
+  function f(x : natural) return natural is
+  begin
+    return 16*(c_decoders-1-x);
+  end f;
 
 begin
 
-  rename_stb_o <= stb_i;
-  stall_o <= rename_stall_i;
+  -- We want to execute the lowest address instruction first
+  -- In bigendian, that means the high bits of fetch_dat_i
+  -- Everywhere in the design, the lowest indexes instruction goes first
+  -- Thus we need to flip the bit order here, using f(i)
   
-  parse : for i in 0 to f_opa_decoders(g_config)-1 generate
+  parse : for i in 0 to c_decoders-1 generate
   
-    s_typ(i) <= f_typ(data_i(16*i+15 downto 16*i+12));
+    s_typ(i) <= f_typ(fetch_dat_i(f(i)+15 downto f(i)+12));
     
     rename_setx_o(i) <= f_setx(s_typ(i));
     rename_geta_o(i) <= f_geta(s_typ(i));
@@ -151,13 +159,13 @@ begin
     end generate;
     
     aux : for b in 0 to c_aux_wide-1 generate
-      rename_aux_o(i,b) <= f_aux(s_typ(i), data_i(16*i+11 downto 16*i+4))(b);
+      rename_aux_o(i,b) <= f_aux(s_typ(i), fetch_dat_i(f(i)+11 downto f(i)+4))(b);
     end generate;
   
     bits : for b in 0 to 3 generate
-      rename_regx_o(i,b) <= data_i(16*i+ 0+b);
-      rename_rega_o(i,b) <= data_i(16*i+ 4+b);
-      rename_regb_o(i,b) <= data_i(16*i+ 0+b);
+      rename_archx_o(i,b) <= fetch_dat_i(f(i)+ 0+b);
+      rename_archa_o(i,b) <= fetch_dat_i(f(i)+ 4+b);
+      rename_archb_o(i,b) <= fetch_dat_i(f(i)+ 0+b);
     end generate;
   end generate;
   

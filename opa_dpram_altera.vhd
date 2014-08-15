@@ -36,7 +36,7 @@ begin
 
   ram : altsyncram
     generic map(
-      -- intended_device_family             => "Arria V",
+      intended_device_family             => "Arria V",
       address_aclr_b                     => "NONE",
       address_reg_b                      => "CLOCK0",
       clock_enable_input_a               => "BYPASS",

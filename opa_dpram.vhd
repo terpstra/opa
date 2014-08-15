@@ -39,11 +39,8 @@ begin
         r_memory(to_integer(unsigned(w_addr_i))) <= w_data_i;
       end if;
       
-      -- don't be fooled: after inference this is not a register!
-      -- r_addr_i will be the register and r_data_o has latency after the clock
-      r_data_n <= r_memory(to_integer(unsigned(r_addr_i)));
-      
       r_data_b <= w_data_i;
+      r_data_n <= r_memory(to_integer(unsigned(r_addr_i)));
       r_bypass <= f_opa_bit(r_addr_i = w_addr_i);
     end if;
   end process;

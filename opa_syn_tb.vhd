@@ -81,7 +81,8 @@ begin
 
   opa_core : opa
     generic map(
-      g_config => c_config)
+      g_config => c_config,
+      g_target => c_opa_cyclone_v)
     port map(
       clk_i   => clk_i,
       rst_n_i => rstn_i,
