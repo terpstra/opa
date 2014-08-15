@@ -10,9 +10,10 @@ package opa_components_pkg is
 
   component opa_dpram is
     generic(
-      g_width : natural;
-      g_size  : natural;
-      g_bypass: boolean);
+      g_width  : natural;
+      g_size   : natural;
+      g_bypass : boolean;
+      g_regout : boolean);
     port(
       clk_i    : in  std_logic;
       rst_n_i  : in  std_logic;

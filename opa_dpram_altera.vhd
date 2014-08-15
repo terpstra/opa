@@ -12,9 +12,10 @@ use altera_mf.altera_mf_components.all;
 
 entity opa_dpram is
   generic(
-    g_width : natural;
-    g_size  : natural;
-    g_bypass: boolean);
+    g_width  : natural;
+    g_size   : natural;
+    g_bypass : boolean;
+    g_regout : boolean);
   port(
     clk_i    : in  std_logic;
     rst_n_i  : in  std_logic;
@@ -34,36 +35,71 @@ architecture syn of opa_dpram is
 
 begin
 
-  ram : altsyncram
-    generic map(
-      intended_device_family             => "Arria V",
-      address_aclr_b                     => "NONE",
-      address_reg_b                      => "CLOCK0",
-      clock_enable_input_a               => "BYPASS",
-      clock_enable_input_b               => "BYPASS",
-      clock_enable_output_b              => "BYPASS",
-      lpm_type                           => "altsyncram",
-      numwords_a                         => g_size,
-      numwords_b                         => g_size,
-      operation_mode                     => "DUAL_PORT",
-      outdata_aclr_b                     => "NONE",
-      outdata_reg_b                      => "UNREGISTERED",
-      power_up_uninitialized             => "FALSE",
-      ram_block_type                     => "MLAB",
-      read_during_write_mode_mixed_ports => "DONT_CARE",
-      widthad_a                          => f_opa_log2(g_size),
-      widthad_b                          => f_opa_log2(g_size),
-      width_a                            => g_width,
-      width_b                            => g_width,
-      width_byteena_a                    => 1)
-    port map(
-      clock0    => clk_i,
-      wren_a    => w_en_i,
-      address_a => w_addr_i,
-      data_a    => w_data_i,
-      address_b => r_addr_i,
-      q_b       => s_data);
-
+  regout : if g_regout generate
+    ram : altdpram
+      generic map(
+        intended_device_family             => "Arria V",
+        indata_aclr                        => "OFF",
+        indata_reg                         => "INCLOCK",
+        lpm_type                           => "altdpram",
+        outdata_aclr                       => "OFF",
+        outdata_reg                        => "OUTCLOCK",
+        ram_block_type                     => "MLAB",
+        rdaddress_aclr                     => "OFF",
+        rdaddress_reg                      => "UNREGISTERED",
+        rdcontrol_aclr                     => "OFF",
+        rdcontrol_reg                      => "UNREGISTERED",
+        read_during_write_mode_mixed_ports => "DONT_CARE",
+        width                              => g_width,
+        widthad                            => f_opa_log2(g_size),
+        width_byteena                      => 1,
+        wraddress_aclr                     => "OFF",
+        wraddress_reg                      => "INCLOCK",
+        wrcontrol_aclr                     => "OFF",
+        wrcontrol_reg                      => "INCLOCK")
+      port map(
+        outclock  => clk_i,
+        wren      => w_en_i,
+        wraddress => w_addr_i,
+        data      => w_data_i,
+        inclock   => clk_i,
+        rdaddress => r_addr_i,
+        q         => s_data);
+  end generate;
+  
+  regin : if not g_regout generate
+    ram : altsyncram
+      generic map(
+        intended_device_family             => "Arria V",
+        address_aclr_b                     => "NONE",
+        address_reg_b                      => "CLOCK0",
+        clock_enable_input_a               => "BYPASS",
+        clock_enable_input_b               => "BYPASS",
+        clock_enable_output_b              => "BYPASS",
+        lpm_type                           => "altsyncram",
+        numwords_a                         => g_size,
+        numwords_b                         => g_size,
+        operation_mode                     => "DUAL_PORT",
+        outdata_aclr_b                     => "NONE",
+        outdata_reg_b                      => "UNREGISTERED",
+        power_up_uninitialized             => "FALSE",
+        ram_block_type                     => "MLAB",
+        read_during_write_mode_mixed_ports => "DONT_CARE",
+        widthad_a                          => f_opa_log2(g_size),
+        widthad_b                          => f_opa_log2(g_size),
+        width_a                            => g_width,
+        width_b                            => g_width,
+        width_byteena_a                    => 1)
+      port map(
+        clock0    => clk_i,
+        wren_a    => w_en_i,
+        address_a => w_addr_i,
+        data_a    => w_data_i,
+        address_b => r_addr_i,
+        q_b       => s_data);
+    
+  end generate;
+  
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
