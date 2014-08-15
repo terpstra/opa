@@ -34,8 +34,6 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakx0
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakx1
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_aux_o
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/r_baka
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/r_bakb
 add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_stb_o
 add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_rega_o
 add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_regb_o
@@ -59,4 +57,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {467 ns} {611 ns}
+WaveRestoreZoom {0 ns} {525 ns}
