@@ -57,7 +57,7 @@ package opa_functions_pkg is
   function f_opa_dup_row(n : natural; r : std_logic_vector) return t_opa_matrix;
   function f_opa_dup_col(n : natural; r : std_logic_vector) return t_opa_matrix;
   function f_opa_concat(x, y : t_opa_matrix) return t_opa_matrix;
-  function f_opa_labels(n : natural; o : natural := 0) return t_opa_matrix;
+  function f_opa_labels(n : natural; b : natural := 0; o : natural := 0) return t_opa_matrix;
   
   function f_opa_transpose(x : t_opa_matrix) return t_opa_matrix;
   function f_opa_product(x : t_opa_matrix; y : std_logic_vector) return std_logic_vector;
@@ -355,8 +355,9 @@ package body opa_functions_pkg is
     return result;
   end f_opa_dup_col;
   
-  function f_opa_labels(n : natural; o : natural := 0) return t_opa_matrix is
-    variable result : t_opa_matrix(n-1 downto 0, f_opa_log2(n+o)-1 downto 0);
+  function f_opa_labels(n : natural; b : natural := 0; o : natural := 0) return t_opa_matrix is
+    constant bits : natural := f_opa_choose(b=0, f_opa_log2(n), b);
+    variable result : t_opa_matrix(n-1 downto 0, bits-1 downto 0);
     variable row : unsigned(result'range(2));
   begin
     for i in result'range(1) loop

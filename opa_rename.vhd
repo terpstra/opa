@@ -72,7 +72,7 @@ architecture rtl of opa_rename is
   end f_UR_triangle;
   
   constant c_UR_triangle : t_opa_matrix := f_UR_triangle(c_decoders);
-  constant c_stat_labels : t_opa_matrix := f_opa_labels(c_decoders, c_num_stat);
+  constant c_stat_labels : t_opa_matrix := f_opa_labels(c_decoders, c_stat_wide, c_num_stat);
 
   signal r_map         : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
   signal s_map_writers : t_opa_matrix(c_num_arch-1 downto 0, c_decoders-1  downto 0);

@@ -75,7 +75,7 @@ architecture rtl of opa_issue is
   
   constant c_decoder_zeros : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
   constant c_stat_labels       : t_opa_matrix := f_opa_labels(c_num_stat);
-  constant c_stat_shift_labels : t_opa_matrix := f_opa_labels(c_num_stat, c_decoders);
+  constant c_stat_shift_labels : t_opa_matrix := f_opa_labels(c_num_stat, c_stat_wide, c_decoders);
 
   -- !!! optimize: don't include num_wait in some of these
   signal s_stall      : std_logic;
