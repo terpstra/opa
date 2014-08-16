@@ -143,7 +143,16 @@ architecture rtl of opa_prim_mul is
   constant c_parts    : natural := (g_wide+g_target.mul_width-1)/g_target.mul_width;
   constant c_mul_wide : natural := (g_wide+c_parts-1)/c_parts;
   constant c_wide     : natural := c_parts*c_mul_wide;
-  constant c_wallace  : natural := 2*c_parts-1;
+  constant c_wallace  : natural := 2*c_parts-1; -- the -1 is due to the f_clip optimization
+  
+  function f_clip(x : natural) return natural is
+  begin
+    if x = c_wallace then
+      return (c_parts mod 2);
+    else
+      return x;
+    end if;
+  end f_clip;
   
   -- Register stages
   type t_mul_out is array(c_parts*c_parts-1 downto 0) of unsigned(2*c_mul_wide-1 downto 0);
@@ -198,7 +207,7 @@ begin
     cols : for j in 0 to c_parts-1 generate
       bits : for b in 0 to 2*c_mul_wide-1 generate
         -- unset bits take '0' from default assignment
-        s_wal_i((2*i + (j mod 2)) mod c_wallace, (i+j)*c_mul_wide + b) <= 
+        s_wal_i(f_clip(2*i + (j mod 2)), (i+j)*c_mul_wide + b) <= 
           r_mul(i*c_parts + j)(b) when g_regmul else
           s_mul(i*c_parts + j)(b);
       end generate;

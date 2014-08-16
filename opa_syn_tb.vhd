@@ -46,7 +46,7 @@ architecture rtl of opa_syn_tb is
   
   signal s_stall : std_logic;
   signal s_stb   : std_logic;
-  signal s_op    : std_logic_vector(2**c_config.log_width-1 downto 0);
+  signal s_op    : std_logic_vector(c_config.num_decode*16-1 downto 0);
   
   
 begin
