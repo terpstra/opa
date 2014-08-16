@@ -147,27 +147,33 @@ architecture rtl of opa_prim_mul is
   -- DSP hardware multiplier section                                                       --
   -------------------------------------------------------------------------------------------
   
-  constant c_parts    : natural := (g_wide+g_target.mul_width-1)/g_target.mul_width;
-  constant c_mul_wide : natural := (g_wide+c_parts-1)/c_parts;
-  constant c_wide     : natural := c_parts*c_mul_wide;
-  constant c_wallace  : natural := 2*c_parts-1; -- the -1 is due to the f_clip optimization
+  -- Plan the reduction. Either using a post_adder (_add_) or not (_raw_).
+  -- If using the post adder, must make sure to use full width so the shift is supported.
+  constant c_dsp_wide     : natural := g_target.mul_width;
+  constant c_raw_parts    : natural := (g_wide+c_dsp_wide-1)/c_dsp_wide;
+  constant c_raw_mul_wide : natural := (g_wide+c_raw_parts-1)/c_raw_parts; -- use smallest possible
+  constant c_raw_wallace  : natural := 2*c_raw_parts-1-(c_raw_parts mod 2);
+  constant c_raw_wide     : natural := c_raw_mul_wide*c_raw_parts;
+  constant c_add_parts    : natural := ((g_wide+2*c_dsp_wide-1)/(2*c_dsp_wide))*2; -- must be even
+  constant c_add_mul_wide : natural := c_dsp_wide; -- must use HW width so shift is acceptable
+  constant c_add_wallace  : natural := c_add_parts+(c_add_parts/2)-1;
+  constant c_add_wide     : natural := c_add_mul_wide*c_add_parts;
+  constant c_wallace      : natural := f_opa_choose(c_post_adder, c_add_wallace, c_raw_wallace);
+  constant c_wide         : natural := f_opa_choose(c_post_adder, c_add_wide,    c_raw_wide);
   
-  function f_clip(x : natural) return natural is
-  begin
-    if x = c_wallace then
-      return (c_parts mod 2);
-    else
-      return x;
-    end if;
-  end f_clip;
+  constant c_zeros : unsigned(c_add_mul_wide-1 downto 0) := (others => '0');
   
   -- Register stages
-  type t_mul_out is array(c_parts*c_parts-1 downto 0) of unsigned(2*c_mul_wide-1 downto 0);
-  type t_sum_in  is array(c_add_width-1     downto 0) of unsigned(2*c_wide-1     downto 0);
+  type t_raw_mul_out is array(c_raw_parts*c_raw_parts  -1 downto 0) of unsigned(2*c_raw_mul_wide-1 downto 0);
+  type t_add_mul_out is array(c_add_parts*c_add_parts/2-1 downto 0) of unsigned(3*c_add_mul_wide-1 downto 0);
+  type t_sum_in      is array(c_add_width-1               downto 0) of unsigned(2*c_wide-1         downto 0);
   signal r_a     : unsigned(c_wide-1 downto 0);
   signal r_b     : unsigned(c_wide-1 downto 0);
-  signal s_mul   : t_mul_out;
-  signal r_mul   : t_mul_out; -- optional register (g_regwal)
+  signal s_mul_a : t_add_mul_out;
+  signal s_mul_r : t_raw_mul_out;
+  signal r_mul_a : t_add_mul_out; -- optional register (g_regwal)
+  signal r_mul_r : t_raw_mul_out; -- optional register (g_regwal)
+  
   signal s_wal_i : t_opa_matrix(c_wallace  -1 downto 0, 2*c_wide-1 downto 0) := (others => (others => '0'));
   signal s_wal_o : t_opa_matrix(c_add_width-1 downto 0, 2*c_wide-1 downto 0);
   signal r_wal   : t_sum_in; -- result of wallace tree
@@ -199,34 +205,98 @@ begin
     end if;
   end process;
   
-  mul_rows : for i in 0 to c_parts-1 generate
-    mul_cols : for j in 0 to c_parts-1 generate
-      s_mul(i*c_parts + j) <= 
-        r_a(c_mul_wide*(i+1)-1 downto c_mul_wide*i) *
-        r_b(c_mul_wide*(j+1)-1 downto c_mul_wide*j);
+  -- Deal with simple DSP hardware
+  raw_mul : if not c_post_adder generate
+    mul_rows : for i in 0 to c_raw_parts-1 generate
+      mul_cols : for j in 0 to c_raw_parts-1 generate
+        s_mul_r(i*c_raw_parts + j) <= 
+          r_a(c_raw_mul_wide*(i+1)-1 downto c_raw_mul_wide*i) *
+          r_b(c_raw_mul_wide*(j+1)-1 downto c_raw_mul_wide*j);
+      end generate;
     end generate;
-  end generate;
-  
-  -- Register the results of native DSP blocks
-  -- This is bypassed when g_regwal is false
-  edge2 : process(clk_i) is
-  begin
-    if rising_edge(clk_i) then
-      r_mul <= s_mul;
-    end if;
-  end process;
-  
-  -- Remap the DSP outputs into the wallace input
-  rows : for i in 0 to c_parts-1 generate
-    cols : for j in 0 to c_parts-1 generate
-      bits : for b in 0 to 2*c_mul_wide-1 generate
-        -- unset bits take '0' from default assignment
-        s_wal_i(f_clip(2*i + (j mod 2)), (i+j)*c_mul_wide + b) <= 
-          r_mul(i*c_parts + j)(b) when g_regwal else
-          s_mul(i*c_parts + j)(b);
+    -- Register the results of native DSP blocks
+    -- This is bypassed when g_regwal is false
+    edge2 : process(clk_i) is
+    begin
+      if rising_edge(clk_i) then
+        r_mul_r <= s_mul_r;
+      end if;
+    end process;
+    -- Remap the DSP outputs into the wallace input
+    -- Example: 7 parts => 12 rows = 2*x - 2
+    --       AAAAAA
+    --      AAAAAA
+    --      BBBBBB
+    --     BBBBBB
+    --     CCCCCC
+    --    CCCCCC
+    --    DDDDDD
+    --   DDDDDD
+    --   EEEEEE
+    --  EEEEEE
+    --  FFFFFF
+    -- FFFFFF
+    -- GGGGGG <<= wraps around (only for odd parts)
+    --GGGGGG  <<= wraps around
+    rows : for i in 0 to c_raw_parts-1 generate
+      cols : for j in 0 to c_raw_parts-1 generate
+        bitsl : for b in 0 to c_raw_mul_wide-1 generate
+          s_wal_i((2*i + 0) mod c_wallace, (i+j)*c_raw_mul_wide + b) <= 
+            r_mul_r(i*c_raw_parts + j)(b) when g_regwal else
+            s_mul_r(i*c_raw_parts + j)(b);
+        end generate;
+        bitsh : for b in c_raw_mul_wide to 2*c_raw_mul_wide-1 generate
+          s_wal_i((2*i + 1) mod c_wallace, (i+j)*c_raw_mul_wide + b) <= 
+            r_mul_r(i*c_raw_parts + j)(b) when g_regwal else
+            s_mul_r(i*c_raw_parts + j)(b);
+        end generate;
       end generate;
     end generate;
   end generate;
+  
+  -- Exploit DSP mul+add architecture
+  add_mul : if c_post_adder generate
+    mul_rows : for i in 0 to c_add_parts/2-1 generate
+      mul_cols : for j in 0 to c_add_parts-1 generate
+        s_mul_a(i*c_add_parts + j) <= 
+          (c_zeros &
+           (r_a(c_add_mul_wide*(2*i+1)-1 downto c_add_mul_wide*(2*i+0)) *
+            r_b(c_add_mul_wide*(  j+1)-1 downto c_add_mul_wide*   j))) +
+          ((r_a(c_add_mul_wide*(2*i+2)-1 downto c_add_mul_wide*(2*i+1)) *
+            r_b(c_add_mul_wide*(  j+1)-1 downto c_add_mul_wide*   j)) &
+           c_zeros);
+      end generate;
+    end generate;
+    edge2 : process(clk_i) is
+    begin
+      if rising_edge(clk_i) then
+        r_mul_a <= s_mul_a;
+      end if;
+    end process;
+    -- Example: 128 has 8 parts => 11 to combine (instead of 15)
+    --          AAA
+    --         BBBAAA
+    --        CCCBBBAAA
+    --       DDDCCCBBBAAA
+    --      EEEDDDCCCBBB
+    --     FFFEEEDDDCCC
+    --    GGGFFFEEEDDD
+    --   HHHGGGFFFEEE
+    --     HHHGGGFFF
+    --       HHHGGG
+    --         HHH
+    rows : for i in 0 to c_add_parts/2-1 generate
+      cols : for j in 0 to c_add_parts-1 generate -- j = the letters in the example
+        bits : for b in 0 to 3*c_add_mul_wide-1 generate
+          s_wal_i(c_add_parts/2-1-i+j, (2*i+j)*c_add_mul_wide + b) <= 
+            r_mul_a(i*c_add_parts + j)(b) when g_regwal else
+            s_mul_a(i*c_add_parts + j)(b);
+        end generate;
+      end generate;
+    end generate;
+  end generate;
+  
+  -- Compute the Wallace tree result
   s_wal_o <= f_wallace(s_wal_i);
   
   -- Register the result of a wallace tree
@@ -274,6 +344,4 @@ begin
   x_o <= std_logic_vector(r_sum(x_o'range)) when g_regout else
          std_logic_vector(s_sum(x_o'range));
 
-  -- !!! handle c_post_adder for older generations
-  
 end rtl;
