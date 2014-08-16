@@ -20,11 +20,7 @@ renamer - if optimizing copies: leave them in place for commit to see
 
 ---------------------------------------------------------------------------------------------------------------------
 
- 64-bit adder at 333 MHz ... works!
-128-bit adder at 200 MHz ... works!
-
 TODO:
-  need to pipeline the multiplier to reach 200 range ...
   eliminate num_wait from arbitration
   remove 3D arrays from arbitration
 ----

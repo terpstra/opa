@@ -12,7 +12,8 @@ use work.opa_components_pkg.all;
 entity opa_prim_mul is
   generic(
     g_wide   : natural;
-    g_regmul : boolean;
+    g_regout : boolean;
+    g_regwal : boolean;
     g_target : t_opa_target);
   port(
     clk_i    : in  std_logic;
@@ -96,10 +97,16 @@ architecture rtl of opa_prim_mul is
     variable step_in  : natural;
     variable step_out : natural;
     variable result   : t_opa_matrix(x'range(1), x'range(2)) := (others => (others => '0'));
+    variable pad      : t_opa_matrix(c_add_width-1 downto 0, x'range(2)) := (others => (others => '0'));
     variable chunk    : std_logic_vector(c_wallace_options(0)-1 downto 0);
   begin
     if x'length(1) <= c_add_width then
-      return x;
+      for i in x'range(1) loop
+        for j in x'range(2) loop
+          pad(i,j) := x(i,j);
+        end loop;
+      end loop;
+      return pad;
     end if;
     
     while row < rows_in loop
@@ -160,18 +167,25 @@ architecture rtl of opa_prim_mul is
   signal r_a     : unsigned(c_wide-1 downto 0);
   signal r_b     : unsigned(c_wide-1 downto 0);
   signal s_mul   : t_mul_out;
-  signal r_mul   : t_mul_out; -- optional register (g_regmul)
+  signal r_mul   : t_mul_out; -- optional register (g_regwal)
   signal s_wal_i : t_opa_matrix(c_wallace  -1 downto 0, 2*c_wide-1 downto 0) := (others => (others => '0'));
   signal s_wal_o : t_opa_matrix(c_add_width-1 downto 0, 2*c_wide-1 downto 0);
   signal r_wal   : t_sum_in; -- result of wallace tree
   signal s_sum3  : unsigned(2*c_wide-1 downto 0);
-  signal r_sumx  : unsigned(2*c_wide-1 downto 0);
+  signal s_sumx  : unsigned(2*c_wide-1 downto 0);
+  signal s_sum   : unsigned(2*c_wide-1 downto 0);
+  signal r_sum   : unsigned(2*c_wide-1 downto 0);
   
 begin
 
   check_add_width : 
-    assert (c_add_width > 1)
-    report "adder_width must be greater than 1"
+    assert (g_target.add_width > 1)
+    report "add_width must be greater than 1"
+    severity failure;
+  
+  check_mul_width : 
+    assert (g_target.mul_width > 0)
+    report "mul_width must be greater than 0"
     severity failure;
   
   -- Register and pad the inputs
@@ -194,7 +208,7 @@ begin
   end generate;
   
   -- Register the results of native DSP blocks
-  -- This is bypassed when g_regmul is false
+  -- This is bypassed when g_regwal is false
   edge2 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
@@ -208,7 +222,7 @@ begin
       bits : for b in 0 to 2*c_mul_wide-1 generate
         -- unset bits take '0' from default assignment
         s_wal_i(f_clip(2*i + (j mod 2)), (i+j)*c_mul_wide + b) <= 
-          r_mul(i*c_parts + j)(b) when g_regmul else
+          r_mul(i*c_parts + j)(b) when g_regwal else
           s_mul(i*c_parts + j)(b);
       end generate;
     end generate;
@@ -238,24 +252,27 @@ begin
   end generate;
   
   -- Finally, sum the output
-  -- This is double the width of a normal adder so back-to-back register it
-  sum : process(clk_i) is
-    variable acc : unsigned(r_sumx'range);
+  sum : process(r_wal) is
+    variable acc : unsigned(s_sumx'range);
+  begin
+    acc := r_wal(0);
+    for i in 1 to c_add_width-1 loop
+      acc := acc + r_wal(i);
+    end loop;
+    s_sumx <= acc;
+  end process;
+  
+  s_sum <= s_sum3 when c_add_width=3 else s_sumx;
+  
+  reg : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      if c_add_width = 3 then
-        r_sumx <= s_sum3;
-      else
-        acc := r_wal(0);
-        for i in 1 to c_add_width-1 loop
-          acc := acc + r_wal(i);
-        end loop;
-        r_sumx <= acc;
-      end if;
+      r_sum <= s_sum;
     end if;
   end process;
   
-  x_o <= std_logic_vector(r_sumx(x_o'range));
+  x_o <= std_logic_vector(r_sum(x_o'range)) when g_regout else
+         std_logic_vector(s_sum(x_o'range));
 
   -- !!! handle c_post_adder for older generations
   

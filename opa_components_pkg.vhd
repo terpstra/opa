@@ -45,7 +45,8 @@ package opa_components_pkg is
   component opa_prim_mul is
     generic(
       g_wide   : natural;
-      g_regmul : boolean;
+      g_regout : boolean;
+      g_regwal : boolean;
       g_target : t_opa_target);
     port(
       clk_i    : in  std_logic;

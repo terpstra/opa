@@ -40,17 +40,20 @@ architecture rtl of opa_mul is
   constant c_back_wide : natural := f_opa_back_wide(g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   
-  constant c_regmul : boolean := c_reg_wide > 32; -- multiply will be slow!
-  constant c_delay  : natural := f_opa_choose(c_regmul, 4, 3);
+  constant c_regout    : boolean := c_reg_wide >   g_target.mul_width; -- needs an adder
+  constant c_regwal    : boolean := c_reg_wide > 2*g_target.mul_width; -- needs wallace
+  constant c_dsp_delay : natural := 2; -- registered input+output
+  constant c_add_delay : natural := f_opa_choose(c_regout, c_dsp_delay+1, c_dsp_delay);
+  constant c_wal_delay : natural := f_opa_choose(c_regwal, c_add_delay+1, c_add_delay);
 
   -- Control delay chain length should be delay-1
-  type t_stat is array(c_delay-2 downto 0) of unsigned(c_stat_wide-1 downto 0);
-  type t_bak  is array(c_delay-2 downto 0) of std_logic_vector(c_back_wide-1 downto 0);
-  signal r_issue_stb    : std_logic_vector(c_delay-2 downto 0);
+  type t_stat is array(c_wal_delay-2 downto 0) of unsigned(c_stat_wide-1 downto 0);
+  type t_bak  is array(c_wal_delay-2 downto 0) of std_logic_vector(c_back_wide-1 downto 0);
+  signal r_issue_stb    : std_logic_vector(c_wal_delay-2 downto 0);
   signal r_issue_stat   : t_stat;
-  signal r_regfile_stb  : std_logic_vector(c_delay-2 downto 0);
+  signal r_regfile_stb  : std_logic_vector(c_wal_delay-2 downto 0);
   signal r_regfile_bakx : t_bak;
-  signal r_aux          : std_logic_vector(c_delay-1 downto 0);
+  signal r_aux          : std_logic_vector(c_wal_delay-1 downto 0);
   
   signal s_product : std_logic_vector(2*c_reg_wide-1 downto 0);
 
@@ -94,7 +97,8 @@ begin
   prim : opa_prim_mul
     generic map(
       g_wide   => c_reg_wide,
-      g_regmul => c_regmul,
+      g_regout => c_regout,
+      g_regwal => c_regwal,
       g_target => g_target)
     port map(
       clk_i    => clk_i,
