@@ -124,7 +124,8 @@ architecture rtl of opa_decode is
       when T_LOGIC => 
         result(9 downto 8) := "01";
         result(3 downto 0) := v(7 downto 4);
-      when T_MUL   => null;
+      when T_MUL   => 
+        result(0)          := v(4);
       when T_LOAD  => null;
       when T_STORE => null;
       when T_NOOP  => null;
