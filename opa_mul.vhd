@@ -49,11 +49,11 @@ architecture rtl of opa_mul is
   -- Control delay chain length should be delay-1
   type t_stat is array(c_wal_delay-2 downto 0) of unsigned(c_stat_wide-1 downto 0);
   type t_bak  is array(c_wal_delay-2 downto 0) of std_logic_vector(c_back_wide-1 downto 0);
+  signal r_aux          : std_logic_vector(c_wal_delay-1 downto 0);
   signal r_issue_stb    : std_logic_vector(c_wal_delay-2 downto 0);
   signal r_issue_stat   : t_stat;
   signal r_regfile_stb  : std_logic_vector(c_wal_delay-2 downto 0);
   signal r_regfile_bakx : t_bak;
-  signal r_aux          : std_logic_vector(c_wal_delay-1 downto 0);
   
   signal s_product : std_logic_vector(2*c_reg_wide-1 downto 0);
 
@@ -62,28 +62,29 @@ begin
   delay : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_regfile_stb <= regfile_stb_i    & r_regfile_stb(r_regfile_stb'high downto 1);
-      r_issue_stb   <= issue_stb_i      & r_issue_stb  (r_issue_stb'high   downto 1);
-      r_aux         <= regfile_aux_i(0) & r_aux        (r_aux'high         downto 1);
+      r_aux  <= regfile_aux_i(0) & r_aux(r_aux'high downto 1);
       
+      r_regfile_stb(r_regfile_stb'high)   <= regfile_stb_i;
+      r_issue_stb  (r_issue_stb'high)     <= issue_stb_i;
       r_regfile_bakx(r_regfile_bakx'high) <= regfile_bakx_i;
-      for i in 0 to r_regfile_bakx'high-1 loop
-        r_regfile_bakx(i) <= r_regfile_bakx(i+1);
-      end loop;
-      
       if issue_shift_i = '1' then
-        r_issue_stat(r_issue_stat'high) <= unsigned(issue_stat_i) - c_decoders;
+        r_issue_stat(r_issue_stat'high)   <= unsigned(issue_stat_i) - c_decoders;
       else
-        r_issue_stat(r_issue_stat'high) <= unsigned(issue_stat_i);
+        r_issue_stat(r_issue_stat'high)   <= unsigned(issue_stat_i);
       end if;
       
-      for i in 0 to r_issue_stat'high-1 loop
-        if issue_shift_i = '1' then
-          r_issue_stat(i) <= r_issue_stat(i+1) - c_decoders;
-        else
-          r_issue_stat(i) <= r_issue_stat(i+1);
-        end if;
-      end loop;
+      if c_wal_delay > 2 then -- need the conditional to avoid null range warnings
+        r_regfile_stb(r_regfile_stb'high-1 downto 0) <= r_regfile_stb(r_regfile_stb'high downto 1);
+        r_issue_stb  (r_issue_stb'high  -1 downto 0) <= r_issue_stb  (r_issue_stb'high   downto 1);
+        for i in 0 to r_issue_stat'high-1 loop
+          r_regfile_bakx(i) <= r_regfile_bakx(i+1);
+          if issue_shift_i = '1' then
+            r_issue_stat(i) <= r_issue_stat(i+1) - c_decoders;
+          else
+            r_issue_stat(i) <= r_issue_stat(i+1);
+          end if;
+        end loop;
+      end if;
     end if;
   end process;
   
