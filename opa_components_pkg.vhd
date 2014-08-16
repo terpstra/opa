@@ -32,31 +32,28 @@ package opa_components_pkg is
       b_o : out std_logic);
   end component;
   
-  component opa_satadd_ks is
+  component opa_prim_ternary is
     generic(
-      g_state : natural;  -- bits in the adder
-      g_size  : natural); -- elements in the array
+      g_wide   : natural);
     port(
-      states_i : in  t_opa_matrix(g_size-1 downto 0, g_state-1 downto 0);
-      states_o : out t_opa_matrix(g_size-1 downto 0, g_state-1 downto 0));
-  end component;
-
-  component opa_satadd is
-    generic(
-      g_state : natural;  -- bits in the adder
-      g_size  : natural); -- elements in the array
-    port(
-      bits_i : in  std_logic_vector(g_size-1 downto 0);
-      sums_o : out t_opa_matrix(g_size-1 downto 0, g_state-1 downto 0));
+      a_i      : in  unsigned(g_wide-1 downto 0);
+      b_i      : in  unsigned(g_wide-1 downto 0);
+      c_i      : in  unsigned(g_wide-1 downto 0);
+      x_o      : out unsigned(g_wide-1 downto 0));
   end component;
   
-  component opa_satadd_tb is
+  component opa_prim_mul is
+    generic(
+      g_wide   : natural;
+      g_regmul : boolean;
+      g_target : t_opa_target);
     port(
-      clk_i  : in std_logic;
-      rstn_i : in  std_logic;
-      good_o : out std_logic);
+      clk_i    : in  std_logic;
+      a_i      : in  std_logic_vector(  g_wide-1 downto 0);
+      b_i      : in  std_logic_vector(  g_wide-1 downto 0);
+      x_o      : out std_logic_vector(2*g_wide-1 downto 0));
   end component;
-
+  
   component opa_arbitrate is
     generic(
       g_config  : t_opa_config;
