@@ -232,7 +232,7 @@ architecture rtl of opa_arbitrate is
     return result;
   end f_select;
   
-  constant c_use_rom  : boolean := 2**c_num_stat <= g_target.max_rom;
+  constant c_use_rom  : boolean := c_num_stat < 30 and 2**c_num_stat <= g_target.max_rom;
   constant c_rom_wide : natural := f_opa_choose(c_use_rom, c_num_stat, c_lut_wide);
   
   -- For every input: (stb,stat) (stb,stat) * max_typ
