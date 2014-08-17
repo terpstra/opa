@@ -318,7 +318,7 @@ begin
         regfile_regx_o => s_eu_regfile_regx(f_opa_ieu_index(g_config, i)));
   end generate;
   
-  muls_warn : if g_config.num_mul > 1 generate
+  muls_warn : if g_config.num_mul > 0 generate
     muls : for i in 0 to g_config.num_mul-1 generate
       mul : opa_mul
         generic map(
