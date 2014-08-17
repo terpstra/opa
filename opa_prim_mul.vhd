@@ -160,13 +160,14 @@ architecture rtl of opa_prim_mul is
   constant c_add_wide     : natural := c_add_mul_wide*c_add_parts;
   constant c_wallace      : natural := f_opa_choose(c_post_adder, c_add_wallace, c_raw_wallace);
   constant c_wide         : natural := f_opa_choose(c_post_adder, c_add_wide,    c_raw_wide);
+  constant c_num_sum      : natural := f_opa_choose(c_wallace<c_add_width, c_wallace, c_add_width);
   
   constant c_zeros : unsigned(c_add_mul_wide-1 downto 0) := (others => '0');
   
   -- Register stages
   type t_raw_mul_out is array(c_raw_parts*c_raw_parts  -1 downto 0) of unsigned(2*c_raw_mul_wide-1 downto 0);
   type t_add_mul_out is array(c_add_parts*c_add_parts/2-1 downto 0) of unsigned(3*c_add_mul_wide-1 downto 0);
-  type t_sum_in      is array(c_add_width-1               downto 0) of unsigned(2*c_wide-1         downto 0);
+  type t_sum_in      is array(c_num_sum-1                 downto 0) of unsigned(2*c_wide-1         downto 0);
   signal r_a     : unsigned(c_wide-1 downto 0);
   signal r_b     : unsigned(c_wide-1 downto 0);
   signal s_mul_a : t_add_mul_out;
@@ -303,14 +304,14 @@ begin
   edge3 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      for i in 0 to c_add_width-1 loop
+      for i in 0 to c_num_sum-1 loop
         r_wal(i) <= unsigned(f_opa_select_row(s_wal_o, i));
       end loop;
     end if;
   end process;
   
   -- Hold quartus' hand. Appalling.
-  ternary : if c_add_width = 3 generate
+  ternary : if c_num_sum = 3 generate
     prim : opa_prim_ternary
       generic map(
         g_wide => 2*c_wide)
@@ -326,13 +327,13 @@ begin
     variable acc : unsigned(s_sumx'range);
   begin
     acc := r_wal(0);
-    for i in 1 to c_add_width-1 loop
+    for i in 1 to c_num_sum-1 loop
       acc := acc + r_wal(i);
     end loop;
     s_sumx <= acc;
   end process;
   
-  s_sum <= s_sum3 when c_add_width=3 else s_sumx;
+  s_sum <= s_sum3 when c_num_sum=3 else s_sumx;
   
   reg : process(clk_i) is
   begin
