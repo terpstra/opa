@@ -25,8 +25,8 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_readyb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_typ
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_stata
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_statb
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_stb
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_stat
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_issue_stb
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_issue_stat
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stb_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stat_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_baka

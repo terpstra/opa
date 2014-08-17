@@ -25,6 +25,7 @@ package opa_functions_pkg is
   -- Decode config into useful values
   function f_opa_decoders (conf : t_opa_config) return natural;
   function f_opa_executers(conf : t_opa_config) return natural;
+  function f_opa_num_issue(conf : t_opa_config) return natural;
   function f_opa_num_wait (conf : t_opa_config) return natural;
   function f_opa_num_stat (conf : t_opa_config) return natural;
   function f_opa_num_arch (conf : t_opa_config) return natural;
@@ -37,7 +38,7 @@ package opa_functions_pkg is
   -- Mapping of execution units
   function f_opa_lsb_does_mul(conf : t_opa_config) return boolean;
   function f_opa_support_fp(conf : t_opa_config) return boolean;
-  function f_opa_max_typ(conf : t_opa_config) return natural;
+  function f_opa_max_units (conf : t_opa_config) return natural;
   function f_opa_unit_type (conf : t_opa_config; u : natural) return natural;
   function f_opa_unit_index(conf : t_opa_config; u : natural) return natural;
   function f_opa_unit_count(conf : t_opa_config; t : natural) return natural;
@@ -131,6 +132,11 @@ package body opa_functions_pkg is
     return conf.num_ieu + 1 + conf.num_mul + conf.num_fp;
   end f_opa_executers;
   
+  function f_opa_num_issue(conf : t_opa_config) return natural is
+  begin
+    return conf.num_issue;
+  end f_opa_num_issue;
+  
   function f_opa_num_wait(conf : t_opa_config) return natural is
   begin
     return conf.num_wait;
@@ -184,14 +190,14 @@ package body opa_functions_pkg is
     return conf.num_fp /= 0;
   end f_opa_support_fp;
   
-  function f_opa_max_typ(conf : t_opa_config) return natural is
+  function f_opa_max_units(conf : t_opa_config) return natural is
     variable max : natural := 1; -- memory unit type
   begin
     if conf.num_ieu > max then max := conf.num_ieu; end if;
     if conf.num_mul > max then max := conf.num_mul; end if;
     if conf.num_fp  > max then max := conf.num_fp;  end if;
     return max;
-  end f_opa_max_typ;
+  end f_opa_max_units;
    
   function f_opa_unit_type (conf : t_opa_config; u : natural) return natural is
     constant c_lsb   : natural := 0;

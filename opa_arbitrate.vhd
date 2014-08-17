@@ -14,7 +14,7 @@ entity opa_arbitrate is
   port(
     clk_i     : in  std_logic;
     rst_n_i   : in  std_logic;
-    pending_i : in  t_opa_matrix(f_opa_num_stat(g_config)-1 downto 0, c_types-1 downto 0);
+    pending_i : in  t_opa_matrix(f_opa_num_stat(g_config)-1 downto f_opa_num_wait(g_config), c_types-1 downto 0);
     stb_o     : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     stat_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0));
 end opa_arbitrate;
@@ -24,9 +24,11 @@ architecture rtl of opa_arbitrate is
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_lut_wide  : natural := g_target.lut_width;
+  constant c_num_issue : natural := f_opa_num_issue(g_config);
+  constant c_num_wait  : natural := f_opa_num_wait(g_config);
   constant c_num_stat  : natural := f_opa_num_stat(g_config);
   constant c_num_lut   : natural := 2**c_lut_wide;
-  constant c_max_type  : natural := f_opa_max_typ(g_config);
+  constant c_max_units : natural := f_opa_max_units(g_config);
   constant c_max_wide  : natural := 3; -- If you increase this, duplicate code below
 
   -- Thank VHDL's restriction on flexible array sub-types for this duplication:
@@ -167,7 +169,7 @@ architecture rtl of opa_arbitrate is
     for i in x'range(1) loop
       chunk := (others => '0');
       for j in 0 to c_parts-1 loop
-        if i >= j*step then
+        if i - j*step >= x'low(1) then
           for b in 0 to bits-1 loop
             chunk(j*bits+b) := x(i-j*step,b);
           end loop;
@@ -190,7 +192,7 @@ architecture rtl of opa_arbitrate is
     for i in x'range(1) loop
       chunk := (others => '0');
       for j in 0 to c_lut_wide-1 loop
-        if i >= j then
+        if i-j >= x'low then
           chunk(j) := x(i-j);
         end if;
       end loop;
@@ -222,8 +224,10 @@ architecture rtl of opa_arbitrate is
     constant unit : std_logic_vector(y'range(2)) := std_logic_vector(to_unsigned(u, y'length(2)));
     variable result : std_logic_vector(x'range);
   begin
+    assert (x'low  = y'low(1))  report "vector-matrix dimension mismatch" severity failure;
+    assert (x'high = y'high(1)) report "vector-matrix dimension mismatch" severity failure;
     for i in result'range loop
-      if i <= y'low(2) then
+      if i <= y'low(1) then
         result(i) := x(i) and f_opa_bit(u = 0);
       else
         result(i) := x(i) and f_opa_bit(f_opa_select_row(y, i-1) = unit);
@@ -232,14 +236,15 @@ architecture rtl of opa_arbitrate is
     return result;
   end f_select;
   
-  constant c_use_rom  : boolean := c_num_stat < 30 and 2**c_num_stat <= g_target.max_rom;
-  constant c_rom_wide : natural := f_opa_choose(c_use_rom, c_num_stat, c_lut_wide);
+  constant c_use_rom  : boolean := c_num_issue < 30 and 2**c_num_issue <= g_target.max_rom;
+  constant c_rom_wide : natural := f_opa_choose(c_use_rom, c_num_issue, c_lut_wide);
+  constant c_wait_pad : std_logic_vector(c_num_wait-1 downto 0) := (others => '0');
   
   -- For every input: (stb,stat) (stb,stat) * max_typ
-  type t_arbitrate_rom is array(2**c_rom_wide-1 downto 0) of std_logic_vector(c_max_type*(1+c_stat_wide)-1 downto 0);
+  type t_arbitrate_rom is array(2**c_rom_wide-1 downto 0) of std_logic_vector(c_max_units*(1+c_stat_wide)-1 downto 0);
   function f_arbitrate_table return t_arbitrate_rom is
     variable result   : t_arbitrate_rom;
-    variable row      : std_logic_vector(c_num_stat-1 downto 0);
+    variable row      : std_logic_vector(c_num_stat-1 downto c_num_wait);
     variable satadd   : t_opa_matrix(row'range, c_max_wide-1 downto 0);
     variable schedule : std_logic_vector(row'range);
     variable stb      : std_logic;
@@ -247,11 +252,11 @@ architecture rtl of opa_arbitrate is
   begin
     for i in result'range(1) loop
       row := std_logic_vector(to_unsigned(i, row'length));
-      satadd := f_satadd_pad(f_opa_log2(c_max_type+1), row);
-      for u in 0 to c_max_type-1 loop
+      satadd := f_satadd_pad(f_opa_log2(c_max_units+1), row);
+      for u in 0 to c_max_units-1 loop
         schedule := f_select(row, satadd, u);
         stb      := f_opa_or(schedule);
-        index    := f_opa_1hot_dec(schedule);
+        index    := f_opa_1hot_dec(schedule & c_wait_pad);
         
         result(i)(u*(1+c_stat_wide)) := stb;
         for b in index'range loop
@@ -265,10 +270,10 @@ architecture rtl of opa_arbitrate is
   
   ---------------------------------------------------------------------------------------
   
-  type t_satadd   is array(c_types-1 downto 0) of t_opa_matrix(c_num_stat-1 downto 0, c_max_wide-1 downto 0);
-  type t_schedule is array(c_executers-1 downto 0) of std_logic_vector(c_num_stat-1 downto 0);
+  type t_satadd   is array(c_types-1 downto 0) of t_opa_matrix(c_num_stat-1 downto c_num_wait, c_max_wide-1 downto 0);
+  type t_schedule is array(c_executers-1 downto 0) of std_logic_vector(c_num_stat-1 downto c_num_wait);
   type t_stat     is array(c_executers-1 downto 0) of std_logic_vector(c_stat_wide-1 downto 0);
-  type t_rom      is array(c_types-1 downto 0) of std_logic_vector(c_max_type*(1+c_stat_wide)-1 downto 0);
+  type t_rom      is array(c_types-1 downto 0) of std_logic_vector(c_max_units*(1+c_stat_wide)-1 downto 0);
   
   signal s_satadd   : t_satadd;
   signal s_schedule : t_schedule;
@@ -278,7 +283,7 @@ architecture rtl of opa_arbitrate is
 begin
 
   check_width :
-    assert (f_opa_log2(c_max_type+1) <= c_max_wide)
+    assert (f_opa_log2(c_max_units+1) <= c_max_wide)
     report "More units of a single type than supported"
     severity failure;
 
@@ -308,7 +313,7 @@ begin
     begin
       if rising_edge(clk_i) then
         for u in 0 to c_executers-1 loop
-          r_stat(u) <= f_opa_1hot_dec(s_schedule(u));
+          r_stat(u) <= f_opa_1hot_dec(s_schedule(u) & c_wait_pad);
           stb_o(u)  <= f_opa_or(s_schedule(u));
         end loop;
       end if;
@@ -338,7 +343,5 @@ begin
     end generate;
   
   end generate;
-
--- !!! don't include num_wait
 
 end rtl;

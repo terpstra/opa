@@ -28,7 +28,6 @@ decode - put aux into MLAB/M9k
 ---------------------------------------------------------------------------------------------------------------------
 
 TODO:
-  eliminate num_wait from arbitration
   remove 3D arrays from arbitration
 ----
 memory unit

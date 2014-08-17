@@ -62,7 +62,7 @@ package opa_components_pkg is
     port(
       clk_i     : in  std_logic;
       rst_n_i   : in  std_logic;
-      pending_i : in  t_opa_matrix(f_opa_num_stat(g_config)-1 downto 0, c_types-1 downto 0);
+      pending_i : in  t_opa_matrix(f_opa_num_stat(g_config)-1 downto f_opa_num_wait(g_config), c_types-1 downto 0);
       stb_o     : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       stat_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0));
   end component;
