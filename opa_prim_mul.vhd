@@ -152,7 +152,7 @@ architecture rtl of opa_prim_mul is
   constant c_dsp_wide     : natural := g_target.mul_width;
   constant c_raw_parts    : natural := (g_wide+c_dsp_wide-1)/c_dsp_wide;
   constant c_raw_mul_wide : natural := (g_wide+c_raw_parts-1)/c_raw_parts; -- use smallest possible
-  constant c_raw_wallace  : natural := 2*c_raw_parts-1-(c_raw_parts mod 2);
+  constant c_raw_wallace  : natural := 2*c_raw_parts-1;
   constant c_raw_wide     : natural := c_raw_mul_wide*c_raw_parts;
   constant c_add_parts    : natural := ((g_wide+2*c_dsp_wide-1)/(2*c_dsp_wide))*2; -- must be even
   constant c_add_mul_wide : natural := c_dsp_wide; -- must use HW width so shift is acceptable
@@ -225,20 +225,20 @@ begin
     end process;
     -- Remap the DSP outputs into the wallace input
     -- Example: 7 parts => 12 rows = 2*x - 2
-    --       AAAAAA
-    --      AAAAAA
-    --      BBBBBB
-    --     BBBBBB
-    --     CCCCCC
-    --    CCCCCC
-    --    DDDDDD
-    --   DDDDDD
-    --   EEEEEE
-    --  EEEEEE
-    --  FFFFFF
-    -- FFFFFF
-    -- GGGGGG <<= wraps around (only for odd parts)
-    --GGGGGG  <<= wraps around
+    --       AAAAAAA
+    --      AAAAAAA
+    --      BBBBBBB
+    --     BBBBBBB
+    --     CCCCCCC
+    --    CCCCCCC
+    --    DDDDDDD
+    --   DDDDDDD
+    --   EEEEEEE
+    --  EEEEEEE
+    --  FFFFFFF
+    -- FFFFFFF
+    -- GGGGGGG
+    --GGGGGGG  <<= wraps around
     rows : for i in 0 to c_raw_parts-1 generate
       cols : for j in 0 to c_raw_parts-1 generate
         bitsl : for b in 0 to c_raw_mul_wide-1 generate
