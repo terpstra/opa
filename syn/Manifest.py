@@ -1,9 +1,9 @@
 target = "altera"
 action = "synthesis"
 
-syn_device = "5agxma3d4f"
-syn_grade = "i3"
-syn_package = "27"
+syn_device = "5ceba4f"
+syn_grade = "c8"
+syn_package = "17"
 syn_top = "opa_syn_tb"
 syn_project = "opa_syn_tb"
 
