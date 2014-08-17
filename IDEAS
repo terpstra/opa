@@ -1,3 +1,10 @@
+issue - use the r_stat[ab] to MUX the result of scheduling
+  scheduling then reports 1hot, saving the level of ORs
+    ... can use s_pending(i) as load enable for "0" into r_schedule
+    => 18 stations arbitrated to a register in exactly 2 levels
+  scheduling reports per-unit selection AND a "<=#units" selection for s_ready
+  this would make s_ready independent of the # of EUs (only on # types)
+
 issue - if none of that makes it fast enough, add a pipeline stage
   the only absolute requirements are:
     the feedback from ready=>ready is 1 cycle
