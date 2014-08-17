@@ -18,6 +18,13 @@ renamer - if optimizing copies: leave them in place for commit to see
 -- reads specify if they can be cached and how far they commute
 -- ... how does this interact with calling ABI? (callee/caller-saved)
 
+decode - put aux into MLAB/M9k 
+  just a single writer that puts all the stuff in for all ops at once
+  put a reference into the renamer
+  just need EU* copies of the memory and pull it 1st step of regfile 
+   (must be a register when it reaches EU)
+  => can help with using 64-bit wide immediates
+
 ---------------------------------------------------------------------------------------------------------------------
 
 TODO:
