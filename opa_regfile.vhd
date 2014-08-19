@@ -122,15 +122,16 @@ begin
   begin
     if rising_edge(clk_i) then
       r_map <= s_map;
-      r_mux1_idx_a <= f_opa_compose(s_map, issue_baka_i);
-      r_mux1_idx_b <= f_opa_compose(s_map, issue_bakb_i);
+      r_mux1_idx_a <= f_opa_compose(r_map, issue_baka_i);
+      r_mux1_idx_b <= f_opa_compose(r_map, issue_bakb_i);
+        -- 5 levels (3 for r_map mux (36:1), and 2 for the index)
     end if;
   end process;
   
   -- Detect if we will need a bypass
   s_match_a <= f_opa_match(issue_baka_i, eu_bakx_i) and f_opa_dup_row(c_executers, eu_stb_i);
   s_match_b <= f_opa_match(issue_bakb_i, eu_bakx_i) and f_opa_dup_row(c_executers, eu_stb_i);
-    -- 2+2+M
+    -- 2+2 levels
   
   bypass : process(clk_i) is
   begin
@@ -138,7 +139,7 @@ begin
        -- leave bit 0 as 0 => decoding to 0 when no matches is good
       r_mux2_idx_a <= f_opa_1hot_dec(f_opa_concat(s_match_a, c_zero));
       r_mux2_idx_b <= f_opa_1hot_dec(f_opa_concat(s_match_b, c_zero));
-      -- 2+2+M ... decoding can fit inside the slack from s_match_a
+      -- 1+4 levels
     end if;
   end process;
   
