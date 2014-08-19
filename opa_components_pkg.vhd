@@ -286,8 +286,4 @@ package opa_components_pkg is
       good_o : out std_logic);
   end component;
   
-  -- TODO (for real programs):
-  -- fetcher
-  -- MMU + cache miss core
-
 end package;

@@ -78,6 +78,7 @@ architecture rtl of opa_rename is
   signal s_map_writers : t_opa_matrix(c_num_arch-1 downto 0, c_decoders-1  downto 0);
   signal s_map_mux     : std_logic_vector(c_num_arch-1 downto 0);
   signal s_map_source  : t_opa_matrix(c_num_arch-1 downto 0, c_decoders-1  downto 0);
+  signal s_map_value   : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
   signal s_map         : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
   
   signal r_dec_setx    : std_logic_vector(c_decoders-1 downto 0);
@@ -142,22 +143,23 @@ begin
   s_map_writers <= f_opa_match_index(c_num_arch, r_dec_archx) and f_opa_dup_row(c_num_arch, r_dec_setx);
   s_map_mux     <= f_opa_product(s_map_writers, c_decode_ones);
   s_map_source  <= f_opa_pick_big(s_map_writers);
-  s_map         <= f_opa_product(s_map_source, r_commit_bakx);
+  s_map_value   <= f_opa_product(s_map_source, r_commit_bakx);
+  
+  arch : for i in 0 to c_num_arch-1 generate
+    bits : for b in 0 to c_back_wide-1 generate
+      s_map(i,b) <= s_map_value(i,b) when s_map_mux(i)='1' else r_map(i,b);
+    end generate;
+  end generate;
   
   edge2a : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      if commit_kill_i = '1' then -- load enable
-        r_map <= commit_map_i;
-      else
-        -- Update the map, if it was changed
-        for i in r_map'range(1) loop
-          if (issue_shift_i and s_map_mux(i)) = '1' then
-            for j in r_map'range(2) loop
-              r_map(i,j) <= s_map(i,j);
-            end loop;
-          end if;
-        end loop;
+      if issue_shift_i = '1' then -- clock enable
+        if commit_kill_i = '1' then -- load enable
+          r_map <= commit_map_i;
+        else
+          r_map <= s_map;
+        end if;
       end if;
     end if;
   end process;

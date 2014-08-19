@@ -52,6 +52,7 @@ architecture rtl of opa_commit is
   signal s_map_writers  : t_opa_matrix(c_num_arch-1 downto 0, c_decoders-1  downto 0);
   signal s_map_source   : t_opa_matrix(c_num_arch-1 downto 0, c_decoders-1  downto 0);
   signal s_map_mux      : std_logic_vector(c_num_arch-1 downto 0);
+  signal s_map_value    : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
   signal s_map          : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
   signal r_map          : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
 
@@ -66,7 +67,13 @@ begin
                    f_opa_dup_row(c_num_arch, issue_setx_i);
   s_map_mux     <= f_opa_product(s_map_writers, c_ones);
   s_map_source  <= f_opa_pick_big(s_map_writers);
-  s_map         <= f_opa_product(s_map_source, issue_bakx_i);
+  s_map_value   <= f_opa_product(s_map_source, issue_bakx_i);
+  
+  arch : for i in 0 to c_num_arch-1 generate
+    bits : for b in 0 to c_back_wide-1 generate
+      s_map(i,b) <= s_map_value(i,b) when s_map_mux(i)='1' else r_map(i,b);
+    end generate;
+  end generate;
   
   -- Write the new architectural state
   edge2r : process(rst_n_i, clk_i) is
@@ -80,13 +87,9 @@ begin
         end loop;
       end loop;
     elsif rising_edge(clk_i) then
-      for i in r_map'range(1) loop
-        if (issue_shift_i and s_map_mux(i)) = '1' then
-          for j in r_map'range(2) loop
-            r_map(i,j) <= s_map(i,j);
-          end loop;
-        end if;
-      end loop;
+      if issue_shift_i = '1' then
+        r_map <= s_map;
+      end if;
     end if;
   end process;
   
