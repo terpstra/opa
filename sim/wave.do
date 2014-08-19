@@ -16,8 +16,9 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_sh1_baka
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_sh1_bakb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_sh1_typ
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_issued
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_issued
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_done
-add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/issue/s_done
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_done
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_readya
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_readya
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_readyb
@@ -25,14 +26,14 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_readyb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_typ
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_stata
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_statb
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_issue_stb
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_issue_stat
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stb_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stat_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_baka
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakx0
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakx1
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_now_issued
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_now_finish
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_aux_o
 add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_stb_o
 add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_rega_o
@@ -42,7 +43,7 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_bakx_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_regx_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/commit/r_map
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {519 ns} 0}
+WaveRestoreCursors {{Cursor 1} {51 ns} 0}
 configure wave -namecolwidth 360
 configure wave -valuecolwidth 78
 configure wave -justifyvalue left
@@ -57,4 +58,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ns} {525 ns}
+WaveRestoreZoom {23 ns} {89 ns}

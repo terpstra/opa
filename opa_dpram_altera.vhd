@@ -83,7 +83,7 @@ begin
         outdata_aclr_b                     => "NONE",
         outdata_reg_b                      => "UNREGISTERED",
         power_up_uninitialized             => "FALSE",
-        ram_block_type                     => "MLAB",
+        ram_block_type                     => "M10K",
         read_during_write_mode_mixed_ports => "DONT_CARE",
         widthad_a                          => f_opa_log2(g_size),
         widthad_b                          => f_opa_log2(g_size),

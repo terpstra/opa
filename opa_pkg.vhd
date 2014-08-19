@@ -34,17 +34,16 @@ package opa_pkg is
   
   type t_opa_target is record
     lut_width  : natural; -- How many inputs to combine at once
-    max_rom    : natural; -- How elements can a *fast* ROM have
     add_width  : natural; -- Hardware support for simultaneous adders
     mul_width  : natural; -- Widest DSP multiplier block
     post_adder : boolean; -- Can add two products (a*b)<<wide + (c*d)
   end record;
   
   -- FPGA flavors supported
-  constant c_opa_cyclone_iv : t_opa_target := (4, 16, 2, 18, true);
-  constant c_opa_arria_ii   : t_opa_target := (6, 64, 2, 18, true);
-  constant c_opa_cyclone_v  : t_opa_target := (6, 64, 3, 27, false);
-  constant c_opa_asic       : t_opa_target := (4, 1,  2,  1, false);
+  constant c_opa_cyclone_iv : t_opa_target := (4, 2, 18, true);
+  constant c_opa_arria_ii   : t_opa_target := (6, 2, 18, true);
+  constant c_opa_cyclone_v  : t_opa_target := (6, 3, 27, false);
+  constant c_opa_asic       : t_opa_target := (4, 2,  1, false);
   
   -- current ISA has 16-bit sized instructions
   constant c_op_wide   : natural := 16;

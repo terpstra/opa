@@ -24,6 +24,10 @@ end opa;
 
 architecture rtl of opa is
 
+  -- Quartus 11+ likes to replace my registers with a slow FIFO. Stop it.
+  attribute altera_attribute : string; 
+  attribute altera_attribute of rtl : architecture is "-name AUTO_SHIFT_REGISTER_RECOGNITION OFF";
+  
   constant c_decoders  : natural := f_opa_decoders (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_num_back  : natural := f_opa_num_back (g_config);

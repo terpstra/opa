@@ -15,8 +15,9 @@ entity opa_arbitrate is
     clk_i     : in  std_logic;
     rst_n_i   : in  std_logic;
     pending_i : in  t_opa_matrix(f_opa_num_stat(g_config)-1 downto f_opa_num_wait(g_config), c_types-1 downto 0);
-    stb_o     : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    stat_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0));
+    issue_o   : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_num_stat(g_config)-1 downto f_opa_num_wait(g_config));
+    finish_i  : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+    finish_o  : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0));
 end opa_arbitrate;
 
 architecture rtl of opa_arbitrate is
@@ -28,16 +29,15 @@ architecture rtl of opa_arbitrate is
   constant c_num_wait  : natural := f_opa_num_wait(g_config);
   constant c_num_stat  : natural := f_opa_num_stat(g_config);
   constant c_num_lut   : natural := 2**c_lut_wide;
-  constant c_max_units : natural := f_opa_max_units(g_config);
   constant c_max_wide  : natural := 3; -- If you increase this, duplicate code below
+  constant c_max_units : natural := 2**c_max_wide-1;
 
   -- Thank VHDL's restriction on flexible array sub-types for this duplication:
-  type t_lut_rom3 is array(c_num_lut-1 downto 0) of std_logic_vector(2 downto 0);
-  type t_lut_rom2 is array(c_num_lut-1 downto 0) of std_logic_vector(1 downto 0);
-  type t_lut_rom1 is array(c_num_lut-1 downto 0) of std_logic_vector(0 downto 0);
+  type t_lut_romb is array(c_num_lut-1 downto 0) of std_logic_vector(c_max_wide-1 downto 0);
+  type t_lut_romu is array(c_num_lut-1 downto 0) of std_logic_vector(c_max_units  downto 0);
   
-  function f_matrix_to_rom3(x : t_opa_matrix) return t_lut_rom3 is
-    variable result : t_lut_rom3;
+  function f_matrix_to_romb(x : t_opa_matrix) return t_lut_romb is
+    variable result : t_lut_romb := (others => (others => '0'));
   begin
     for i in x'range(1) loop
       for j in x'range(2) loop
@@ -45,10 +45,10 @@ architecture rtl of opa_arbitrate is
       end loop;
     end loop;
     return result;
-  end f_matrix_to_rom3;
+  end f_matrix_to_romb;
   
-  function f_matrix_to_rom2(x : t_opa_matrix) return t_lut_rom2 is
-    variable result : t_lut_rom2;
+  function f_matrix_to_romu(x : t_opa_matrix) return t_lut_romu is
+    variable result : t_lut_romu;
   begin
     for i in x'range(1) loop
       for j in x'range(2) loop
@@ -56,24 +56,28 @@ architecture rtl of opa_arbitrate is
       end loop;
     end loop;
     return result;
-  end f_matrix_to_rom2;
+  end f_matrix_to_romu;
   
-  function f_matrix_to_rom1(x : t_opa_matrix) return t_lut_rom1 is
-    variable result : t_lut_rom1;
+  -- Directly decode the final result to 1-hot
+  function f_decode_table(num_unit : natural; table : t_lut_romb) return t_opa_matrix is
+    variable result : t_opa_matrix(c_num_lut-1 downto 0, c_max_units downto 0) := (others => (others => '0'));
+    variable row    : unsigned(c_max_wide-1 downto 0);
   begin
-    for i in x'range(1) loop
-      for j in x'range(2) loop
-        result(i)(j) := x(i,j);
+    for i in result'range(1) loop
+      row := unsigned(table(i));
+      for b in 0 to num_unit-1 loop
+        result(i, b) := f_opa_bit(row = to_unsigned(b, row'length));
       end loop;
+      result(i, num_unit) := f_opa_bit(row < num_unit);
     end loop;
     return result;
-  end f_matrix_to_rom1;
+  end f_decode_table;
   
   ---------------------------------------------------------------------------------------
   
   -- Count the # of ones, saturated up to the specified bits
   function f_compress_table(bits : natural) return t_opa_matrix is
-    variable result : t_opa_matrix(c_num_lut-1 downto 0, bits-1 downto 0);
+    variable result : t_opa_matrix(c_num_lut-1 downto 0, c_max_wide-1 downto 0) := (others => (others => '0'));
     variable input  : unsigned(c_lut_wide-1 downto 0);
     variable count  : unsigned(bits-1 downto 0);
     constant ones   : unsigned(bits-1 downto 0) := (others => '1');
@@ -93,28 +97,48 @@ architecture rtl of opa_arbitrate is
     return result;
   end f_compress_table;
   
-  constant c_compress_rom3 : t_lut_rom3 := f_matrix_to_rom3(f_compress_table(3));
-  constant c_compress_rom2 : t_lut_rom2 := f_matrix_to_rom2(f_compress_table(2));
-  constant c_compress_rom1 : t_lut_rom1 := f_matrix_to_rom1(f_compress_table(1));
+  constant c_compress_rom3 : t_lut_romb := f_matrix_to_romb(f_compress_table(3));
+  constant c_compress_rom2 : t_lut_romb := f_matrix_to_romb(f_compress_table(2));
+  constant c_compress_rom1 : t_lut_romb := f_matrix_to_romb(f_compress_table(1));
+  
+  constant c_compress_decode_rom7 : t_lut_romu := f_matrix_to_romu(f_decode_table(7, c_compress_rom3));
+  constant c_compress_decode_rom6 : t_lut_romu := f_matrix_to_romu(f_decode_table(6, c_compress_rom3));
+  constant c_compress_decode_rom5 : t_lut_romu := f_matrix_to_romu(f_decode_table(5, c_compress_rom3));
+  constant c_compress_decode_rom4 : t_lut_romu := f_matrix_to_romu(f_decode_table(4, c_compress_rom3));
+  constant c_compress_decode_rom3 : t_lut_romu := f_matrix_to_romu(f_decode_table(3, c_compress_rom2));
+  constant c_compress_decode_rom2 : t_lut_romu := f_matrix_to_romu(f_decode_table(2, c_compress_rom2));
+  constant c_compress_decode_rom1 : t_lut_romu := f_matrix_to_romu(f_decode_table(1, c_compress_rom1));
   
   function f_compress(bits : natural; x : std_logic_vector) return std_logic_vector is
-    variable widest : std_logic_vector(c_max_wide-1 downto 0);
-    variable result : std_logic_vector(bits-1 downto 0);
+    constant bug : std_logic_vector(c_max_wide-1 downto 0) := (others => '0');
   begin
     assert (bits >= 1 and bits <= c_max_wide) report "unsupported bit width" severity failure;
-    if bits = 3 then widest :=        c_compress_rom3(to_integer(unsigned(x))); end if;
-    if bits = 2 then widest :=  "0" & c_compress_rom2(to_integer(unsigned(x))); end if;
-    if bits = 1 then widest := "00" & c_compress_rom1(to_integer(unsigned(x))); end if;
-    result := widest(result'range);
-    return result;
+    if bits = 3 then return c_compress_rom3(to_integer(unsigned(x))); end if;
+    if bits = 2 then return c_compress_rom2(to_integer(unsigned(x))); end if;
+    if bits = 1 then return c_compress_rom1(to_integer(unsigned(x))); end if;
+    return bug;
   end f_compress;
+  
+  function f_compress_decode(num_unit : natural; x : std_logic_vector) return std_logic_vector is
+    constant bug : std_logic_vector(c_max_units downto 0) := (others => '0');
+  begin
+    assert (num_unit >= 1 and num_unit <= c_max_units) report "unsupported unit count" severity failure;
+    if num_unit = 7 then return c_compress_decode_rom7(to_integer(unsigned(x))); end if;
+    if num_unit = 6 then return c_compress_decode_rom6(to_integer(unsigned(x))); end if;
+    if num_unit = 5 then return c_compress_decode_rom5(to_integer(unsigned(x))); end if;
+    if num_unit = 4 then return c_compress_decode_rom4(to_integer(unsigned(x))); end if;
+    if num_unit = 3 then return c_compress_decode_rom3(to_integer(unsigned(x))); end if;
+    if num_unit = 2 then return c_compress_decode_rom2(to_integer(unsigned(x))); end if;
+    if num_unit = 1 then return c_compress_decode_rom1(to_integer(unsigned(x))); end if;
+    return bug;
+  end f_compress_decode;
   
   ---------------------------------------------------------------------------------------
   
   -- Combine subproblem sums
   function f_combine_table(bits : natural) return t_opa_matrix is
     constant c_parts : natural := c_lut_wide/bits;
-    variable result  : t_opa_matrix(c_num_lut-1 downto 0, bits-1 downto 0);
+    variable result  : t_opa_matrix(c_num_lut-1 downto 0, c_max_wide-1 downto 0) := (others => (others => '0'));
     variable shf     : integer;
     variable sum     : integer;
     variable bin     : unsigned(bits-1 downto 0);
@@ -140,54 +164,86 @@ architecture rtl of opa_arbitrate is
     return result;
   end f_combine_table;
   
-  constant c_combine_rom3 : t_lut_rom3 := f_matrix_to_rom3(f_combine_table(3));
-  constant c_combine_rom2 : t_lut_rom2 := f_matrix_to_rom2(f_combine_table(2));
-  constant c_combine_rom1 : t_lut_rom1 := f_matrix_to_rom1(f_combine_table(1));
+  constant c_combine_rom3 : t_lut_romb := f_matrix_to_romb(f_combine_table(3));
+  constant c_combine_rom2 : t_lut_romb := f_matrix_to_romb(f_combine_table(2));
+  constant c_combine_rom1 : t_lut_romb := f_matrix_to_romb(f_combine_table(1));
+  
+  constant c_combine_decode_rom7 : t_lut_romu := f_matrix_to_romu(f_decode_table(7, c_combine_rom3));
+  constant c_combine_decode_rom6 : t_lut_romu := f_matrix_to_romu(f_decode_table(6, c_combine_rom3));
+  constant c_combine_decode_rom5 : t_lut_romu := f_matrix_to_romu(f_decode_table(5, c_combine_rom3));
+  constant c_combine_decode_rom4 : t_lut_romu := f_matrix_to_romu(f_decode_table(4, c_combine_rom3));
+  constant c_combine_decode_rom3 : t_lut_romu := f_matrix_to_romu(f_decode_table(3, c_combine_rom2));
+  constant c_combine_decode_rom2 : t_lut_romu := f_matrix_to_romu(f_decode_table(2, c_combine_rom2));
+  constant c_combine_decode_rom1 : t_lut_romu := f_matrix_to_romu(f_decode_table(1, c_combine_rom1));
   
   function f_combine(bits : natural; x : std_logic_vector) return std_logic_vector is
-    variable widest : std_logic_vector(c_max_wide-1 downto 0);
-    variable result : std_logic_vector(bits-1 downto 0);
+    constant bug : std_logic_vector(c_max_wide-1 downto 0) := (others => '0');
   begin
     assert (bits >= 1 and bits <= c_max_wide) report "unsupported bit width" severity failure;
-    if bits = 3 then widest :=        c_combine_rom3(to_integer(unsigned(x))); end if;
-    if bits = 2 then widest :=  "0" & c_combine_rom2(to_integer(unsigned(x))); end if;
-    if bits = 1 then widest := "00" & c_combine_rom1(to_integer(unsigned(x))); end if;
-    result := widest(result'range);
-    return result;
+    if bits = 3 then return c_combine_rom3(to_integer(unsigned(x))); end if;
+    if bits = 2 then return c_combine_rom2(to_integer(unsigned(x))); end if;
+    if bits = 1 then return c_combine_rom1(to_integer(unsigned(x))); end if;
+    return bug;
   end f_combine;
+  
+  function f_combine_decode(num_unit : natural; x : std_logic_vector) return std_logic_vector is
+    constant bug : std_logic_vector(c_max_units downto 0) := (others => '0');
+  begin
+    assert (num_unit >= 1 and num_unit <= c_max_units) report "unsupported unit count" severity failure;
+    if num_unit = 7 then return c_combine_decode_rom7(to_integer(unsigned(x))); end if;
+    if num_unit = 6 then return c_combine_decode_rom6(to_integer(unsigned(x))); end if;
+    if num_unit = 5 then return c_combine_decode_rom5(to_integer(unsigned(x))); end if;
+    if num_unit = 4 then return c_combine_decode_rom4(to_integer(unsigned(x))); end if;
+    if num_unit = 3 then return c_combine_decode_rom3(to_integer(unsigned(x))); end if;
+    if num_unit = 2 then return c_combine_decode_rom2(to_integer(unsigned(x))); end if;
+    if num_unit = 1 then return c_combine_decode_rom1(to_integer(unsigned(x))); end if;
+    return bug;
+  end f_combine_decode;
   
   ---------------------------------------------------------------------------------------
   
-  function f_satadd_step(bits : natural; step : natural; x : t_opa_matrix) return t_opa_matrix is
-    constant c_parts : natural := c_lut_wide/bits;
+  function f_satadd_step(num_unit : natural; step : natural; x : t_opa_matrix) return t_opa_matrix is
+    constant c_bits  : natural := f_opa_log2(num_unit+1);
+    constant c_parts : natural := c_lut_wide/c_bits;
     variable chunk   : std_logic_vector(c_lut_wide-1 downto 0);
-    variable row     : std_logic_vector(bits-1 downto 0);
-    variable result  : t_opa_matrix(x'range(1), x'range(2));
+    variable row     : std_logic_vector(c_max_wide-1 downto 0);
+    variable unit    : std_logic_vector(c_max_units downto 0);
+    variable recurse : t_opa_matrix(x'range(1), c_max_wide-1 downto 0) := (others => (others => '0'));
+    variable result  : t_opa_matrix(x'range(1), c_max_units  downto 0) := (others => (others => '0'));
   begin
-    -- Base case
-    if step >= x'length(1) then return x; end if;
+    assert (step < x'length(1)) report "incorrect invocation" severity failure;
     for i in x'range(1) loop
       chunk := (others => '0');
       for j in 0 to c_parts-1 loop
         if i - j*step >= x'low(1) then
-          for b in 0 to bits-1 loop
-            chunk(j*bits+b) := x(i-j*step,b);
+          for b in 0 to c_bits-1 loop
+            chunk(j*c_bits+b) := x(i-j*step,b);
           end loop;
         end if;
       end loop;
-      row := f_combine(bits, chunk);
-      for b in x'range(2) loop
-        result(i, b) := row(b);
+      row  := f_combine(c_bits, chunk);
+      unit := f_combine_decode(num_unit, chunk);
+      for b in row'range loop
+        recurse(i, b) := row(b);
+      end loop;
+      for b in unit'range loop
+        result(i, b) := unit(b);
       end loop;
     end loop;
-    -- Recurively divide
-    return f_satadd_step(bits, c_parts*step, result);
+    if c_parts*step >= x'length(1) then
+      return result;
+    else
+      return f_satadd_step(num_unit, c_parts*step, recurse);
+    end if;
   end f_satadd_step;
   
-  function f_satadd(bits : natural; x : std_logic_vector) return t_opa_matrix is
-    variable chunk  : std_logic_vector(c_lut_wide-1 downto 0);
-    variable row    : std_logic_vector(bits-1 downto 0);
-    variable result : t_opa_matrix(x'range(1), bits-1 downto 0);
+  function f_satadd(num_unit : natural; x : std_logic_vector) return t_opa_matrix is
+    constant c_bits  : natural := f_opa_log2(num_unit+1);
+    variable chunk   : std_logic_vector(c_lut_wide-1 downto 0);
+    variable row     : std_logic_vector(c_max_wide-1 downto 0);
+    variable unit    : std_logic_vector(c_max_units downto 0);
+    variable recurse : t_opa_matrix(x'range(1), c_max_wide-1 downto 0) := (others => (others => '0'));
+    variable result  : t_opa_matrix(x'range(1), c_max_units  downto 0) := (others => (others => '0'));
   begin
     for i in x'range(1) loop
       chunk := (others => '0');
@@ -196,152 +252,105 @@ architecture rtl of opa_arbitrate is
           chunk(j) := x(i-j);
         end if;
       end loop;
-      row := f_compress(bits, chunk);
+      row  := f_compress(c_bits, chunk);
+      unit := f_compress_decode(num_unit, chunk);
       for b in row'range loop
-        result(i, b) := row(b);
+        recurse(i, b) := row(b);
+      end loop;
+      for b in unit'range loop
+        result(i, b) := unit(b);
       end loop;
     end loop;
-    return f_satadd_step(bits, c_lut_wide, result);
+    if c_lut_wide >= x'length(1) then
+      return result;
+    else
+      return f_satadd_step(num_unit, c_lut_wide, recurse);
+    end if;
   end f_satadd;
   
-  function f_satadd_pad(bits : natural; x : std_logic_vector) return t_opa_matrix is
-    variable proper : t_opa_matrix(x'range(1), bits-1 downto 0);
-    variable result : t_opa_matrix(x'range(1), c_max_wide-1 downto 0) := (others => (others => '0'));
+  function f_shift(x : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'range(2));
   begin
-    proper := f_satadd(bits, x);
-    for i in proper'range(1) loop
-      for j in proper'range(2) loop
-        result(i,j) := proper(i,j);
+    for i in x'range(1) loop
+      for j in x'range(2) loop
+        if i = x'low(1) then
+          result(i,j) := f_opa_bit(j = 0);
+        else
+          result(i,j) := x(i-1,j);
+        end if;
       end loop;
     end loop;
     return result;
-  end f_satadd_pad;
+  end f_shift;
   
   ---------------------------------------------------------------------------------------
   
-  -- Leave only the u^th bit set
-  function f_select(x : std_logic_vector; y : t_opa_matrix; u : natural) return std_logic_vector is
-    constant unit : std_logic_vector(y'range(2)) := std_logic_vector(to_unsigned(u, y'length(2)));
-    variable result : std_logic_vector(x'range);
-  begin
-    assert (x'low  = y'low(1))  report "vector-matrix dimension mismatch" severity failure;
-    assert (x'high = y'high(1)) report "vector-matrix dimension mismatch" severity failure;
-    for i in result'range loop
-      if i <= y'low(1) then
-        result(i) := x(i) and f_opa_bit(u = 0);
-      else
-        result(i) := x(i) and f_opa_bit(f_opa_select_row(y, i-1) = unit);
-      end if;
-    end loop;
-    return result;
-  end f_select;
-  
-  constant c_use_rom  : boolean := c_num_issue < 30 and 2**c_num_issue <= g_target.max_rom;
-  constant c_rom_wide : natural := f_opa_choose(c_use_rom, c_num_issue, c_lut_wide);
   constant c_wait_pad : std_logic_vector(c_num_wait-1 downto 0) := (others => '0');
   
-  -- For every input: (stb,stat) (stb,stat) * max_typ
-  type t_arbitrate_rom is array(2**c_rom_wide-1 downto 0) of std_logic_vector(c_max_units*(1+c_stat_wide)-1 downto 0);
-  function f_arbitrate_table return t_arbitrate_rom is
-    variable result   : t_arbitrate_rom;
-    variable row      : std_logic_vector(c_num_stat-1 downto c_num_wait);
-    variable satadd   : t_opa_matrix(row'range, c_max_wide-1 downto 0);
-    variable schedule : std_logic_vector(row'range);
-    variable stb      : std_logic;
-    variable index    : std_logic_vector(c_stat_wide-1 downto 0);
-  begin
-    for i in result'range(1) loop
-      row := std_logic_vector(to_unsigned(i, row'length));
-      satadd := f_satadd_pad(f_opa_log2(c_max_units+1), row);
-      for u in 0 to c_max_units-1 loop
-        schedule := f_select(row, satadd, u);
-        stb      := f_opa_or(schedule);
-        index    := f_opa_1hot_dec(schedule & c_wait_pad);
-        
-        result(i)(u*(1+c_stat_wide)) := stb;
-        for b in index'range loop
-          result(i)(u*(1+c_stat_wide)+b+1) := index(b);
-        end loop;
-      end loop;
-    end loop;
-    return result;
-  end f_arbitrate_table;
-  constant c_arbitrate_rom : t_arbitrate_rom := f_arbitrate_table;
-  
-  ---------------------------------------------------------------------------------------
-  
-  type t_satadd   is array(c_types-1 downto 0) of t_opa_matrix(c_num_stat-1 downto c_num_wait, c_max_wide-1 downto 0);
+  type t_satadd   is array(c_types-1 downto 0) of t_opa_matrix(c_num_stat-1 downto c_num_wait, c_max_units downto 0);
   type t_schedule is array(c_executers-1 downto 0) of std_logic_vector(c_num_stat-1 downto c_num_wait);
-  type t_stat     is array(c_executers-1 downto 0) of std_logic_vector(c_stat_wide-1 downto 0);
-  type t_rom      is array(c_types-1 downto 0) of std_logic_vector(c_max_units*(1+c_stat_wide)-1 downto 0);
   
-  signal s_satadd   : t_satadd;
-  signal s_schedule : t_schedule;
-  signal r_stat     : t_stat;
-  signal r_rom      : t_rom;
+  signal s_satadd     : t_satadd;
+  signal s_schedule   : t_schedule;
+  signal s_pending    : t_opa_matrix(c_num_stat-1 downto c_num_wait, c_types-1 downto 0);
+  signal s_finish_ieu : std_logic_vector(f_opa_num_stat(g_config)-1 downto f_opa_num_wait(g_config));
+  signal s_finish_x   : std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
   
 begin
 
   check_width :
-    assert (f_opa_log2(c_max_units+1) <= c_max_wide)
+    assert (f_opa_max_units(g_config) <= c_max_units)
     report "More units of a single type than supported"
     severity failure;
-
-  ---------------------------------------------------------------------------------------
-  -- Non-ROM implementation
-  combinational : if not c_use_rom generate
-    typ : for t in 0 to c_types-1 generate
-      exists : if f_opa_unit_count(g_config, t) > 0 generate
-        s_satadd(t) <= 
-          f_satadd_pad(f_opa_log2(f_opa_unit_count(g_config, t)+1), 
-                  f_opa_select_col(pending_i, t));
-      end generate;
+  
+  -- Stop synthesis tools from breaking the circuit I built
+  -- The issue critical path was carefully hand-crafted
+  pending : for i in c_num_wait to c_num_stat-1 generate
+    types : for t in 0 to c_types-1 generate
+      lcell : opa_lcell
+        port map(
+          a_i => pending_i(i,t),
+          b_o => s_pending(i,t));
     end generate;
-    
-    eus2 : for u in 0 to c_executers-1 generate
-      s_schedule(u) <= f_select(
-        f_opa_select_col(pending_i, f_opa_unit_type(g_config, u)), 
-        s_satadd(f_opa_unit_type(g_config, u)), 
-        f_opa_unit_index(g_config, u));
-      
-      bits : for b in 0 to c_stat_wide-1 generate
-        stat_o(u,b) <= r_stat(u)(b);
-      end generate;
-    end generate;
-    
-    decode : process(clk_i) is
-    begin
-      if rising_edge(clk_i) then
-        for u in 0 to c_executers-1 loop
-          r_stat(u) <= f_opa_1hot_dec(s_schedule(u) & c_wait_pad);
-          stb_o(u)  <= f_opa_or(s_schedule(u));
-        end loop;
-      end if;
-    end process;
   end generate;
   
-  ---------------------------------------------------------------------------------------
-  -- ROM implementation
-  rom : if c_use_rom generate
-  
-    main : process(clk_i) is
-    begin
-      if rising_edge(clk_i) then
-        for t in 0 to c_types-1 loop
-          r_rom(t) <= c_arbitrate_rom(to_integer(unsigned(f_opa_select_col(pending_i, t))));
-        end loop;
-      end if;
-    end process;
-    
-    mapit : for u in 0 to c_executers-1 generate
-      stb_o(u) <= r_rom(f_opa_unit_type(g_config, u))
-                       (f_opa_unit_index(g_config, u)*(1+c_stat_wide));
-      bits  : for b in 0 to c_stat_wide-1 generate
-        stat_o(u,b) <= r_rom(f_opa_unit_type(g_config, u))
-                            (f_opa_unit_index(g_config, u)*(1+c_stat_wide)+b+1);
-      end generate;
-    end generate;
-  
+  finish : for i in 0 to c_num_stat-1 generate
+    lcell : opa_lcell
+      port map(
+        a_i => finish_i(i),
+        b_o => s_finish_x(i));
   end generate;
-
+  
+  satadd : for t in 0 to c_types-1 generate
+    exists : if f_opa_unit_count(g_config, t) > 0 generate
+      s_satadd(t) <= 
+        f_shift(f_satadd(
+          f_opa_unit_count(g_config, t), 
+          f_opa_select_col(s_pending, t)));
+    end generate;
+  end generate;
+  
+  schedule : for u in 0 to c_executers-1 generate
+    s_schedule(u) <=
+      f_opa_select_col(s_satadd(f_opa_unit_type(g_config, u)), f_opa_unit_index(g_config, u))
+      and f_opa_select_col(s_pending, f_opa_unit_type(g_config, u));
+  end generate;
+  
+  -- Only the IEU type finishes in one cycle
+  s_finish_ieu <= 
+    f_opa_select_col(s_satadd(c_type_ieu), f_opa_unit_count(g_config, c_type_ieu))
+    and f_opa_select_col(s_pending, c_type_ieu);
+  
+  main : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      finish_o <= s_finish_x or (s_finish_ieu & c_wait_pad);
+      for u in 0 to c_executers-1 loop
+        for b in c_num_wait to c_num_stat-1 loop
+          issue_o(u,b) <= s_schedule(u)(b);
+        end loop;
+      end loop;
+    end if;
+  end process;
+  
 end rtl;

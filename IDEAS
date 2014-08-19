@@ -1,17 +1,4 @@
-issue - use the r_stat[ab] to MUX the result of scheduling
-  scheduling then reports 1hot, saving the level of ORs
-    ... can use s_pending(i) as load enable for "0" into r_schedule
-    => 18 stations arbitrated to a register in exactly 2 levels
-  scheduling reports per-unit selection AND a "<=#units" selection for s_ready
-  this would make s_ready independent of the # of EUs (only on # types)
-
-issue - if none of that makes it fast enough, add a pipeline stage
-  the only absolute requirements are:
-    the feedback from ready=>ready is 1 cycle
-    the feedback from issued<=>pending is 1 cycle
-  ... can thus decouple the "ready" stage and the "schedule" stage
-  => increases the MINIMUM latency to 2 (for adders/etc)
-  ... is a last resort!
+regfile - use load-enable to mux between bypass/memory
 
 renamer - if optimizing copies: leave them in place for commit to see
 

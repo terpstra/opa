@@ -60,10 +60,6 @@ end opa_issue;
 
 architecture rtl of opa_issue is
 
-  -- Quartus 11+ likes to replace my registers with a pointless FIFO. Stop it.
-  attribute altera_attribute : string; 
-  attribute altera_attribute of rtl : architecture is "-name AUTO_SHIFT_REGISTER_RECOGNITION OFF";
-  
   constant c_num_issue : natural := f_opa_num_issue(g_config);
   constant c_num_wait  : natural := f_opa_num_wait (g_config);
   constant c_num_stat  : natural := f_opa_num_stat (g_config);
@@ -74,11 +70,12 @@ architecture rtl of opa_issue is
   constant c_decoders  : natural := f_opa_decoders (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   
-  constant c_decoder_zeros : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
-  constant c_all_stat_labels       : t_opa_matrix := f_opa_labels(c_num_stat);
-  constant c_all_stat_shift_labels : t_opa_matrix := f_opa_labels(c_num_stat,  c_stat_wide, c_decoders);
-  constant c_iss_stat_labels       : t_opa_matrix := f_opa_labels(c_num_issue, c_stat_wide, c_num_wait);
-  constant c_iss_stat_shift_labels : t_opa_matrix := f_opa_labels(c_num_issue, c_stat_wide, c_num_wait+c_decoders);
+  constant c_decoder_zeros : std_logic_vector(c_decoders -1 downto 0) := (others => '0');
+  constant c_execute_ones  : std_logic_vector(c_executers-1 downto 0) := (others => '1');
+  constant c_wait_zeros    : std_logic_vector(c_num_wait -1 downto 0) := (others => '0');
+  constant c_stat_ones     : std_logic_vector(c_num_stat -1 downto c_num_wait) := (others => '1');
+  constant c_stat_labels       : t_opa_matrix := f_opa_labels(c_num_stat);
+  constant c_stat_shift_labels : t_opa_matrix := f_opa_labels(c_num_stat,  c_stat_wide, c_decoders);
 
   signal s_stall      : std_logic;
   signal s_shift      : std_logic;
@@ -100,12 +97,13 @@ architecture rtl of opa_issue is
   signal r_statb      : t_opa_matrix(c_num_stat-1 downto c_num_wait, c_stat_wide-1 downto 0);
   signal r_typ        : t_opa_matrix(c_num_stat-1 downto c_num_wait, c_types    -1 downto 0);
   signal r_setx       : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_archx      : t_opa_matrix(c_num_stat-1 downto 0, c_arch_wide-1 downto 0);
-  signal r_aux        : t_opa_matrix(c_num_stat-1 downto 0, c_aux_wide -1 downto 0); -- has gaps from 0-c_num_wait
-  signal r_baka       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0); -- has gaps from 0-c_num_wait
-  signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0); -- has gaps from 0-c_num_wait
-  signal r_bakx0      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
-  signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
+  signal r_archx      : t_opa_matrix(c_num_stat-1 downto          0, c_arch_wide-1 downto 0);
+  signal r_aux        : t_opa_matrix(c_num_stat-1 downto c_num_wait, c_aux_wide -1 downto 0);
+  signal r_baka       : t_opa_matrix(c_num_stat-1 downto c_num_wait, c_back_wide-1 downto 0);
+  signal r_bakb       : t_opa_matrix(c_num_stat-1 downto c_num_wait, c_back_wide-1 downto 0);
+  signal r_bakx0      : t_opa_matrix(c_num_stat-1 downto          0, c_back_wide-1 downto 0);
+  signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto          0, c_back_wide-1 downto 0);
+  signal s_bakx1      : t_opa_matrix(c_num_stat-1 downto c_num_wait, c_back_wide-1 downto 0);
   
   type t_stat is array(c_num_stat-1 downto c_num_wait) of unsigned(c_stat_wide-1 downto 0);
   signal s_stata_1    : t_stat;
@@ -151,13 +149,16 @@ architecture rtl of opa_issue is
   signal s_new_statb  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
   
   -- Intermediate expressions
+  signal s_now_issued : std_logic_vector(c_num_stat-1 downto c_num_wait);
+  signal s_now_shift  : std_logic_vector(c_num_stat-1 downto c_num_wait);
   signal s_pending    : t_opa_matrix(c_num_stat -1 downto c_num_wait, c_types    -1 downto 0);
-  signal s_matchi     : t_opa_matrix(c_num_stat -1 downto c_num_wait, c_executers-1 downto 0);
   signal s_matchd     : t_opa_matrix(c_num_stat -1 downto          0, c_executers-1 downto 0);
   signal s_matchn_a   : t_opa_matrix(c_decoders -1 downto 0, c_num_stat -1 downto 0);
   signal s_matchn_b   : t_opa_matrix(c_decoders -1 downto 0, c_num_stat -1 downto 0);
-  signal s_issue_stat : t_opa_matrix(c_executers-1 downto 0, c_stat_wide-1 downto 0);
-  signal s_issue_stb  : std_logic_vector(c_executers-1 downto 0);
+  signal r_now_issue  : t_opa_matrix(c_executers-1 downto 0, c_num_stat -1 downto c_num_wait);
+  signal r_now_finish : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_now_finish : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_eu_finish  : std_logic_vector(c_num_stat-1 downto 0);
   signal s_was_readya : std_logic_vector(c_decoders-1 downto 0);
   signal s_was_readyb : std_logic_vector(c_decoders-1 downto 0);
   
@@ -175,40 +176,43 @@ begin
       clk_i     => clk_i,
       rst_n_i   => rst_n_i,
       pending_i => s_pending,
-      stb_o     => s_issue_stb,
-      stat_o    => s_issue_stat); -- !!! passing wrong labels for LSB; must do in-order
-    -- 1 M10K deep (M)
+      issue_o   => r_now_issue,
+      finish_i  => s_eu_finish,
+      finish_o  => r_now_finish);
+   -- 5 levels for <= 12 num_issue (3 pending + 2 arbitrate)
   
   -- Which stations are now issued?
-  -- s_stat has old numbering, so may decrement to match new indexes
-  s_matchi <= f_opa_match(c_iss_stat_labels,       s_issue_stat) when r_shift='0' else
-              f_opa_match(c_iss_stat_shift_labels, s_issue_stat);
-    -- 1+M levels with <= 16 stations (4stat+1shift)
-  s_issued <= f_opa_product(s_matchi, s_issue_stb) or r_issued;
-    -- 2+M levels with <= 5 EUs
-    -- AND_EU [4 index 1 shift 1 stb]
+  -- r_now_issue has old numbering, so may decrement to match new indexes
+  s_now_issued <= f_opa_product(f_opa_transpose(r_now_issue), c_execute_ones);
+  s_now_shift  <= s_now_issued when r_shift='0' else (c_decoder_zeros & s_now_issued(c_num_stat-1 downto c_num_wait+c_decoders));
+  s_issued     <= r_issued or s_now_shift;
+    -- 2 levels with <= 12 EUs
+    -- ... could be reduced to 1 by giving type-based issue info (in addition to unit based)
   
   -- Pass the stations we issue through the EU schedulers
   eu_shift_o <= r_shift;
-  eu_stb_o   <= s_issue_stb;
-  eu_stat_o  <= s_issue_stat;
+  eu_stb_o   <= f_opa_product(r_now_issue, c_stat_ones);
+  eu_stat_o  <= f_opa_1hot_dec(f_opa_concat(r_now_issue, f_opa_dup_row(c_executers, c_wait_zeros)));
+    -- 2 levels for 36 stations
 
   -- Which stations are done or killed?
   -- eu_stat_i has old numbering, so may decrement to match new indexes
-  s_matchd <= f_opa_match(c_all_stat_labels,       eu_stat_i) when r_shift='0' else
-              f_opa_match(c_all_stat_shift_labels, eu_stat_i);
-    -- 1+M levels with <= 16 stations (4stat+1shift)
-  s_done   <= f_opa_product(s_matchd, eu_stb_i)  or r_done;
-  s_killed <= f_opa_product(s_matchd, eu_kill_i) or r_killed;
-    -- 2+M levels with <= 5 EUs
+  s_matchd <= f_opa_match(c_stat_labels,       eu_stat_i) when r_shift='0' else
+              f_opa_match(c_stat_shift_labels, eu_stat_i);
+    -- 1 level with <= 16 stations (4stat+1shift)
+  s_eu_finish <= f_opa_product(s_matchd, eu_stb_i);
+    -- 2 levels with <= 5 EUs
     -- AND_EU [4 index 1 shift 1 stb/kill]
+  s_now_finish <= r_now_finish when r_shift='0' else (c_decoder_zeros & r_now_finish(c_num_stat-1 downto c_decoders));
+  s_done   <= r_done or s_now_finish;
+    -- 1 level
+  s_killed <= f_opa_product(s_matchd, eu_kill_i) or r_killed;
   
   -- Which stations become ready?
   -- r_stat[ab] references lag by 1-cycle (content-wise), but are accurate (index-wise)
-  s_readya <= f_opa_product(f_opa_match(r_stata, eu_stat_i), eu_stb_i) or r_readya;
-  s_readyb <= f_opa_product(f_opa_match(r_statb, eu_stat_i), eu_stb_i) or r_readyb;
-     -- 2+M levels with <= 3 EUs and <= 32 stations
-     -- AND_EU [(3=3) and (2=2 and stb)]
+  s_readya <= r_readya or f_opa_compose(r_now_finish, r_stata);
+  s_readyb <= r_readyb or f_opa_compose(r_now_finish, r_statb);
+     -- 2 levels with <= 16 stations
   
   -- Which stations are pending issue?
   pending : for t in 0 to c_types-1 generate
@@ -218,31 +222,24 @@ begin
         not s_issued(s) and r_typ(s,t);
     end generate;
   end generate;
-    -- 3+M levels (s_issued and s_ready[ab] have 2+M depth)
+    -- 3 levels (s_issued and s_ready[ab] have 2 depth)
   
   -- Which registers does each EU need to use?
   -- r_bak[abx], r_aux shifted one cycle later, so s_stat has correct index
-  regfile_stb_o  <= s_issue_stb;
-  regfile_bakx_o <= f_opa_compose(r_bakx1, s_issue_stat);
-  regfile_baka_o <= f_opa_compose(r_baka,  s_issue_stat);
-  regfile_bakb_o <= f_opa_compose(r_bakb,  s_issue_stat);
-  regfile_aux_o  <= f_opa_compose(r_aux,   s_issue_stat);
-    -- 2+M levels with stations <= 16 (2-layers of 4:1 mux)
-
-  -- Note: we only have these indexes defined to appease modelsim in the f_opa_compose above
-  -- I explicitly drive these so I get a compiler error if anything else does too
-  fill_gaps : if c_num_wait > 0 generate
-    gaps : for i in 0 to c_num_wait-1 generate
-      aux : for b in 0 to c_aux_wide-1 generate
-        r_aux(i, b) <= '-';
-      end generate;
-      stat : for b in 0 to c_back_wide-1 generate
-        r_baka(i, b) <= '-';
-        r_bakb(i, b) <= '-';
-      end generate;
-    end generate;
-  end generate;  
+  regfile_stb_o  <= f_opa_product(r_now_issue, c_stat_ones);
+  regfile_bakx_o <= f_opa_product(r_now_issue, s_bakx1);
+  regfile_baka_o <= f_opa_product(r_now_issue, r_baka);
+  regfile_bakb_o <= f_opa_product(r_now_issue, r_bakb);
+  regfile_aux_o  <= f_opa_product(r_now_issue, r_aux);
+    -- 2 levels with stations <= 18
   
+  -- Submatrix for regfile product
+  bakx1 : for i in c_num_wait to c_num_stat-1 generate
+    bits : for b in 0 to c_back_wide-1 generate
+      s_bakx1(i,b) <= r_bakx1(i,b);
+    end generate;
+  end generate;
+
   -- Determine if the execution window should be shifted
   s_stall <= not
     (f_opa_and(s_done(c_decoders-1 downto 0)) and
@@ -250,8 +247,7 @@ begin
       f_opa_and(s_issued(c_decoders+c_num_wait-1 downto c_num_wait))));
   s_shift <= fetch_stb_i and not s_stall;
   fetch_stall_o <= s_stall or not rst_n_i;
-    -- 1+2+M level with decoders <= 2 (or 5 if num_wait=0)
-    -- goal is to free up the station the moment it's been muxed out to regfile
+    -- 2 levels with decoders <= 2
   
   -- Prepare decremented versions of the station references
   statrefs : for i in c_num_wait to c_num_stat-1 generate
@@ -289,19 +285,18 @@ begin
   -- Decode to what the new station depends on
   s_new_stata <= f_opa_1hot_dec(s_matchn_a) or r_mux_stata;
   s_new_statb <= f_opa_1hot_dec(s_matchn_b) or r_mux_statb;
-    -- 3 levels with <= 30 stations (5x3:1 decode of [(3=3) and (2=2)])
-    -- 2 levels with <=  8 stations (  4:1 decode of [(3=3)])
+    -- 3 levels with <= 30 stations (5x3:1 decode of [(3=3) and (3=3)])
   
   -- The nots ensure no match = ready
-  s_not_done <= not s_done;
+  s_not_done <= not s_done; -- 1 level
   s_was_readya <= not f_opa_product(s_matchn_a, s_not_done);
   s_was_readyb <= not f_opa_product(s_matchn_b, s_not_done);
+    -- 3 levels with <= 12 stations (6x2:1 OR of [(3=3) and (3=3) and stb])
   
   -- Consider mitigating factor for readiness
   s_new_readya <= not r_mux_geta or (not r_mux_confa and s_was_readya);
   s_new_readyb <= not r_mux_getb or (not r_mux_confb and s_was_readyb);
-    -- 5+M
-    -- critical path, but fortunately only c_decoders registers!
+    -- 4 levels for 48 stations (4* OR from s_was_readya)
   
   -- Register the inputs with reset, with clock enable
   rename_in_rc : process(clk_i, rst_n_i) is

@@ -54,9 +54,10 @@ architecture rtl of opa_ieu is
 begin
 
   -- Everything we do has latency=1
-  issue_stb_o  <= issue_stb_i;
-  issue_stat_o <= issue_stat_i;
+  issue_stb_o  <= '0';
+  issue_stat_o <= (others => '-');
   issue_kill_o <= '0';
+  -- !!! need to have {done,kill}_{stb,stat}
   
   regfile_stb_o  <= regfile_stb_i;
   regfile_bakx_o <= regfile_bakx_i;
