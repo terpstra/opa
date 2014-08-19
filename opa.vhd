@@ -344,8 +344,6 @@ begin
     end generate;
   end generate;
   
-  -- !!! FP
-  
   good_o <= s_regfile_eu_rega(0)(c_reg_wide-1);
 
 end rtl;

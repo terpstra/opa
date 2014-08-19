@@ -13,24 +13,24 @@ package opa_pkg is
     num_wait   : natural; -- # of reservation stations used for commit
     num_ieu    : natural; -- # of IEUs (logic, add/sub, ...)
     num_mul    : natural; -- # of *independant* multipliers (mulhi, mullo, <<, >>, rol, ...)
-    num_fp     : natural; -- # of floating point units
+    ieee_fp    : boolean; -- Floating point support (in mul units)
   end record;
   
   -- target modern FPGAs with 6-input LUTs
   -- 16-bit processor, 1-issue,  6+2 stations, 2 EU
-  constant c_opa_tiny  : t_opa_config := ( 4, 4, 1,  6, 2, 1, 0, 0);
+  constant c_opa_tiny  : t_opa_config := ( 4, 4, 1,  6, 2, 1, 0, false);
   
   -- 32-bit processor, 2-issue,  6+2 stations, 2 EU
-  constant c_opa_small : t_opa_config := ( 4, 5, 2,  6, 2, 1, 0, 0);
+  constant c_opa_small : t_opa_config := ( 4, 5, 2,  6, 2, 1, 0, false);
   
-  -- 32-bit processor, 2-issue,  6+4 stations, 3 EU
-  constant c_opa_mid   : t_opa_config := ( 4, 5, 2,  6, 4, 2, 0, 0);
+  -- 32-bit processor, 2-issue, 12+4 stations, 3 EU
+  constant c_opa_mid   : t_opa_config := ( 4, 5, 2, 12, 4, 2, 1, true);
   
-  -- 64-bit processor, 4-issue, 12+8 stations, 5 EU
-  constant c_opa_large : t_opa_config := ( 4, 6, 4, 12, 8, 2, 1, 1);
+  -- 64-bit processor, 2-issue, 12+4 stations, 4 EU
+  constant c_opa_large : t_opa_config := ( 4, 6, 2, 12, 4, 2, 1, true);
   
   -- 64-bit processor, 4-issue, 24+8 stations, 8 EU
-  constant c_opa_huge  : t_opa_config := ( 4, 6, 4, 24, 8, 3, 2, 2);
+  constant c_opa_huge  : t_opa_config := ( 4, 6, 4, 64, 0, 3, 2, true);
   
   type t_opa_target is record
     lut_width  : natural; -- How many inputs to combine at once

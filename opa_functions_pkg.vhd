@@ -18,8 +18,7 @@ package opa_functions_pkg is
   constant c_type_lsb   : natural := 0; -- load/store/branch + (mul/shift)
   constant c_type_ieu   : natural := 1; -- logic/add/compare
   constant c_type_mul   : natural := 2; -- mul/shift
-  constant c_type_fp    : natural := 3; -- floating point
-  constant c_types      : natural := 4;
+  constant c_types      : natural := 3;
   constant c_aux_wide   : natural := 10;
   
   -- Decode config into useful values
@@ -45,7 +44,6 @@ package opa_functions_pkg is
   function f_opa_lsb_index(conf : t_opa_config)              return natural;
   function f_opa_ieu_index(conf : t_opa_config; u : natural) return natural;
   function f_opa_mul_index(conf : t_opa_config; u : natural) return natural;
-  function f_opa_fp_index(conf : t_opa_config; u : natural) return natural;
 
   type t_opa_matrix is array(natural range <>, natural range <>) of std_logic;
   
@@ -129,7 +127,7 @@ package body opa_functions_pkg is
   
   function f_opa_executers(conf : t_opa_config) return natural is
   begin
-    return conf.num_ieu + 1 + conf.num_mul + conf.num_fp;
+    return conf.num_ieu + 1 + conf.num_mul;
   end f_opa_executers;
   
   function f_opa_num_issue(conf : t_opa_config) return natural is
@@ -187,7 +185,7 @@ package body opa_functions_pkg is
   
   function f_opa_support_fp(conf : t_opa_config) return boolean is
   begin
-    return conf.num_fp /= 0;
+    return conf.ieee_fp;
   end f_opa_support_fp;
   
   function f_opa_max_units(conf : t_opa_config) return natural is
@@ -195,7 +193,6 @@ package body opa_functions_pkg is
   begin
     if conf.num_ieu > max then max := conf.num_ieu; end if;
     if conf.num_mul > max then max := conf.num_mul; end if;
-    if conf.num_fp  > max then max := conf.num_fp;  end if;
     return max;
   end f_opa_max_units;
    
@@ -203,11 +200,9 @@ package body opa_functions_pkg is
     constant c_lsb   : natural := 0;
     constant c_ieu   : natural := c_lsb + 1;
     constant c_mul   : natural := c_ieu + conf.num_ieu;
-    constant c_fp    : natural := c_mul + conf.num_mul;
-    constant c_end   : natural := c_fp  + conf.num_fp;
+    constant c_end   : natural := c_mul + conf.num_mul;
   begin
     assert (u < c_end) report "impossible unit type" severity failure;
-    if u >= c_fp  then return c_type_fp;  end if;
     if u >= c_mul then return c_type_mul; end if;
     if u >= c_ieu then return c_type_ieu; end if;
     if u >= c_lsb then return c_type_lsb; end if;
@@ -219,11 +214,9 @@ package body opa_functions_pkg is
     constant c_lsb   : natural := 0;
     constant c_ieu   : natural := c_lsb + 1;
     constant c_mul   : natural := c_ieu + conf.num_ieu;
-    constant c_fp    : natural := c_mul + conf.num_mul;
-    constant c_end   : natural := c_fp  + conf.num_fp;
+    constant c_end   : natural := c_mul + conf.num_mul;
   begin
     assert (u < c_end) report "impossible unit type" severity failure;
-    if u >= c_fp  then return u-c_fp;  end if;
     if u >= c_mul then return u-c_mul; end if;
     if u >= c_ieu then return u-c_ieu; end if;
     if u >= c_lsb then return u-c_lsb; end if;
@@ -236,7 +229,6 @@ package body opa_functions_pkg is
     if t = c_type_lsb then return 1;            end if;
     if t = c_type_ieu then return conf.num_ieu; end if;
     if t = c_type_mul then return conf.num_mul; end if;
-    if t = c_type_fp  then return conf.num_fp;  end if;
     assert (false) report "invalid unti type" severity failure;
     return 0;
   end f_opa_unit_count;
@@ -255,11 +247,6 @@ package body opa_functions_pkg is
   begin
     return u + 1 + conf.num_ieu;
   end f_opa_mul_index;
-  
-  function f_opa_fp_index(conf : t_opa_config; u : natural) return natural is
-  begin
-    return u + 1 + conf.num_ieu + conf.num_mul;
-  end f_opa_fp_index;
   
   --------------------------------------------------------------------------------------
   
