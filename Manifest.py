@@ -14,6 +14,7 @@ files = [
  "opa_regfile.vhd",
  "opa_ieu.vhd",
  "opa_mul.vhd",
+ "opa_ls.vhd",
  "opa.vhd",
  "opa_core_tb.vhd",
  "opa_sim_tb.vhd",

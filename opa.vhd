@@ -285,8 +285,7 @@ begin
     end generate;
   end generate;
   
-  -- !!! LSB should be here
-  lsb : opa_mul
+  lsb : opa_ls
     generic map(
       g_config => g_config,
       g_target => g_target)
@@ -306,7 +305,16 @@ begin
       regfile_aux_i  => s_regfile_eu_aux(f_opa_ls_index(g_config)),
       regfile_stb_o  => eu_regfile_stb(f_opa_ls_index(g_config)),
       regfile_bakx_o => s_eu_regfile_bakx(f_opa_ls_index(g_config)),
-      regfile_regx_o => s_eu_regfile_regx(f_opa_ls_index(g_config)));
+      regfile_regx_o => s_eu_regfile_regx(f_opa_ls_index(g_config)),
+      d_stb_o        => d_stb_o,
+      d_we_o         => d_we_o,
+      d_stall_i      => d_stall_i,
+      d_ack_i        => d_ack_i,
+      d_err_i        => d_err_i,
+      d_addr_o       => d_addr_o,
+      d_sel_o        => d_sel_o,
+      d_data_o       => d_data_o,
+      d_data_i       => d_data_i);
   
   ieus : for i in 0 to g_config.num_ieu-1 generate
     ieu : opa_ieu
