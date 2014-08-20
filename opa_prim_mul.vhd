@@ -7,8 +7,7 @@ use work.opa_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
--- Used to implement FP and integer adders
--- Pipeline depth is always 3                       
+-- Used to implement FP and integer multipliers
 entity opa_prim_mul is
   generic(
     g_wide   : natural;
