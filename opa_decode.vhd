@@ -97,13 +97,13 @@ architecture rtl of opa_decode is
       when T_ADDER => y := c_type_ieu;
       when T_LOGIC => y := c_type_ieu;
       when T_MUL   => 
-        if f_opa_lsb_does_mul(g_config) then
-          y := c_type_lsb;
+        if f_opa_ls_does_mul(g_config) then
+          y := c_type_ls;
         else
           y := c_type_mul;
         end if;
-      when T_LOAD  => y := c_type_lsb;
-      when T_STORE => y := c_type_lsb;
+      when T_LOAD  => y := c_type_ls;
+      when T_STORE => y := c_type_ls;
       when T_NOOP  => y := c_type_ieu;
     end case;
     result(y) := '1';

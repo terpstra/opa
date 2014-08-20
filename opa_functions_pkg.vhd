@@ -15,9 +15,9 @@ package opa_functions_pkg is
   function f_opa_and(x : std_logic_vector) return std_logic;
   
   -- Types of execution units; if you modify, update f_opa_unit_{type,index}
-  constant c_type_lsb   : natural := 0; -- load/store/branch + (mul/shift)
-  constant c_type_ieu   : natural := 1; -- logic/add/compare
-  constant c_type_mul   : natural := 2; -- mul/shift
+  constant c_type_ls    : natural := 0; -- load/store + (mul/shift/fp)
+  constant c_type_ieu   : natural := 1; -- logic/add/compare/branch
+  constant c_type_mul   : natural := 2; -- mul/shift/fp
   constant c_types      : natural := 3;
   constant c_aux_wide   : natural := 10;
   
@@ -35,13 +35,13 @@ package opa_functions_pkg is
   function f_opa_reg_wide (conf : t_opa_config) return natural;
   
   -- Mapping of execution units
-  function f_opa_lsb_does_mul(conf : t_opa_config) return boolean;
+  function f_opa_ls_does_mul(conf : t_opa_config) return boolean;
   function f_opa_support_fp(conf : t_opa_config) return boolean;
   function f_opa_max_units (conf : t_opa_config) return natural;
   function f_opa_unit_type (conf : t_opa_config; u : natural) return natural;
   function f_opa_unit_index(conf : t_opa_config; u : natural) return natural;
   function f_opa_unit_count(conf : t_opa_config; t : natural) return natural;
-  function f_opa_lsb_index(conf : t_opa_config)              return natural;
+  function f_opa_ls_index (conf : t_opa_config)              return natural;
   function f_opa_ieu_index(conf : t_opa_config; u : natural) return natural;
   function f_opa_mul_index(conf : t_opa_config; u : natural) return natural;
 
@@ -178,10 +178,10 @@ package body opa_functions_pkg is
     return 2**conf.log_width;
   end f_opa_reg_wide;
   
-  function f_opa_lsb_does_mul(conf : t_opa_config) return boolean is
+  function f_opa_ls_does_mul(conf : t_opa_config) return boolean is
   begin
     return conf.num_mul = 0;
-  end f_opa_lsb_does_mul;
+  end f_opa_ls_does_mul;
   
   function f_opa_support_fp(conf : t_opa_config) return boolean is
   begin
@@ -197,46 +197,46 @@ package body opa_functions_pkg is
   end f_opa_max_units;
    
   function f_opa_unit_type (conf : t_opa_config; u : natural) return natural is
-    constant c_lsb   : natural := 0;
-    constant c_ieu   : natural := c_lsb + 1;
+    constant c_ls    : natural := 0;
+    constant c_ieu   : natural := c_ls  + 1;
     constant c_mul   : natural := c_ieu + conf.num_ieu;
     constant c_end   : natural := c_mul + conf.num_mul;
   begin
     assert (u < c_end) report "impossible unit type" severity failure;
     if u >= c_mul then return c_type_mul; end if;
     if u >= c_ieu then return c_type_ieu; end if;
-    if u >= c_lsb then return c_type_lsb; end if;
+    if u >= c_ls  then return c_type_ls;  end if;
     assert (false) report "unreachable" severity failure;
     return 0;
   end f_opa_unit_type;
   
   function f_opa_unit_index(conf : t_opa_config; u : natural) return natural is
-    constant c_lsb   : natural := 0;
-    constant c_ieu   : natural := c_lsb + 1;
+    constant c_ls    : natural := 0;
+    constant c_ieu   : natural := c_ls  + 1;
     constant c_mul   : natural := c_ieu + conf.num_ieu;
     constant c_end   : natural := c_mul + conf.num_mul;
   begin
     assert (u < c_end) report "impossible unit type" severity failure;
     if u >= c_mul then return u-c_mul; end if;
     if u >= c_ieu then return u-c_ieu; end if;
-    if u >= c_lsb then return u-c_lsb; end if;
+    if u >= c_ls  then return u-c_ls;  end if;
     assert (false) report "unreachable" severity failure;
     return 0;
   end f_opa_unit_index;
   
   function f_opa_unit_count(conf : t_opa_config; t : natural) return natural is
   begin
-    if t = c_type_lsb then return 1;            end if;
+    if t = c_type_ls  then return 1;            end if;
     if t = c_type_ieu then return conf.num_ieu; end if;
     if t = c_type_mul then return conf.num_mul; end if;
     assert (false) report "invalid unti type" severity failure;
     return 0;
   end f_opa_unit_count;
   
-  function f_opa_lsb_index(conf : t_opa_config) return natural is
+  function f_opa_ls_index(conf : t_opa_config) return natural is
   begin
     return 0;
-  end f_opa_lsb_index;
+  end f_opa_ls_index;
   
   function f_opa_ieu_index(conf : t_opa_config; u : natural) return natural is
   begin

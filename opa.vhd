@@ -19,7 +19,17 @@ entity opa is
     stb_i          : in  std_logic;
     stall_o        : out std_logic;
     data_i         : in  std_logic_vector(g_config.num_decode*c_op_wide-1 downto 0);
-    good_o         : out std_logic);
+    
+    -- Wishbone data bus
+    d_stb_o   : out std_logic;
+    d_we_o    : out std_logic;
+    d_stall_i : in  std_logic;
+    d_ack_i   : in  std_logic;
+    d_err_i   : in  std_logic;
+    d_addr_o  : out std_logic_vector(g_config.da_bits-1 downto 0);
+    d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
+    d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+    d_data_i  : out std_logic_vector(2**g_config.log_width  -1 downto 0));
 end opa;
 
 architecture rtl of opa is
@@ -284,19 +294,19 @@ begin
       clk_i          => clk_i,
       rst_n_i        => rst_n_i,
       issue_shift_i  => issue_eu_shift,
-      issue_stb_i    => issue_eu_stb(f_opa_lsb_index(g_config)),
-      issue_stat_i   => s_issue_eu_stat(f_opa_lsb_index(g_config)),
-      issue_stb_o    => eu_issue_stb(f_opa_lsb_index(g_config)),
-      issue_kill_o   => eu_issue_kill(f_opa_lsb_index(g_config)),
-      issue_stat_o   => s_eu_issue_stat(f_opa_lsb_index(g_config)),
-      regfile_stb_i  => regfile_eu_stb(f_opa_lsb_index(g_config)),
-      regfile_rega_i => s_regfile_eu_rega(f_opa_lsb_index(g_config)),
-      regfile_regb_i => s_regfile_eu_regb(f_opa_lsb_index(g_config)),
-      regfile_bakx_i => s_regfile_eu_bakx(f_opa_lsb_index(g_config)),
-      regfile_aux_i  => s_regfile_eu_aux(f_opa_lsb_index(g_config)),
-      regfile_stb_o  => eu_regfile_stb(f_opa_lsb_index(g_config)),
-      regfile_bakx_o => s_eu_regfile_bakx(f_opa_lsb_index(g_config)),
-      regfile_regx_o => s_eu_regfile_regx(f_opa_lsb_index(g_config)));
+      issue_stb_i    => issue_eu_stb(f_opa_ls_index(g_config)),
+      issue_stat_i   => s_issue_eu_stat(f_opa_ls_index(g_config)),
+      issue_stb_o    => eu_issue_stb(f_opa_ls_index(g_config)),
+      issue_kill_o   => eu_issue_kill(f_opa_ls_index(g_config)),
+      issue_stat_o   => s_eu_issue_stat(f_opa_ls_index(g_config)),
+      regfile_stb_i  => regfile_eu_stb(f_opa_ls_index(g_config)),
+      regfile_rega_i => s_regfile_eu_rega(f_opa_ls_index(g_config)),
+      regfile_regb_i => s_regfile_eu_regb(f_opa_ls_index(g_config)),
+      regfile_bakx_i => s_regfile_eu_bakx(f_opa_ls_index(g_config)),
+      regfile_aux_i  => s_regfile_eu_aux(f_opa_ls_index(g_config)),
+      regfile_stb_o  => eu_regfile_stb(f_opa_ls_index(g_config)),
+      regfile_bakx_o => s_eu_regfile_bakx(f_opa_ls_index(g_config)),
+      regfile_regx_o => s_eu_regfile_regx(f_opa_ls_index(g_config)));
   
   ieus : for i in 0 to g_config.num_ieu-1 generate
     ieu : opa_ieu
@@ -348,6 +358,4 @@ begin
     end generate;
   end generate;
   
-  good_o <= s_regfile_eu_rega(0)(c_reg_wide-1);
-
 end rtl;

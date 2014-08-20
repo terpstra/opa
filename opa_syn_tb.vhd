@@ -49,6 +49,16 @@ architecture rtl of opa_syn_tb is
   signal r_stb   : std_logic;
   signal r_op    : std_logic_vector(c_config.num_decode*16-1 downto 0);
   
+  signal d_stb    : std_logic;
+  signal d_we     : std_logic;
+  signal d_stall  : std_logic;
+  signal d_ack    : std_logic;
+  signal d_err    : std_logic;
+  signal d_addr   : std_logic_vector(31 downto 0);
+  signal d_sel    : std_logic_vector( 3 downto 0);
+  signal d_data_o : std_logic_vector(31 downto 0);
+  signal d_data_i : std_logic_vector(31 downto 0);
+  
 begin
 
   test : process(clk_i, rstn_i) is
@@ -84,14 +94,28 @@ begin
       g_config => c_config,
       g_target => c_opa_cyclone_v)
     port map(
-      clk_i   => clk_i,
-      rst_n_i => rstn_i,
-      stb_i   => r_stb,
-      stall_o => s_stall,
-      data_i  => r_op,
-      good_o  => s_out);
+      clk_i     => clk_i,
+      rst_n_i   => rstn_i,
+      stb_i     => r_stb,
+      stall_o   => s_stall,
+      data_i    => r_op,
+      d_stb_o   => d_stb,
+      d_we_o    => d_we,
+      d_stall_i => d_stall,
+      d_ack_i   => d_ack,
+      d_err_i   => d_err,
+      d_addr_o  => d_addr,
+      d_sel_o   => d_sel,
+      d_data_o  => d_data_o,
+      d_data_i  => d_data_i);
 
-  good_o <= r_out;
+  -- for now:
+  d_data_i <= d_data_o;
+  d_stall  <= '0';
+  d_err    <= '0';
+  d_ack    <= d_stb;
+  
+  good_o <= d_data_o(31);
 
 end rtl;
     
