@@ -1,29 +1,135 @@
 regfile - use load-enable to mux between bypass/memory
-
+regfile - use station aux bits to mux aux ram immediate/PC
 renamer - if optimizing copies: leave them in place for commit to see
 
--- For memory unit (later):
--- B+W are always in-order
--- R is allowed to commute freely, EXCEPT:
--- it may only skip at most 'x' Ws
-
--- Assumption: reads are side-effect free (even on devices!)
--- Write-through cache ... want spills to be hot
--- reads specify if they can be cached and how far they commute
--- ... how does this interact with calling ABI? (callee/caller-saved)
+my goal long-term: ... call parallelism
 
 decode - put aux into MLAB/M9k 
   just a single writer that puts all the stuff in for all ops at once
   put a reference into the renamer
-  just need EU* copies of the memory and pull it 1st step of regfile 
+  just need (1+EU)* copies of the memory and pull it 1st step of regfile+retire
    (must be a register when it reaches EU)
   => can help with using 64-bit wide immediates
 
 ---------------------------------------------------------------------------------------------------------------------
 
 TODO:
+  restructure to include squash and stall
   remove 3D arrays from arbitration
 ----
 memory unit
 fetcher
 branches
+
+---------------------------------------------------------------------------------------------------------------------
+
+
+on write, check previous reads/writes and reissue them
+  just record location of writes + station
+  on read/write, match against buffer
+  kill anything that matches and is larger than self
+   ... keep only hash of address
+  quash tracing: follow stations like on issue
+
+writeback cache? ... makes most sense, really
+  TLB says no caching allowed (for IO; deal with this later)
+  read first, then write => less latency
+  track full bits on a byte-leve;
+  if read bits covered by cache, hit
+   if only partial cover, don't writeback; fill holes instead
+  on writeback, use valid bits for select lines
+
+cache ports:
+  read+write on every operation (set LRU and/or content)
+  written by cache refill
+  ... so no free ports per block;
+  can partition by address to increase # of ports
+    ... detect structural hazard, and then stall!
+    f_h(l) family of one-to-one hash functions
+
+fast(n,1),   slow(m,3)
+add       3  fma    3
+logic     3  shift  3
+compare   3  fp     3
+popcnt?   1  load   2
+immediate 1  store  3
+
+... problem: FP is much slower than other slow ops
+    => two outputs? no. it's +50% memory use! stall somehow? or mux?
+... problem: writes get reissued, even for IO!
+
+fast: no exceptions, can kill (mispredict)
+slow: can stall, can squash (write), can kill (fault)
+BTB updated by retirement
+
+selection of fast/slow based on pending
+selection of LSB based on type alone
+
+2-issue: 1+1 units
+4-issue: 2+2 units
+
+how to prevent writes before branch resolution?
+ don't mark writes as pending if an unresolved branch remains!
+ when a branch finishes, it clears the unresolved branch bit
+ pending includes blocked = NOT (anything unresolved) or NOT write
+
+pending = s_ready[abc] & !s_issued & s_typ
+
+
+issued: 
+result: based on defined scheduling delay => dependants can run
+quash:  reset issued/result (speculation error)
+kill:   all instructions above must die
+final:  no exception generated => can be committed
+commit: combination of final + all dependants are commit
+
+a read can only be in commit state once all prior writes are commit
+
+
+
+do i really need commit?
+  could say all stuff is final+ready => shift
+  the advantage to commit is that it can spread further forward
+  => branches get committed sooner => stores issue sooner
+kind of important! imagine:
+
+loop:
+  load a, p, i
+  store a, r, i
+  addi i, i, 1
+  bne i, n, loop
+
+how does this execute with commit?
+  load add
+  load add bne
+  load add bne
+  load add bne store
+  load add bne store
+  load add bne store
+  load add bne store -- can now commit the 1st store
+
+oof: must be able to fit 7 loop iterations in window. (= 24 window size)
+ => want >=* issue width for window
+
+now, what if we did not have commit? (ie: branch must shifted out before we store)
+  load add
+  load add bne
+  load add bne
+  load add bne store
+  load add bne ... cannot shift out bne yet (store not ready)
+  load add bne
+  load add bne ... 1st store now done => bne gets done
+  load add bne store
+=> basically turns my pipeline into shit
+
+problem:
+  can only commit 1 write/cycle!
+
+
+imagine this:
+  write
+  load  - squashed
+  mul
+  mul
+  write   squashed very late due to mul chain
+  load    gets committed because previous write/load/write look final (mul hides squash)

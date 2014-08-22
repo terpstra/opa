@@ -77,6 +77,36 @@ architecture rtl of opa_issue is
   constant c_stat_labels       : t_opa_matrix := f_opa_labels(c_num_stat);
   constant c_stat_shift_labels : t_opa_matrix := f_opa_labels(c_num_stat,  c_stat_wide, c_decoders);
 
+  -- Instructions have these flags:
+  --   issued: was previously selected by arbitration and not stalled
+  --   ready:  result is available (can issue dependants)    => issued
+  --   final:  will not generate quash|kill                  => ready
+  --   commit: ready to be retired                           => final
+  --   quash:  instruction needs to be reissued
+  --   kill:   must reset the PC
+  --
+  -- Only committed instructions are shifted out of the window.
+  --
+  -- OPA makes heavy use of speculative execution; instructions run opportunistically.
+  -- Thus, it can make these kinds of mistakes:
+  --   A non-final branch can report kill                   (misprediction)
+  --   A non-final ld/st  can report kill                   (page fault)
+  --   A non-final load   can quash itself                  (cache miss)
+  --   A non-final store  can quash following load/stores   (speculative read)
+  -- 
+  -- To maintain program-order, enforce these rules:
+  --   To issue an instruction, all operands must be ready
+  --   To issue a store, all prior branches must be committed
+  --   To commit an instruction, must be final+!quash and all operands committed
+  --   To commit a load/store, all prior stores must be committed
+  --     ... this last rule means at more one write/cycle.
+  --     ... "no prior squashes and all commits final" might work too
+  --   Quash clears ready. If (!issued|final), it also clears: issue/final/quash/kill
+  --
+  -- To simplify these rules, we keep two additional flags:
+  --   uncb: Uncommitted branch
+  --   uncs: Uncommitted store
+  
   signal s_stall      : std_logic;
   signal s_shift      : std_logic;
   signal r_shift      : std_logic;
