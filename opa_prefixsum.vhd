@@ -7,27 +7,21 @@ use work.opa_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
-entity opa_arbitrate is
+entity opa_prefixsum is
   generic(
-    g_config  : t_opa_config;
-    g_target  : t_opa_target);
+    g_target  : t_opa_target;
+    g_width   : natural;
+    g_count   : natural);
   port(
-    clk_i     : in  std_logic;
-    rst_n_i   : in  std_logic;
-    pending_i : in  t_opa_matrix(f_opa_num_stat(g_config)-1 downto f_opa_num_wait(g_config), c_types-1 downto 0);
-    issue_o   : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_num_stat(g_config)-1 downto f_opa_num_wait(g_config));
-    finish_i  : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-    finish_o  : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0));
-end opa_arbitrate;
+    bits_i    : in  std_logic_vector(g_width-1 downto 0);
+    count_o   : out t_opa_matrix(g_width-1 downto 0, g_count-1 downto 0);
+    total_o   : out std_logic_vector(g_width-1 downto 0));
+end opa_prefixsum;
 
-architecture rtl of opa_arbitrate is
+architecture rtl of opa_prefixsum is
 
-  constant c_executers : natural := f_opa_executers(g_config);
-  constant c_stat_wide : natural := f_opa_stat_wide(g_config);
+  constant c_width     : natural := g_width;
   constant c_lut_wide  : natural := g_target.lut_width;
-  constant c_num_issue : natural := f_opa_num_issue(g_config);
-  constant c_num_wait  : natural := f_opa_num_wait(g_config);
-  constant c_num_stat  : natural := f_opa_num_stat(g_config);
   constant c_num_lut   : natural := 2**c_lut_wide;
   constant c_max_wide  : natural := 3; -- If you increase this, duplicate code below
   constant c_max_units : natural := 2**c_max_wide-1;
@@ -285,72 +279,32 @@ architecture rtl of opa_arbitrate is
   
   ---------------------------------------------------------------------------------------
   
-  constant c_wait_pad : std_logic_vector(c_num_wait-1 downto 0) := (others => '0');
-  
-  type t_satadd   is array(c_types-1 downto 0) of t_opa_matrix(c_num_stat-1 downto c_num_wait, c_max_units downto 0);
-  type t_schedule is array(c_executers-1 downto 0) of std_logic_vector(c_num_stat-1 downto c_num_wait);
-  
-  signal s_satadd     : t_satadd;
-  signal s_schedule   : t_schedule;
-  signal s_pending    : t_opa_matrix(c_num_stat-1 downto c_num_wait, c_types-1 downto 0);
-  signal s_finish_ieu : std_logic_vector(f_opa_num_stat(g_config)-1 downto f_opa_num_wait(g_config));
-  signal s_finish_x   : std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+  signal s_bits : std_logic_vector(bits_i'range);
+  signal s_sum  : t_opa_matrix(bits_i'range, c_max_units downto 0);
   
 begin
 
   check_width :
-    assert (f_opa_max_units(g_config) <= c_max_units)
+    assert (g_count <= c_max_units)
     report "More units of a single type than supported"
     severity failure;
   
   -- Stop synthesis tools from breaking the circuit I built
   -- The issue critical path was carefully hand-crafted
-  pending : for i in c_num_wait to c_num_stat-1 generate
-    types : for t in 0 to c_types-1 generate
-      lcell : opa_lcell
-        port map(
-          a_i => pending_i(i,t),
-          b_o => s_pending(i,t));
-    end generate;
-  end generate;
-  
-  finish : for i in 0 to c_num_stat-1 generate
+  pending : for i in bits_i'range generate
     lcell : opa_lcell
       port map(
-        a_i => finish_i(i),
-        b_o => s_finish_x(i));
+        a_i => bits_i(i),
+        b_o => s_bits(i));
   end generate;
   
-  satadd : for t in 0 to c_types-1 generate
-    exists : if f_opa_unit_count(g_config, t) > 0 generate
-      s_satadd(t) <= 
-        f_shift(f_satadd(
-          f_opa_unit_count(g_config, t), 
-          f_opa_select_col(s_pending, t)));
+  s_sum <= f_shift(f_satadd(g_count, s_bits));
+  
+  bits : for b in bits_i'range generate
+    total_o(b) <= s_sum(b, g_count);
+    count : for i in count_o'range(2) generate
+      count_o(b,i) <= s_sum(b,i);
     end generate;
   end generate;
-  
-  schedule : for u in 0 to c_executers-1 generate
-    s_schedule(u) <=
-      f_opa_select_col(s_satadd(f_opa_unit_type(g_config, u)), f_opa_unit_index(g_config, u))
-      and f_opa_select_col(s_pending, f_opa_unit_type(g_config, u));
-  end generate;
-  
-  -- Only the IEU type finishes in one cycle
-  s_finish_ieu <= 
-    f_opa_select_col(s_satadd(c_type_ieu), f_opa_unit_count(g_config, c_type_ieu))
-    and f_opa_select_col(s_pending, c_type_ieu);
-  
-  main : process(clk_i) is
-  begin
-    if rising_edge(clk_i) then
-      finish_o <= s_finish_x or (s_finish_ieu & c_wait_pad);
-      for u in 0 to c_executers-1 loop
-        for b in c_num_wait to c_num_stat-1 loop
-          issue_o(u,b) <= s_schedule(u)(b);
-        end loop;
-      end loop;
-    end if;
-  end process;
   
 end rtl;

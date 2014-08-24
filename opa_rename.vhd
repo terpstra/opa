@@ -16,11 +16,15 @@ entity opa_rename is
     rst_n_i        : in  std_logic;
     
     -- Values the decoder needs to provide us
+    decode_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    decode_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    decode_jump_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    decode_load_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    decode_store_i : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     decode_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     decode_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     decode_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     decode_aux_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
-    decode_typ_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
     decode_archx_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
     decode_archa_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
     decode_archb_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
@@ -32,17 +36,17 @@ entity opa_rename is
 
     -- Values we provide to the issuer
     issue_shift_i  : in  std_logic;
+    issue_fast_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    issue_slow_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    issue_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    issue_load_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    issue_store_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     issue_setx_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    issue_geta_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    issue_getb_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    issue_typ_o    : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1                   downto 0);
     issue_aux_o    : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
     issue_archx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
     issue_bakx_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     issue_baka_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     issue_bakb_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    issue_confa_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0); -- conflict: use stata.
-    issue_confb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     issue_stata_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
     issue_statb_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0));
 end opa_rename;
@@ -81,11 +85,15 @@ architecture rtl of opa_rename is
   signal s_map_value   : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
   signal s_map         : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
   
+  signal r_dec_fast    : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+  signal r_dec_slow    : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+  signal r_dec_jump    : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+  signal r_dec_load    : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+  signal r_dec_store   : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
   signal r_dec_setx    : std_logic_vector(c_decoders-1 downto 0);
   signal r_dec_geta    : std_logic_vector(c_decoders-1 downto 0);
   signal r_dec_getb    : std_logic_vector(c_decoders-1 downto 0);
   signal r_dec_aux     : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
-  signal r_dec_typ     : t_opa_matrix(c_decoders-1 downto 0, c_types-1     downto 0);
   signal r_dec_archx   : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
   signal r_dec_archa   : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
   signal r_dec_archb   : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
@@ -103,6 +111,8 @@ architecture rtl of opa_rename is
   signal s_new_bakb    : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_baka        : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_bakb        : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal s_stata       : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
+  signal s_statb       : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
 
 begin
 
@@ -113,11 +123,15 @@ begin
       --   if we pull from fetch, then NEXT cycle these are read
       --   otherwise, our results are ignored
       --   Thus, it's simplly a 1-cycle delay
+      r_dec_fast  <= decode_fast_i;
+      r_dec_slow  <= decode_slow_i;
+      r_dec_jump  <= decode_jump_i;
+      r_dec_load  <= decode_load_i;
+      r_dec_store <= decode_store_i;
       r_dec_setx  <= decode_setx_i;
       r_dec_geta  <= decode_geta_i;
       r_dec_getb  <= decode_getb_i;
       r_dec_aux   <= decode_aux_i;
-      r_dec_typ   <= decode_typ_i;
       r_dec_archa <= decode_archa_i;
       r_dec_archb <= decode_archb_i;
       r_dec_archx <= decode_archx_i;
@@ -175,6 +189,8 @@ begin
   s_source_b <= f_opa_pick_big(s_match_b);
   s_new_baka <= f_opa_product(s_source_a, r_commit_bakx);
   s_new_bakb <= f_opa_product(s_source_b, r_commit_bakx);
+  s_stata    <= f_opa_product(s_source_a, c_stat_labels); -- 0 on no conflict
+  s_statb    <= f_opa_product(s_source_b, c_stat_labels);
   
   -- Pick between old arch register or cross-dependency
   rows : for i in s_baka'range(1) generate
@@ -185,18 +201,18 @@ begin
   end generate;
   
   -- Forward result to issue stage
+  issue_fast_o  <= r_dec_fast;
+  issue_slow_o  <= r_dec_slow;
+  issue_jump_o  <= r_dec_jump;
+  issue_load_o  <= r_dec_load;
+  issue_store_o <= r_dec_store;
   issue_setx_o  <= r_dec_setx;
-  issue_geta_o  <= r_dec_geta;
-  issue_getb_o  <= r_dec_getb;
-  issue_typ_o   <= r_dec_typ;
   issue_aux_o   <= r_dec_aux;
   issue_archx_o <= r_dec_archx;
   issue_bakx_o  <= r_commit_bakx;
   issue_baka_o  <= s_baka;
   issue_bakb_o  <= s_bakb;
-  issue_confa_o <= s_mux_a;
-  issue_confb_o <= s_mux_b;
-  issue_stata_o <= f_opa_product(s_source_a, c_stat_labels); -- 0 on no conflict
-  issue_statb_o <= f_opa_product(s_source_b, c_stat_labels);
+  issue_stata_o <= s_stata or not f_opa_dup_col(c_stat_wide, r_dec_geta);
+  issue_statb_o <= s_statb or not f_opa_dup_col(c_stat_wide, r_dec_getb);
   
 end rtl;

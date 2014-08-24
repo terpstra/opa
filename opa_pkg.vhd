@@ -9,11 +9,10 @@ package opa_pkg is
     log_arch   : natural; -- 2**log_arch   = # of architectural registers
     log_width  : natural; -- 2**log_width  = # of bits in registers
     num_decode : natural; -- # of instructions decoded concurrently
-    num_issue  : natural; -- # of reservation stations used for issue
-    num_wait   : natural; -- # of reservation stations used for commit
-    num_ieu    : natural; -- # of IEUs (logic, add/sub, ...)
-    num_mul    : natural; -- # of *independant* multipliers (mulhi, mullo, <<, >>, rol, ...)
-    ieee_fp    : boolean; -- Floating point support (in mul units)
+    num_stat   : natural; -- # of reservation stations
+    num_fast   : natural; -- # of fast EUs (logic, add/sub, branch, ...)
+    num_slow   : natural; -- # of slow EUs (load/store, mul, fp, ...)
+    ieee_fp    : boolean; -- Floating point support
     da_bits    : natural; -- Data address bits
     dc_ways    : natural; -- Data cache ways
     dc_depth   : natural; -- Data cache depth
@@ -22,20 +21,20 @@ package opa_pkg is
     dtlb_depth : natural; -- Data TLB depth
   end record;
   
-  -- 16-bit processor, 1-issue,  6+2 stations, 2 EU,  256x  2KB pages,  2KB cache
-  constant c_opa_tiny  : t_opa_config := ( 4, 4, 1,  6, 2, 1, 0, false, 16, 1,  8, 4, 1,  8);
+  -- 16-bit processor, 1-issue,  6 stations, 2 EU,  256x  2KB pages,  2KB cache
+  constant c_opa_tiny  : t_opa_config := ( 4, 4, 1,  6, 1, 1, false, 16, 1,  8, 4, 1,  8);
   
-  -- 32-bit processor, 2-issue,  6+2 stations, 2 EU,  256x  4KB pages,  4KB cache
-  constant c_opa_small : t_opa_config := ( 4, 5, 2,  6, 2, 1, 0, false, 32, 1,  8, 4, 1,  8);
+  -- 32-bit processor, 2-issue,  6 stations, 2 EU,  256x  4KB pages,  4KB cache
+  constant c_opa_small : t_opa_config := ( 4, 5, 2,  6, 1, 1, false, 32, 1,  8, 4, 1,  8);
   
-  -- 32-bit processor, 2-issue, 12+4 stations, 3 EU, 2048x 16KB pages, 32KB cache
-  constant c_opa_mid   : t_opa_config := ( 4, 5, 2, 12, 4, 2, 1, true,  32, 2, 10, 4, 2, 10);
+  -- 32-bit processor, 2-issue, 12 stations, 2 EU, 2048x 16KB pages, 32KB cache
+  constant c_opa_mid   : t_opa_config := ( 4, 5, 2, 12, 1, 1, true,  32, 2, 10, 4, 2, 10);
   
-  -- 64-bit processor, 2-issue, 12+4 stations, 4 EU, 4096x 32KB pages, 128KB cache
-  constant c_opa_large : t_opa_config := ( 4, 6, 2, 12, 4, 2, 1, true,  32, 4, 10, 4, 4, 10);
+  -- 64-bit processor, 2-issue, 12 stations, 2 EU, 4096x 32KB pages, 128KB cache
+  constant c_opa_large : t_opa_config := ( 4, 6, 2, 12, 1, 1, true,  32, 4, 10, 4, 4, 10);
   
-  -- 64-bit processor, 4-issue, 24+8 stations, 8 EU, 4096x 32KB pages, 128KB cache
-  constant c_opa_huge  : t_opa_config := ( 4, 6, 4, 64, 0, 3, 2, true,  64, 4, 10, 4, 4, 10);
+  -- 64-bit processor, 4-issue, 36 stations, 4 EU, 4096x 32KB pages, 128KB cache
+  constant c_opa_huge  : t_opa_config := ( 4, 6, 4, 36, 2, 2, true,  64, 4, 10, 4, 4, 10);
   
   type t_opa_target is record
     lut_width  : natural; -- How many inputs to combine at once

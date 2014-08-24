@@ -7,7 +7,7 @@ use work.opa_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
-entity opa_ieu is
+entity opa_fast is
   generic(
     g_config : t_opa_config;
     g_target : t_opa_target);
@@ -16,11 +16,9 @@ entity opa_ieu is
     rst_n_i        : in  std_logic;
     
     issue_shift_i  : in  std_logic;
-    issue_stb_i    : in  std_logic;
-    issue_stat_i   : in  std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
-    issue_stb_o    : out std_logic;
-    issue_kill_o   : out std_logic;
-    issue_stat_o   : out std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+    issue_stat_i   : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+    issue_final_o  : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+    issue_kill_o   : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
     
     regfile_stb_i  : in  std_logic;
     regfile_rega_i : in  std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
@@ -31,9 +29,14 @@ entity opa_ieu is
     regfile_stb_o  : out std_logic;
     regfile_bakx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
     regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0));
-end opa_ieu;
+end opa_fast;
 
-architecture rtl of opa_ieu is
+architecture rtl of opa_fast is
+
+  constant c_num_stat : natural := f_opa_num_stat(g_config);
+  constant c_decoders : natural := f_opa_decoders(g_config);
+  
+  constant c_decoder_zeros : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
 
   signal r_rega : std_logic_vector(regfile_rega_i'range);
   signal r_regb : std_logic_vector(regfile_regb_i'range);
@@ -53,11 +56,8 @@ architecture rtl of opa_ieu is
   signal s_comparison : std_logic_vector(r_rega'range);
 begin
 
-  -- Everything we do has latency=1
-  issue_stb_o  <= '0';
-  issue_stat_o <= (others => '-');
-  issue_kill_o <= '0';
-  -- !!! need to have {done,kill}_{stb,stat}
+  issue_final_o <= issue_stat_i when issue_shift_i='0' else (c_decoder_zeros & issue_stat_i(c_num_stat-1 downto c_decoders));
+  issue_kill_o  <= (others => '0');
   
   regfile_stb_o  <= regfile_stb_i;
   regfile_bakx_o <= regfile_bakx_i;

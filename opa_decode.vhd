@@ -16,11 +16,15 @@ entity opa_decode is
     rst_n_i        : in  std_logic;
 
     fetch_dat_i    : in  std_logic_vector(f_opa_decoders(g_config)*c_op_wide-1 downto 0);
+    rename_fast_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    rename_slow_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    rename_jump_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    rename_load_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    rename_store_o : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_geta_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_getb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_aux_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1        downto 0);
-    rename_typ_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_types-1           downto 0);
     rename_archx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
     rename_archa_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0);
     rename_archb_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, g_config.log_arch-1 downto 0));
@@ -33,7 +37,7 @@ architecture rtl of opa_decode is
   
   constant c_decoders : natural := f_opa_decoders(g_config);
 
-  type t_code is (T_CONST, T_ADDER, T_LOGIC, T_MUL, T_LOAD, T_STORE, T_NOOP);
+  type t_code is (T_CONST, T_ADDER, T_LOGIC, T_MUL, T_JUMP, T_LOAD, T_STORE, T_NOOP);
   type t_code_array is array(natural range <>) of t_code;
   
   function f_typ(x : std_logic_vector(3 downto 0)) return t_code is
@@ -43,6 +47,7 @@ architecture rtl of opa_decode is
       when "0010" => return T_ADDER;
       when "0011" => return T_LOGIC;
       when "0100" => return T_MUL;
+      when "0101" => return T_JUMP;
       when "1000" => return T_LOAD;
       when "1001" => return T_STORE;
       when others => return T_NOOP;
@@ -56,6 +61,7 @@ architecture rtl of opa_decode is
       when T_ADDER => return '1';
       when T_LOGIC => return '1';
       when T_MUL   => return '1';
+      when T_JUMP  => return '0';
       when T_LOAD  => return '1';
       when T_STORE => return '0';
       when T_NOOP  => return '0';
@@ -69,6 +75,7 @@ architecture rtl of opa_decode is
       when T_ADDER => return '1';
       when T_LOGIC => return '1';
       when T_MUL   => return '1';
+      when T_JUMP  => return '1';
       when T_LOAD  => return '0';
       when T_STORE => return '1';
       when T_NOOP  => return '0';
@@ -82,33 +89,40 @@ architecture rtl of opa_decode is
       when T_ADDER => return '1';
       when T_LOGIC => return '1';
       when T_MUL   => return '1';
+      when T_JUMP  => return '1';
       when T_LOAD  => return '1';
       when T_STORE => return '1';
       when T_NOOP  => return '0';
     end case;
   end f_getb;
   
-  function f_unit(x : t_code) return std_logic_vector is
-    variable y : natural;
-    variable result : std_logic_vector(c_types-1 downto 0) := (others => '0');
+  function f_fast(x : t_code) return std_logic is
   begin
     case x is
-      when T_CONST => y := c_type_ieu;
-      when T_ADDER => y := c_type_ieu;
-      when T_LOGIC => y := c_type_ieu;
-      when T_MUL   => 
-        if f_opa_ls_does_mul(g_config) then
-          y := c_type_ls;
-        else
-          y := c_type_mul;
-        end if;
-      when T_LOAD  => y := c_type_ls;
-      when T_STORE => y := c_type_ls;
-      when T_NOOP  => y := c_type_ieu;
+      when T_CONST => return '1';
+      when T_ADDER => return '1';
+      when T_LOGIC => return '1';
+      when T_MUL   => return '0';
+      when T_JUMP  => return '1';
+      when T_LOAD  => return '0';
+      when T_STORE => return '0';
+      when T_NOOP  => return '1';
     end case;
-    result(y) := '1';
-    return result;
-  end f_unit;
+  end f_fast;
+  
+  function f_slow(x : t_code) return std_logic is
+  begin
+    case x is
+      when T_CONST => return '0';
+      when T_ADDER => return '0';
+      when T_LOGIC => return '0';
+      when T_MUL   => return '1';
+      when T_JUMP  => return '0';
+      when T_LOAD  => return '1';
+      when T_STORE => return '1';
+      when T_NOOP  => return '0';
+    end case;
+  end f_slow;
   
   function f_aux(x : t_code; w : std_logic_vector) return std_logic_vector is
     alias v : std_logic_vector(7 downto 0) is w;
@@ -124,6 +138,7 @@ architecture rtl of opa_decode is
       when T_LOGIC => 
         result(9 downto 8) := "01";
         result(3 downto 0) := v(7 downto 4);
+      when T_JUMP  => null;
       when T_MUL   => 
         result(0)          := v(4);
       when T_LOAD  => result(0) := '0';
@@ -151,13 +166,15 @@ begin
   
     s_typ(i) <= f_typ(fetch_dat_i(f(i)+15 downto f(i)+12));
     
+    rename_fast_o(i) <= f_fast(s_typ(i));
+    rename_slow_o(i) <= f_fast(s_typ(i));
+    rename_jump_o(i) <= f_opa_bit(s_typ(i) = T_JUMP);
+    rename_load_o(i) <= f_opa_bit(s_typ(i) = T_LOAD);
+    rename_store_o(i) <= f_opa_bit(s_typ(i) = T_STORE);
+    
     rename_setx_o(i) <= f_setx(s_typ(i));
     rename_geta_o(i) <= f_geta(s_typ(i));
     rename_getb_o(i) <= f_getb(s_typ(i));
-    
-    typ : for b in 0 to c_types-1 generate
-      rename_typ_o(i,b) <= f_unit(s_typ(i))(b);
-    end generate;
     
     aux : for b in 0 to c_aux_wide-1 generate
       rename_aux_o(i,b) <= f_aux(s_typ(i), fetch_dat_i(f(i)+11 downto f(i)+4))(b);
