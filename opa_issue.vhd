@@ -156,13 +156,13 @@ architecture rtl of opa_issue is
   signal s_uncs_sum     : std_logic_vector(c_num_stat-1 downto 0);
   signal s_store_issue  : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ldst_commit  : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_quash1       : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_quash1       : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
   signal s_quasha       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_quashb       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_commit1      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_commit1      : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
   signal s_commita      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_commitb      : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_ready1       : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready1       : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
   signal s_readya       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyb       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_eu_notstall  : std_logic_vector(c_num_slow-1 downto 0);
@@ -212,9 +212,12 @@ architecture rtl of opa_issue is
   signal s_matchn_a   : t_opa_matrix(c_decoders -1 downto 0, c_num_stat -1 downto 0);
   signal s_matchn_b   : t_opa_matrix(c_decoders -1 downto 0, c_num_stat -1 downto 0);
   
+  constant c_pad_high0 : std_logic_vector(0 to c_decoders-1) := (others => '0');
+  constant c_pad_high1 : std_logic_vector(0 to c_decoders-1) := (0 => '1', others => '0');
+  
   function f_decrement(x : unsigned(c_stat_wide-1 downto 0)) return unsigned is
-    constant cu_num_stat : unsigned(x'range) := to_unsigned(c_num_stat-1, x'length);
-    constant cu_decoders : unsigned(x'range) := to_unsigned(c_decoders,   x'length);
+    constant cu_num_stat : unsigned(x'range) := to_unsigned(c_num_stat+c_decoders-1, x'length);
+    constant cu_decoders : unsigned(x'range) := to_unsigned(c_decoders,              x'length);
   begin
     if x = cu_num_stat or x < cu_decoders then
       return cu_num_stat;
@@ -255,14 +258,14 @@ begin
   s_ldst_commit <= not (r_ldst and s_uncs_sum);
 
   -- Propagate instruction quashing
-  s_quash1 <= '0' & r_quash(c_num_stat-2 downto 0);
+  s_quash1 <= c_pad_high0 & r_quash;
   s_quasha <= f_opa_compose(s_quash1, r_stata);
   s_quashb <= f_opa_compose(s_quash1, r_statb);
   s_quash  <= eu_quash_i or s_quasha or s_quashb or (r_quash and r_issued and not r_final);
     -- 3 levels with <= 16 stations
   
   -- Propagate commits !!! peek ahead for r_final (and r_quash?)
-  s_commit1 <= '1' & r_commit(c_num_stat-2 downto 0);
+  s_commit1 <= c_pad_high1 & r_commit;
   s_commita <= f_opa_compose(s_commit1, r_stata);
   s_commita <= f_opa_compose(s_commit1, r_statb);
   s_commit  <= r_commit or (s_commita and s_commitb and r_final and not r_quash and s_ldst_commit);
@@ -271,7 +274,7 @@ begin
     -- 3 levels with <= 16 stations
   
   -- Which stations have ready operands?
-  s_ready1 <= '1' & r_ready(c_num_stat-2 downto 0);
+  s_ready1 <= c_pad_high1 & r_ready;
   s_readya <= f_opa_compose(s_ready1, r_stata);
   s_readyb <= f_opa_compose(s_ready1, r_statb);
      -- 2 levels with <= 16 stations

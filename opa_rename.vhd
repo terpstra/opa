@@ -101,6 +101,8 @@ architecture rtl of opa_rename is
   
   signal s_old_baka    : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_old_bakb    : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal s_get_a       : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0) := (others => (others => '0'));
+  signal s_get_b       : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0) := (others => (others => '0'));
   signal s_match_a     : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0);
   signal s_match_b     : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0);
   signal s_mux_a       : std_logic_vector(c_decoders-1 downto 0);
@@ -178,11 +180,17 @@ begin
     end if;
   end process;
   
+  get_rows : for i in 0 to c_decoders-1 generate
+    s_get_a(i,c_decoders-1) <= r_dec_geta(i);
+    s_get_b(i,c_decoders-1) <= r_dec_getb(i);
+    -- all other columns 0
+  end generate;
+  
   -- Rename the inputs, watching out for same-cycle dependencies
   s_old_baka <= f_opa_compose(r_map, r_dec_archa);
   s_old_bakb <= f_opa_compose(r_map, r_dec_archb);
-  s_match_a  <= f_opa_match(r_dec_archa, r_dec_archx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_UR_triangle;
-  s_match_b  <= f_opa_match(r_dec_archb, r_dec_archx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_UR_triangle;
+  s_match_a  <= (f_opa_match(r_dec_archa, r_dec_archx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_UR_triangle) or not s_get_a;
+  s_match_b  <= (f_opa_match(r_dec_archb, r_dec_archx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_UR_triangle) or not s_get_b;
   s_mux_a    <= f_opa_product(s_match_a, c_decode_ones);
   s_mux_b    <= f_opa_product(s_match_b, c_decode_ones);
   s_source_a <= f_opa_pick_big(s_match_a);
@@ -212,7 +220,7 @@ begin
   issue_bakx_o  <= r_commit_bakx;
   issue_baka_o  <= s_baka;
   issue_bakb_o  <= s_bakb;
-  issue_stata_o <= s_stata or not f_opa_dup_col(c_stat_wide, r_dec_geta);
-  issue_statb_o <= s_statb or not f_opa_dup_col(c_stat_wide, r_dec_getb);
+  issue_stata_o <= s_stata;
+  issue_statb_o <= s_statb;
   
 end rtl;
