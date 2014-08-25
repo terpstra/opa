@@ -15,6 +15,22 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_sh1_baka
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_sh1_bakb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_issued
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_issued
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_ready
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_ready
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_final
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_final
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_kill
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_kill
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_quash
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_quash
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_commit
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_commit
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stat_o
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_ready_i
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_final_i
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_quash_i
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_kill_i
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stall_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_readya
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_readyb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_stata
@@ -34,7 +50,7 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_bakx_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_regx_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/commit/r_map
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {30 ns} 0}
+WaveRestoreCursors {{Cursor 1} {18 ns} 0}
 configure wave -namecolwidth 360
 configure wave -valuecolwidth 78
 configure wave -justifyvalue left
@@ -49,4 +65,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ns} {525 ns}
+WaveRestoreZoom {4 ns} {38 ns}

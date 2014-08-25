@@ -212,8 +212,14 @@ architecture rtl of opa_issue is
   signal s_matchn_a   : t_opa_matrix(c_decoders -1 downto 0, c_num_stat -1 downto 0);
   signal s_matchn_b   : t_opa_matrix(c_decoders -1 downto 0, c_num_stat -1 downto 0);
   
-  constant c_pad_high0 : std_logic_vector(0 to c_decoders-1) := (others => '0');
-  constant c_pad_high1 : std_logic_vector(0 to c_decoders-1) := (0 => '1', others => '0');
+  function f_pad(x : std_logic) return std_logic_vector is
+    variable result : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
+  begin
+    result(result'high) := x;
+    return result;
+  end f_pad;
+  constant c_pad_high0 : std_logic_vector(0 to c_decoders-1) := f_pad('0');
+  constant c_pad_high1 : std_logic_vector(0 to c_decoders-1) := f_pad('1');
   
   function f_decrement(x : unsigned(c_stat_wide-1 downto 0)) return unsigned is
     constant cu_num_stat : unsigned(x'range) := to_unsigned(c_num_stat+c_decoders-1, x'length);
@@ -313,7 +319,7 @@ begin
       total_o  => open);
    -- 5 levels for <= 12 num_stat (3 pending + 2 arbitrate)
   
-  s_schedule <= f_opa_concat(r_schedule_fast, r_schedule_slow);
+  s_schedule <= f_opa_transpose(f_opa_concat(f_opa_transpose(r_schedule_fast), f_opa_transpose(r_schedule_slow)));
   
   -- Forward plan to the register file and EUs
   eu_shift_o <= r_shift;
