@@ -165,6 +165,7 @@ architecture rtl of opa_issue is
   signal s_ready1       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readya       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyb       : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_eu_notstall  : std_logic_vector(c_num_slow-1 downto 0);
   signal s_eu_issued    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_now_issued   : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_fast : std_logic_vector(c_num_stat-1 downto 0);
@@ -225,9 +226,10 @@ architecture rtl of opa_issue is
 begin
 
   -- Status from EUs
+  -- !!! it feels to me like there's a race between issue and quash
   s_final <= eu_final_i or (r_final and not r_quash);
   s_kill  <= eu_kill_i  or (r_kill  and not r_quash);
-  s_ready <= eu_ready_i or ((r_ready or r_schedule_fast_issue) and not r_quash);
+  s_ready <= ((eu_ready_i or r_ready) and not r_quash) or (s_schedule_fast_issue and s_pending_fast);
   
   -- Is it safe to issue this station? (store-branch conflict)
   uncb : opa_prefixsum
@@ -237,7 +239,6 @@ begin
       g_count  => 1)
     port map(
       bits_i  => r_uncb,
-      count_o => open,
       total_o => s_uncb_sum);
   s_store_issue <= not (r_uncs and s_uncb_sum);
     -- 2 inputs to level 3 with <= 36 stations
@@ -250,7 +251,6 @@ begin
       g_count  => 1)
     port map(
       bits_i  => r_uncs,
-      count_o => open,
       total_o => s_uncs_sum);
   s_ldst_commit <= not (r_ldst and s_uncs_sum);
 
@@ -278,14 +278,15 @@ begin
   
   -- Which stations are now issued?
   -- r_now_issue has old numbering, so may decrement to match new indexes
-  s_eu_issued  <= r_schedule_fast_issue or f_opa_product(f_opa_transpose(r_schedule_slow), not eu_stall_i); -- !!! not can't go there
+  s_eu_notstall <= not eu_stall_i;
+  s_eu_issued  <= r_schedule_fast_issue or f_opa_product(f_opa_transpose(r_schedule_slow), s_eu_notstall);
   s_now_issued <= s_eu_issued when r_shift='0' else (c_decoder_zeros & s_eu_issued(c_num_stat-1 downto c_decoders));
   s_issued     <= s_now_issued or (r_issued and not (r_quash and r_final));
     -- 2 levels with slow <= 2
 
   -- Which stations are pending issue?
   s_pending_fast <= s_readya and s_readyb and not s_now_issued and r_fast;
-  s_pending_slow <= s_readya and s_readyb and not s_now_issued and r_slow and s_ldst_commit;
+  s_pending_slow <= s_readya and s_readyb and not s_now_issued and r_slow and s_store_issue;
     -- 3 levels
   
   fast : opa_prefixsum
@@ -473,6 +474,9 @@ begin
       r_commit <= (others => '1');
     elsif rising_edge(clk_i) then
       r_shift  <= s_shift;
+      r_schedule_fast <= s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast);
+      r_schedule_slow <= s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow);
+      r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
       if s_shift = '1' then -- load enable port
         r_issued <= c_decoder_zeros & s_issued(c_num_stat-1 downto c_decoders);
         r_ready  <= c_decoder_zeros & s_ready (c_num_stat-1 downto c_decoders);

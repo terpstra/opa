@@ -29,7 +29,7 @@ entity opa is
     d_addr_o  : out std_logic_vector(g_config.da_bits-1 downto 0);
     d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
     d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    d_data_i  : out std_logic_vector(2**g_config.log_width  -1 downto 0));
+    d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0));
 end opa;
 
 architecture rtl of opa is

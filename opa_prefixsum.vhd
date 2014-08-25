@@ -14,7 +14,7 @@ entity opa_prefixsum is
     g_count   : natural);
   port(
     bits_i    : in  std_logic_vector(g_width-1 downto 0);
-    count_o   : out t_opa_matrix(g_width-1 downto 0, g_count-1 downto 0);
+    count_o   : out t_opa_matrix(g_count-1 downto 0, g_width-1 downto 0);
     total_o   : out std_logic_vector(g_width-1 downto 0));
 end opa_prefixsum;
 
@@ -302,8 +302,8 @@ begin
   
   bits : for b in bits_i'range generate
     total_o(b) <= s_sum(b, g_count);
-    count : for i in count_o'range(2) generate
-      count_o(b,i) <= s_sum(b,i);
+    count : for u in count_o'range(1) generate
+      count_o(u,b) <= s_sum(b,u);
     end generate;
   end generate;
   

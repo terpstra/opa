@@ -62,7 +62,7 @@ package opa_components_pkg is
       g_count   : natural);
     port(
       bits_i    : in  std_logic_vector(g_width-1 downto 0);
-      count_o   : out t_opa_matrix(g_width-1 downto 0, g_count-1 downto 0);
+      count_o   : out t_opa_matrix(g_count-1 downto 0, g_width-1 downto 0);
       total_o   : out std_logic_vector(g_width-1 downto 0));
   end component;
   
