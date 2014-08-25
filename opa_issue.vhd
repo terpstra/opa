@@ -218,8 +218,8 @@ architecture rtl of opa_issue is
     result(result'high) := x;
     return result;
   end f_pad;
-  constant c_pad_high0 : std_logic_vector(0 to c_decoders-1) := f_pad('0');
-  constant c_pad_high1 : std_logic_vector(0 to c_decoders-1) := f_pad('1');
+  constant c_pad_high0 : std_logic_vector(c_decoders-1 downto 0) := f_pad('0');
+  constant c_pad_high1 : std_logic_vector(c_decoders-1 downto 0) := f_pad('1');
   
   function f_decrement(x : unsigned(c_stat_wide-1 downto 0)) return unsigned is
     constant cu_num_stat : unsigned(x'range) := to_unsigned(c_num_stat+c_decoders-1, x'length);
@@ -273,7 +273,7 @@ begin
   -- Propagate commits !!! peek ahead for r_final (and r_quash?)
   s_commit1 <= c_pad_high1 & r_commit;
   s_commita <= f_opa_compose(s_commit1, r_stata);
-  s_commita <= f_opa_compose(s_commit1, r_statb);
+  s_commitb <= f_opa_compose(s_commit1, r_statb);
   s_commit  <= r_commit or (s_commita and s_commitb and r_final and not r_quash and s_ldst_commit);
   s_uncs    <= r_uncs and not s_commit;
   s_uncb    <= r_uncb and not s_commit;
@@ -470,11 +470,25 @@ begin
     end if;
   end process;
   
+  stations_0r : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_shift  <= '0';
+      r_schedule_fast <= (others => (others => '0'));
+      r_schedule_slow <= (others => (others => '0'));
+      r_schedule_fast_issue <= (others => '0');
+    elsif rising_edge(clk_i) then
+      r_shift  <= s_shift;
+      r_schedule_fast <= s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast);
+      r_schedule_slow <= s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow);
+      r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
+    end if;
+  end process;
+  
   -- Register the stations, 0-latency with reset, with load enable
   stations_0rl : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_shift  <= '0';
       r_issued <= (others => '1');
       r_ready  <= (others => '1');
       r_final  <= (others => '1');
@@ -482,10 +496,6 @@ begin
       r_quash  <= (others => '0');
       r_commit <= (others => '1');
     elsif rising_edge(clk_i) then
-      r_shift  <= s_shift;
-      r_schedule_fast <= s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast);
-      r_schedule_slow <= s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow);
-      r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
       if s_shift = '1' then -- load enable port
         r_issued <= c_decoder_zeros & s_issued(c_num_stat-1 downto c_decoders);
         r_ready  <= c_decoder_zeros & s_ready (c_num_stat-1 downto c_decoders);
@@ -493,7 +503,6 @@ begin
         r_kill   <= c_decoder_zeros & s_kill  (c_num_stat-1 downto c_decoders);
         r_quash  <= c_decoder_zeros & s_quash (c_num_stat-1 downto c_decoders);
         r_commit <= c_decoder_zeros & s_commit(c_num_stat-1 downto c_decoders);
-        -- !!! r_unc[bs], r_ldst, r_fast/slow
       else
         r_issued <= s_issued;
         r_ready  <= s_ready;
@@ -539,21 +548,16 @@ begin
   begin
     if rising_edge(clk_i) then
       if s_shift = '1' then -- clock enable port
-        r_ldst <= r_mux_ldst  & r_ldst(c_num_stat-1 downto c_decoders);
-        r_fast <= r_mux_fast  & r_fast(c_num_stat-1 downto c_decoders);
-        r_slow <= r_mux_slow  & r_fast(c_num_stat-1 downto c_decoders);
+        r_ldst <= r_mux_ldst & r_ldst(c_num_stat-1 downto c_decoders);
       end if;
     end if;
   end process;
   
-  stations_0rc : process(rst_n_i, clk_i) is
+  stations_0rcl : process(rst_n_i, clk_i) is
   begin
     if rst_n_i = '0' then
       for b in 0 to c_back_wide-1 loop
-        for i in 0 to c_num_stat-1 loop
-          r_bakx0(i,b)    <= to_unsigned(c_num_arch+i, c_back_wide)(b);
-        end loop;
-         for i in 0 to c_decoders-1 loop
+        for i in 0 to c_decoders-1 loop
           r_mux_bakx(i,b) <= to_unsigned(c_num_arch+c_num_stat+i, c_back_wide)(b);
         end loop;
       end loop;
@@ -564,6 +568,24 @@ begin
         else
           r_mux_bakx <= r_sh1_bakx;
         end if;
+      end if;
+    end if;
+  end process;
+  
+  stations_0rc : process(rst_n_i, clk_i) is
+  begin
+    if rst_n_i = '0' then
+      r_fast <= (others => '0');
+      r_slow <= (others => '0');
+      for b in 0 to c_back_wide-1 loop
+        for i in 0 to c_num_stat-1 loop
+          r_bakx0(i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
+        end loop;
+      end loop;
+    elsif rising_edge(clk_i) then
+      if s_shift = '1' then
+        r_fast <= r_mux_fast  & r_fast(c_num_stat-1 downto c_decoders);
+        r_slow <= r_mux_slow  & r_slow(c_num_stat-1 downto c_decoders);
         for i in 0 to c_num_stat-c_decoders-1 loop
           for b in 0 to c_back_wide-1 loop
             r_bakx0(i,b) <= r_bakx0(i+c_decoders,b);
