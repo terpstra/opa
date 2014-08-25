@@ -364,4 +364,6 @@ begin
         regfile_regx_o => s_eu_regfile_regx(f_opa_slow_index(g_config, i)));
   end generate;
   
+  d_data_o(31) <= s_eu_regfile_regx(0)(31);
+  
 end rtl;

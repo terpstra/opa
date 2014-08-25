@@ -42,9 +42,6 @@ architecture rtl of opa_syn_tb is
   signal r_addr  : std_logic_vector( 3 downto 0);
   signal r_data  : std_logic_vector(64 downto 0);
   
-  signal s_out   : std_logic;
-  signal r_out   : std_logic;
-  
   signal s_stall : std_logic;
   signal r_stb   : std_logic;
   signal r_op    : std_logic_vector(c_config.num_decode*16-1 downto 0);
@@ -54,23 +51,23 @@ architecture rtl of opa_syn_tb is
   signal d_stall  : std_logic;
   signal d_ack    : std_logic;
   signal d_err    : std_logic;
-  signal d_addr   : std_logic_vector(31 downto 0);
-  signal d_sel    : std_logic_vector( 3 downto 0);
-  signal d_data_o : std_logic_vector(31 downto 0);
-  signal d_data_i : std_logic_vector(31 downto 0);
+  signal d_addr   : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal d_sel    : std_logic_vector(2**c_config.log_width/8-1 downto 0);
+  signal d_data_o : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal d_data_i : std_logic_vector(2**c_config.log_width  -1 downto 0);
   
 begin
 
   test : process(clk_i, rstn_i) is
   begin
     if rstn_i = '0' then
-      r_out <= '0';
       r_off <= (others => '0');
+      good_o <= '0';
     elsif rising_edge(clk_i) then
-      r_out <= s_out;
       if s_stall = '0' then
         r_off <= s_off;
       end if;
+      good_o <= d_data_o(31);
     end if;
   end process;
   s_off <= r_off + 1;
@@ -115,7 +112,5 @@ begin
   d_err    <= '0';
   d_ack    <= d_stb;
   
-  good_o <= d_data_o(31);
-
 end rtl;
     

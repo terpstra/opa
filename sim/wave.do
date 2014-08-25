@@ -13,6 +13,8 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/rename/r_map
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_sh1_bakx
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_sh1_baka
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_sh1_bakb
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_fast
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_slow
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_issued
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_issued
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_ready
@@ -39,12 +41,11 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_baka
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakx0
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_bakx1
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_now_issued
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_aux_o
 add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_stb_o
-add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_stb_i
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_rega_o
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_regb_o
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_stb_i
+add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_rega_o
+add wave -noupdate -expand /opa_sim_tb/opa_tb/opa_core/regfile/eu_regb_o
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_bakx_o
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_bakx_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/regfile/eu_regx_i
@@ -65,4 +66,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {4 ns} {38 ns}
+WaveRestoreZoom {9 ns} {105 ns}
