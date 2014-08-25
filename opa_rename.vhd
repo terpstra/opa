@@ -181,16 +181,16 @@ begin
   end process;
   
   get_rows : for i in 0 to c_decoders-1 generate
-    s_get_a(i,c_decoders-1) <= r_dec_geta(i);
-    s_get_b(i,c_decoders-1) <= r_dec_getb(i);
+    s_get_a(i,c_decoders-1) <= not r_dec_geta(i);
+    s_get_b(i,c_decoders-1) <= not r_dec_getb(i);
     -- all other columns 0
   end generate;
   
   -- Rename the inputs, watching out for same-cycle dependencies
   s_old_baka <= f_opa_compose(r_map, r_dec_archa);
   s_old_bakb <= f_opa_compose(r_map, r_dec_archb);
-  s_match_a  <= (f_opa_match(r_dec_archa, r_dec_archx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_UR_triangle) or not s_get_a;
-  s_match_b  <= (f_opa_match(r_dec_archb, r_dec_archx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_UR_triangle) or not s_get_b;
+  s_match_a  <= (f_opa_match(r_dec_archa, r_dec_archx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_UR_triangle) or s_get_a;
+  s_match_b  <= (f_opa_match(r_dec_archb, r_dec_archx) and f_opa_dup_row(c_decoders, r_dec_setx) and c_UR_triangle) or s_get_b;
   s_mux_a    <= f_opa_product(s_match_a, c_decode_ones);
   s_mux_b    <= f_opa_product(s_match_b, c_decode_ones);
   s_source_a <= f_opa_pick_big(s_match_a);

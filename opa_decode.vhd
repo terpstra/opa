@@ -167,7 +167,7 @@ begin
     s_typ(i) <= f_typ(fetch_dat_i(f(i)+15 downto f(i)+12));
     
     rename_fast_o(i) <= f_fast(s_typ(i));
-    rename_slow_o(i) <= f_fast(s_typ(i));
+    rename_slow_o(i) <= f_slow(s_typ(i));
     rename_jump_o(i) <= f_opa_bit(s_typ(i) = T_JUMP);
     rename_load_o(i) <= f_opa_bit(s_typ(i) = T_LOAD);
     rename_store_o(i) <= f_opa_bit(s_typ(i) = T_STORE);
