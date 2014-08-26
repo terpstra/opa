@@ -77,9 +77,6 @@ package opa_components_pkg is
       fetch_dat_i    : in  std_logic_vector(f_opa_decoders(g_config)*c_op_wide-1 downto 0);
       rename_fast_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_slow_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_jump_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_load_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_store_o : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_geta_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_getb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
@@ -100,9 +97,6 @@ package opa_components_pkg is
       -- Values the decoder needs to provide us
       decode_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       decode_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      decode_jump_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      decode_load_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      decode_store_i : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       decode_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       decode_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       decode_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
@@ -120,9 +114,6 @@ package opa_components_pkg is
       issue_shift_i  : in  std_logic;
       issue_fast_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       issue_slow_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      issue_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      issue_load_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      issue_store_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       issue_setx_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       issue_aux_o    : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
       issue_archx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
@@ -149,9 +140,6 @@ package opa_components_pkg is
       rename_shift_o : out std_logic;
       rename_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_jump_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_load_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_store_i : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_aux_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
       rename_archx_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);

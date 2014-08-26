@@ -18,9 +18,6 @@ entity opa_decode is
     fetch_dat_i    : in  std_logic_vector(f_opa_decoders(g_config)*c_op_wide-1 downto 0);
     rename_fast_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_slow_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_jump_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_load_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_store_o : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_geta_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_getb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
@@ -110,20 +107,6 @@ architecture rtl of opa_decode is
     end case;
   end f_fast;
   
-  function f_slow(x : t_code) return std_logic is
-  begin
-    case x is
-      when T_CONST => return '0';
-      when T_ADDER => return '0';
-      when T_LOGIC => return '0';
-      when T_MUL   => return '1';
-      when T_JUMP  => return '0';
-      when T_LOAD  => return '1';
-      when T_STORE => return '1';
-      when T_NOOP  => return '0';
-    end case;
-  end f_slow;
-  
   function f_aux(x : t_code; w : std_logic_vector) return std_logic_vector is
     alias v : std_logic_vector(7 downto 0) is w;
     variable result : std_logic_vector(c_aux_wide-1 downto 0) := (others => '-');
@@ -167,10 +150,7 @@ begin
     s_typ(i) <= f_typ(fetch_dat_i(f(i)+15 downto f(i)+12));
     
     rename_fast_o(i) <= f_fast(s_typ(i));
-    rename_slow_o(i) <= f_slow(s_typ(i));
-    rename_jump_o(i) <= f_opa_bit(s_typ(i) = T_JUMP);
-    rename_load_o(i) <= f_opa_bit(s_typ(i) = T_LOAD);
-    rename_store_o(i) <= f_opa_bit(s_typ(i) = T_STORE);
+    rename_slow_o(i) <= not f_fast(s_typ(i));
     
     rename_setx_o(i) <= f_setx(s_typ(i));
     rename_geta_o(i) <= f_geta(s_typ(i));

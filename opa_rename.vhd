@@ -18,9 +18,6 @@ entity opa_rename is
     -- Values the decoder needs to provide us
     decode_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     decode_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    decode_jump_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    decode_load_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    decode_store_i : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     decode_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     decode_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     decode_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
@@ -38,9 +35,6 @@ entity opa_rename is
     issue_shift_i  : in  std_logic;
     issue_fast_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     issue_slow_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    issue_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    issue_load_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    issue_store_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     issue_setx_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     issue_aux_o    : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
     issue_archx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
@@ -87,9 +81,6 @@ architecture rtl of opa_rename is
   
   signal r_dec_fast    : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
   signal r_dec_slow    : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-  signal r_dec_jump    : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-  signal r_dec_load    : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-  signal r_dec_store   : std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
   signal r_dec_setx    : std_logic_vector(c_decoders-1 downto 0);
   signal r_dec_geta    : std_logic_vector(c_decoders-1 downto 0);
   signal r_dec_getb    : std_logic_vector(c_decoders-1 downto 0);
@@ -127,9 +118,6 @@ begin
       --   Thus, it's simplly a 1-cycle delay
       r_dec_fast  <= decode_fast_i;
       r_dec_slow  <= decode_slow_i;
-      r_dec_jump  <= decode_jump_i;
-      r_dec_load  <= decode_load_i;
-      r_dec_store <= decode_store_i;
       r_dec_setx  <= decode_setx_i;
       r_dec_geta  <= decode_geta_i;
       r_dec_getb  <= decode_getb_i;
@@ -211,9 +199,6 @@ begin
   -- Forward result to issue stage
   issue_fast_o  <= r_dec_fast;
   issue_slow_o  <= r_dec_slow;
-  issue_jump_o  <= r_dec_jump;
-  issue_load_o  <= r_dec_load;
-  issue_store_o <= r_dec_store;
   issue_setx_o  <= r_dec_setx;
   issue_aux_o   <= r_dec_aux;
   issue_archx_o <= r_dec_archx;

@@ -54,9 +54,6 @@ architecture rtl of opa is
   
   signal decode_rename_fast     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_slow     : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_rename_jump     : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_rename_load     : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_rename_store    : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_setx     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_geta     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_getb     : std_logic_vector(c_decoders-1 downto 0);
@@ -66,9 +63,6 @@ architecture rtl of opa is
   signal decode_rename_archb    : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
   signal rename_issue_fast      : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_slow      : std_logic_vector(c_decoders-1 downto 0);
-  signal rename_issue_jump      : std_logic_vector(c_decoders-1 downto 0);
-  signal rename_issue_load      : std_logic_vector(c_decoders-1 downto 0);
-  signal rename_issue_store     : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_setx      : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_aux       : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
   signal rename_issue_archx     : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
@@ -161,9 +155,6 @@ begin
       fetch_dat_i    => data_i,
       rename_fast_o  => decode_rename_fast,
       rename_slow_o  => decode_rename_slow,
-      rename_jump_o  => decode_rename_jump,
-      rename_load_o  => decode_rename_load,
-      rename_store_o => decode_rename_store,
       rename_setx_o  => decode_rename_setx,
       rename_geta_o  => decode_rename_geta,
       rename_getb_o  => decode_rename_getb,
@@ -181,9 +172,6 @@ begin
       rst_n_i        => rst_n_i,
       decode_fast_i  => decode_rename_fast,
       decode_slow_i  => decode_rename_slow,
-      decode_jump_i  => decode_rename_jump,
-      decode_load_i  => decode_rename_load,
-      decode_store_i => decode_rename_store,
       decode_setx_i  => decode_rename_setx,
       decode_geta_i  => decode_rename_geta,
       decode_getb_i  => decode_rename_getb,
@@ -197,9 +185,6 @@ begin
       issue_shift_i  => issue_rename_shift,
       issue_fast_o   => rename_issue_fast,
       issue_slow_o   => rename_issue_slow,
-      issue_jump_o   => rename_issue_jump,
-      issue_load_o   => rename_issue_load,
-      issue_store_o  => rename_issue_store,
       issue_setx_o   => rename_issue_setx,
       issue_aux_o    => rename_issue_aux,
       issue_archx_o  => rename_issue_archx,
@@ -221,9 +206,6 @@ begin
       rename_shift_o => issue_rename_shift,
       rename_fast_i  => rename_issue_fast,
       rename_slow_i  => rename_issue_slow,
-      rename_jump_i  => rename_issue_jump,
-      rename_load_i  => rename_issue_load,
-      rename_store_i => rename_issue_store,
       rename_setx_i  => rename_issue_setx,
       rename_aux_i   => rename_issue_aux,
       rename_archx_i => rename_issue_archx,

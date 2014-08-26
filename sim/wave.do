@@ -26,7 +26,6 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_kill
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_quash
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_quash
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_commit
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_commit
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stat_o
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_ready_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_final_i
@@ -66,4 +65,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {9 ns} {105 ns}
+WaveRestoreZoom {0 ns} {525 ns}

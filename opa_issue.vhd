@@ -23,9 +23,6 @@ entity opa_issue is
     rename_shift_o : out std_logic;
     rename_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_jump_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_load_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_store_i : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_aux_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
     rename_archx_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
@@ -78,11 +75,10 @@ architecture rtl of opa_issue is
   --   issued: was previously selected by arbitration and not stalled
   --   ready:  result is available (can issue dependants)    => issued
   --   final:  will not generate quash|kill                  => ready
-  --   commit: ready to be retired                           => final
   --   quash:  instruction needs to be reissued
   --   kill:   must reset the PC
   --
-  -- Only committed instructions are shifted out of the window.
+  -- Only final+!quash instructions are shifted out of the window.
   --
   -- OPA makes heavy use of speculative execution; instructions run opportunistically.
   -- Thus, it can make these kinds of mistakes:
@@ -93,16 +89,8 @@ architecture rtl of opa_issue is
   -- 
   -- To maintain program-order, enforce these rules:
   --   To issue an instruction, all operands must be ready
-  --   To issue a store, all prior branches must be committed
-  --   To commit an instruction, must be final+!quash and all operands committed
-  --   To commit a load/store, all prior stores must be committed
-  --     ... this last rule means at most one write/cycle.
-  --     ... "no prior squashes and all commits final" might work too
+  --   Stores are buffered until retired
   --   Quash clears ready. If final, it also clears: issued/final/kill.
-  --
-  -- To simplify these rules, we keep two additional flags:
-  --   uncb: Uncommitted branch
-  --   uncs: Uncommitted store
   
   -- To keep r_schedule as easy to compute as possible, half of the reservation station
   -- is shifted early, and half is shifted late. r_schedule is late, as is anything fed
@@ -122,11 +110,6 @@ architecture rtl of opa_issue is
   signal r_shift      : std_logic;
   
   -- These have 0 latency indexes (fed by mux)
-  signal s_uncb       : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_uncb       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_uncs       : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_uncs       : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_ldst       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_fast       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_slow       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_bakx0      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
@@ -146,8 +129,6 @@ architecture rtl of opa_issue is
   signal r_kill       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_quash      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_quash      : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_commit     : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_commit     : std_logic_vector(c_num_stat-1 downto 0);
   signal r_setx       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_archx      : t_opa_matrix(c_num_stat-1 downto 0, c_arch_wide-1 downto 0);
   signal r_aux        : t_opa_matrix(c_num_stat-1 downto 0, c_aux_wide -1 downto 0);
@@ -156,16 +137,9 @@ architecture rtl of opa_issue is
   signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
   type t_stat is array(c_num_stat-1 downto 0) of unsigned(c_stat_wide-1 downto 0);
-  signal s_uncb_sum     : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_uncs_sum     : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_store_issue  : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_ldst_commit  : std_logic_vector(c_num_stat-1 downto 0);
   signal s_quash1       : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
   signal s_quasha       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_quashb       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_commit1      : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
-  signal s_commita      : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_commitb      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready1       : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
   signal s_readya       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyb       : std_logic_vector(c_num_stat-1 downto 0);
@@ -173,6 +147,7 @@ architecture rtl of opa_issue is
   signal s_eu_issued    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_fast : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_slow : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_commit       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_stata_1      : t_stat;
   signal s_statb_1      : t_stat;
   signal s_stata_2      : t_stat;
@@ -184,12 +159,6 @@ architecture rtl of opa_issue is
   signal r_mux_fast   : std_logic_vector(c_decoders-1 downto 0);
   signal r_sh1_slow   : std_logic_vector(c_decoders-1 downto 0);
   signal r_mux_slow   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sh1_jump   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_mux_jump   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sh1_store  : std_logic_vector(c_decoders-1 downto 0);
-  signal r_mux_store  : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sh1_ldst   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_mux_ldst   : std_logic_vector(c_decoders-1 downto 0);
   signal r_sh1_setx   : std_logic_vector(c_decoders-1 downto 0);
   signal r_sh2_setx   : std_logic_vector(c_decoders-1 downto 0);
   signal r_sh1_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
@@ -251,29 +220,6 @@ begin
   s_final <= eu_final_i or f_shift(r_final and not r_quash, r_shift);
   s_kill  <= eu_kill_i  or f_shift(r_kill  and not r_quash, r_shift);
   
-  -- Is it safe to issue this station? (store-branch conflict)
-  uncb : opa_prefixsum
-    generic map(
-      g_target => g_target,
-      g_width  => c_num_stat,
-      g_count  => 1)
-    port map(
-      bits_i  => r_uncb,
-      total_o => s_uncb_sum);
-  s_store_issue <= not (r_uncs and s_uncb_sum);
-    -- 2 inputs to level 3 with <= 36 stations
-  
-  -- Is it safe to commit this load/store? (speculative read/write)
-  uncs : opa_prefixsum
-    generic map(
-      g_target => g_target,
-      g_width  => c_num_stat,
-      g_count  => 1)
-    port map(
-      bits_i  => r_uncs,
-      total_o => s_uncs_sum);
-  s_ldst_commit <= not (r_ldst and s_uncs_sum);
-
   -- Propagate instruction quashing
   s_quash1 <= c_pad_high0 & r_quash;
   s_quasha <= f_opa_compose(s_quash1, r_stata);
@@ -282,25 +228,12 @@ begin
               s_quasha or s_quashb;
     -- 3 levels with <= 16 stations
   
-  -- Propagate commits
-  s_commit1 <= c_pad_high1 & r_commit;
-  s_commita <= f_opa_compose(s_commit1, r_stata);
-  s_commitb <= f_opa_compose(s_commit1, r_statb);
-  s_commit  <= f_shift(r_commit, r_shift) or 
-               (s_commita and s_commitb and s_ldst_commit and 
-                (f_shift(r_final and not r_quash, r_shift) or
-                 (eu_final_i and not eu_quash_i)));
-                 --'0')); -- !!! try this for timing
-  s_uncs    <= r_uncs and not s_commit;
-  s_uncb    <= r_uncb and not s_commit;
-    -- 3 levels with <= 16 stations
-  
   -- Which stations have ready operands?
   s_ready1 <= c_pad_high1 & r_ready;
   s_readya <= f_opa_compose(s_ready1, r_stata);
   s_readyb <= f_opa_compose(s_ready1, r_statb);
   s_ready <= eu_ready_i or f_shift(r_ready and not r_quash, r_shift) or 
-             (s_schedule_fast_issue and s_pending_fast); -- <= critical path
+             (s_schedule_fast_issue and s_pending_fast); -- <= critical path !!! add lcells
      -- 2 levels with <= 16 stations
   
   -- Which stations are now issued?
@@ -311,7 +244,7 @@ begin
 
   -- Which stations are pending issue?
   s_pending_fast <= s_readya and s_readyb and not f_shift(s_eu_issued or r_issued, r_shift) and r_fast;
-  s_pending_slow <= s_readya and s_readyb and not f_shift(s_eu_issued or r_issued, r_shift) and r_slow and s_store_issue;
+  s_pending_slow <= s_readya and s_readyb and not f_shift(s_eu_issued or r_issued, r_shift) and r_slow;
     -- 3 levels
   
   fast : opa_prefixsum
@@ -351,6 +284,8 @@ begin
     -- 2 levels with stations <= 18
   
   -- Determine if the execution window should be shifted
+  s_commit <= (f_shift(r_final, r_shift) or eu_final_i) and not 
+              (f_shift(r_quash, r_shift) or eu_quash_i);
   s_stall <= not f_opa_and(s_commit(c_decoders-1 downto 0));
   s_shift <= fetch_stb_i and not s_stall;
   fetch_stall_o <= s_stall or not rst_n_i;
@@ -403,9 +338,6 @@ begin
       r_sh2_setx  <= (others => '0');
       r_sh1_fast  <= (others => '1');
       r_sh1_slow  <= (others => '0');
-      r_sh1_jump  <= (others => '0');
-      r_sh1_store <= (others => '0');
-      r_sh1_ldst  <= (others => '0');
       r_sh1_baka  <= (others => (others => '0'));
       r_sh1_bakb  <= (others => (others => '0'));
       r_sh1_stata <= (others => (others => '0'));
@@ -422,9 +354,6 @@ begin
         r_sh2_setx  <= r_sh1_setx;
         r_sh1_fast  <= rename_fast_i;
         r_sh1_slow  <= rename_slow_i;
-        r_sh1_jump  <= rename_jump_i;
-        r_sh1_store <= rename_store_i;
-        r_sh1_ldst  <= rename_load_i or rename_store_i;
         r_sh1_baka  <= rename_baka_i;
         r_sh1_bakb  <= rename_bakb_i;
         r_sh1_stata <= rename_stata_i;
@@ -457,9 +386,6 @@ begin
       -- Load no-ops on power-on
       r_mux_fast  <= (others => '1');
       r_mux_slow  <= (others => '0');
-      r_mux_jump  <= (others => '0');
-      r_mux_store <= (others => '0');
-      r_mux_ldst  <= (others => '0');
       r_mux_baka  <= (others => (others => '0'));
       r_mux_bakb  <= (others => (others => '0'));
       r_mux_stata <= (others => (others => '0'));
@@ -474,9 +400,6 @@ begin
         if r_shift = '1' then -- load enable
           r_mux_fast  <= rename_fast_i;
           r_mux_slow  <= rename_slow_i;
-          r_mux_jump  <= rename_jump_i;
-          r_mux_store <= rename_store_i;
-          r_mux_ldst  <= rename_load_i or rename_store_i;
           r_mux_baka  <= rename_baka_i;
           r_mux_bakb  <= rename_bakb_i;
           r_mux_stata <= rename_stata_i;
@@ -485,9 +408,6 @@ begin
         else
           r_mux_fast  <= r_sh1_fast;
           r_mux_slow  <= r_sh1_slow;
-          r_mux_jump  <= r_sh1_jump;
-          r_mux_store <= r_sh1_store;
-          r_mux_ldst  <= r_sh1_ldst;
           r_mux_baka  <= r_sh1_baka;
           r_mux_bakb  <= r_sh1_bakb;
           r_mux_stata <= r_sh1_stata;
@@ -503,9 +423,6 @@ begin
   begin
     if rising_edge(clk_i) then
       if s_shift = '1' then -- load enable
-        r_uncb <= r_mux_jump  & s_uncb(c_num_stat-1 downto c_decoders);
-        r_uncs <= r_mux_store & s_uncs(c_num_stat-1 downto c_decoders);
-        r_ldst <= r_mux_ldst  & r_ldst(c_num_stat-1 downto c_decoders);
         -- These two are sneaky; they are half lagged. Content lags thanks to s_stat[ab].
         for i in 0 to c_num_stat-c_decoders-1 loop
           for b in 0 to c_stat_wide-1 loop
@@ -520,9 +437,6 @@ begin
           end loop;
         end loop;
       else
-        r_uncb   <= s_uncb;
-        r_uncs   <= s_uncs;
-        r_ldst   <= r_ldst;
         r_stata  <= s_stata;
         r_statb  <= s_statb;
       end if;
@@ -568,7 +482,6 @@ begin
       r_final  <= (others => '1');
       r_kill   <= (others => '0');
       r_quash  <= (others => '0');
-      r_commit <= (others => '1');
       r_schedule_fast <= (others => (others => '0'));
       r_schedule_slow <= (others => (others => '0'));
       r_schedule_fast_issue <= (others => '0');
@@ -579,7 +492,6 @@ begin
       r_final  <= s_final;
       r_kill   <= s_kill;
       r_quash  <= s_quash;
-      r_commit <= s_commit;
       r_schedule_fast <= s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast);
       r_schedule_slow <= s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow);
       r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
