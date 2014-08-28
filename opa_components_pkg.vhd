@@ -273,7 +273,93 @@ package opa_components_pkg is
       regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0));
   end component;
 
-  component opa_ls is
+  component opa_l1d is
+    generic(
+      g_config : t_opa_config;
+      g_target : t_opa_target);
+    port(
+      clk_i         : in  std_logic;
+      rst_n_i       : in  std_logic;
+      -- Receive requests from LSB(we_i=1) or issue(we_i=0)
+      ldst_stall_o  : out std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      ldst_stb_i    : in  std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      ldst_we_i     : in  std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      ldst_adr_i    : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_dadr_wide(g_config)-1 downto 0);
+      ldst_dat_i    : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide (g_config)-1 downto 0);
+      ldst_dat_o    : out t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide (g_config)-1 downto 0);
+      ldst_miss_o   : out std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      -- Request for data bus [stb computed in ldst = we_o or (l1d_miss and lsb_miss)]
+      dbus_we_o     : out std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      dbus_adr_o    : out t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_dadr_wide(g_config)-1 downto 0);
+      dbus_dat_o    : out t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide (g_config)-1 downto 0));
+  end component;
+  
+  component opa_lsb is
+    generic(
+      g_config : t_opa_config;
+      g_target : t_opa_target);
+    port(
+      clk_i         : in  std_logic;
+      rst_n_i       : in  std_logic;
+      -- The issue stage shift is what retires writes
+      -- It is only allowed to shift if we have room!
+      issue_stall_o : out std_logic; 
+      issue_shift_i : in  std_logic;
+      issue_quash_o : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+      -- Accept bus accesses; reads=>load forwarding check, writes=>quash check
+      ldst_stb_i    : in  std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      ldst_we_i     : in  std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      ldst_stat_i   : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+      ldst_adr_i    : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_dadr_wide(g_config)-1 downto 0);
+      ldst_dat_i    : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide (g_config)-1 downto 0);
+      ldst_miss_o   : out std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      ldst_dat_o    : out t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide (g_config)-1 downto 0);
+      -- Receive cache miss results from the dbus (always a write)
+      dbus_stb_i    : in  std_logic;
+      dbus_stat_i   : in  std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+      dbus_adr_i    : in  std_logic_vector(f_opa_dadr_wide(g_config)-1 downto 0);
+      dbus_dat_i    : in  std_logic_vector(f_opa_reg_wide (g_config)-1 downto 0);
+      -- l1d is filled when we retire stuff (refill or write)
+      l1d_stall_i   : in  std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      l1d_stb_o     : out std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      l1d_adr_o     : out t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_dadr_wide(g_config)-1 downto 0);
+      l1d_dat_o     : out t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide (g_config)-1 downto 0));
+  end component;
+  
+  component opa_dbus is
+    generic(
+      g_config : t_opa_config;
+      g_target : t_opa_target);
+    port(
+      clk_i         : in  std_logic;
+      rst_n_i       : in  std_logic;
+      -- Wishbone data bus to L2
+      d_stall_i     : in  std_logic;
+      d_stb_o       : out std_logic;
+      d_we_o        : out std_logic;
+      d_adr_o       : out std_logic_vector(f_opa_dadr_wide(g_config)-1 downto 0);
+      d_dat_o       : out std_logic_vector(f_opa_reg_wide (g_config)-1 downto 0);
+      d_dat_i       : in  std_logic_vector(f_opa_reg_wide (g_config)-1 downto 0);
+      d_ack_i       : in  std_logic;
+      -- When low, the dbus has room for >= slow*2 additional operations
+      issue_shift_i : in  std_logic;
+      issue_stall_o : out std_logic;
+      issue_quash_o : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+      -- L1d issues reads when both LSB and L1d missed
+      -- L1d issues writes on cache eviction (only caused by L1d writes => no miss => no hazard)
+      l1d_stb_i     : in  std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      l1d_we_i      : in  std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0); -- ignored when we_i=1
+      l1d_stat_i    : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+      l1d_adr_i     : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_dadr_wide(g_config)-1 downto 0);
+      l1d_dat_i     : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide (g_config)-1 downto 0);
+      -- Upon receiving a bus read result, it is forwarded to the LSB
+      lsb_stb_o     : out std_logic;
+      lsb_stat_o    : out std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+      lsb_adr_o     : out std_logic_vector(f_opa_dadr_wide(g_config)-1 downto 0);
+      lsb_dat_o     : out std_logic_vector(f_opa_reg_wide (g_config)-1 downto 0));
+  end component;
+  
+  component opa_ldst is
     generic(
       g_config : t_opa_config;
       g_target : t_opa_target);
@@ -282,31 +368,31 @@ package opa_components_pkg is
       rst_n_i        : in  std_logic;
       
       issue_shift_i  : in  std_logic;
-      issue_stb_i    : in  std_logic;
-      issue_stat_i   : in  std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
-      issue_stb_o    : out std_logic;
-      issue_kill_o   : out std_logic;
-      issue_stat_o   : out std_logic_vector(f_opa_stat_wide(g_config)-1 downto 0);
+      issue_stat_i   : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_num_stat(g_config)-1 downto 0);
+      issue_ready_o  : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+      issue_final_o  : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+      issue_quash_o  : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+      -- issue_kill_o   : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
+      issue_stall_o  : out std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      commit_stall_o : out std_logic;
       
-      regfile_stb_i  : in  std_logic;
-      regfile_rega_i : in  std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
-      regfile_regb_i : in  std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
-      regfile_bakx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
-      regfile_aux_i  : in  std_logic_vector(c_aux_wide-1 downto 0);
+      regfile_stb_i  : in  std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      regfile_rega_i : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide(g_config) -1 downto 0);
+      regfile_regb_i : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide(g_config) -1 downto 0);
+      regfile_bakx_i : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      regfile_aux_i  : in  t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, c_aux_wide-1 downto 0);
       
-      regfile_stb_o  : out std_logic;
-      regfile_bakx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
-      regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
+      regfile_stb_o  : out std_logic_vector(f_opa_num_ldst(g_config)-1 downto 0);
+      regfile_bakx_o : out t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0); 
+      regfile_regx_o : out t_opa_matrix(f_opa_num_ldst(g_config)-1 downto 0, f_opa_reg_wide(g_config) -1 downto 0);
       
+      d_stall_i : in  std_logic;
       d_stb_o   : out std_logic;
       d_we_o    : out std_logic;
-      d_stall_i : in  std_logic;
-      d_ack_i   : in  std_logic;
-      d_err_i   : in  std_logic;
-      d_addr_o  : out std_logic_vector(g_config.da_bits-1 downto 0);
-      d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-      d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      d_data_i  : out std_logic_vector(2**g_config.log_width  -1 downto 0));
+      d_adr_o   : out std_logic_vector(g_config.da_bits-1 downto 0);
+      d_dat_o   : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      d_dat_i   : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      d_ack_i   : in  std_logic);
   end component;
   
   component opa_core_tb is

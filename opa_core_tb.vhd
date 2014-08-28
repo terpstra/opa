@@ -77,16 +77,13 @@ begin
       d_we_o    => d_we,
       d_stall_i => d_stall,
       d_ack_i   => d_ack,
-      d_err_i   => d_err,
-      d_addr_o  => d_addr,
-      d_sel_o   => d_sel,
-      d_data_o  => d_data_o,
-      d_data_i  => d_data_i);
+      d_adr_o   => d_addr,
+      d_dat_o   => d_data_o,
+      d_dat_i   => d_data_i);
   
   -- for now:
   d_data_i <= d_data_o;
   d_stall  <= '0';
-  d_err    <= '0';
   d_ack    <= d_stb;
 
   good_o <= '1';
