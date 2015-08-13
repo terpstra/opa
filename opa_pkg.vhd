@@ -67,12 +67,14 @@ package opa_pkg is
       
       -- Wishbone data bus
       d_stb_o   : out std_logic;
-      d_stall_i : in  std_logic;
       d_we_o    : out std_logic;
+      d_stall_i : in  std_logic;
       d_ack_i   : in  std_logic;
-      d_adr_o   : out std_logic_vector(g_config.da_bits-1 downto 0);
-      d_dat_o   : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      d_dat_i   : in  std_logic_vector(2**g_config.log_width  -1 downto 0));
+      d_err_i   : in  std_logic;
+      d_addr_o  : out std_logic_vector(g_config.da_bits-1 downto 0);
+      d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
+      d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+      d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0));
   end component;
   
 end package;
