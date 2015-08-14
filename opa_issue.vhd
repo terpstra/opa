@@ -35,11 +35,9 @@ entity opa_issue is
     -- Exceptions from the EUs
     eu_shift_o     : out std_logic;
     eu_stat_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_num_stat(g_config)-1 downto 0);
-    eu_ready_i     : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0); -- these can be slow
     eu_final_i     : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
     eu_quash_i     : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
     eu_kill_i      : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-    eu_stall_i     : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0); -- must be fast
     
     -- Regfile needs to fetch these for EU
     regfile_stb_o  : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -102,8 +100,11 @@ architecture rtl of opa_issue is
   signal s_schedule_fast : t_opa_matrix(c_num_fast-1  downto 0, c_num_stat-1 downto 0);
   signal s_schedule_slow : t_opa_matrix(c_num_slow-1  downto 0, c_num_stat-1 downto 0);
   signal s_schedule      : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  
   signal s_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal r_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_schedule_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_schedule_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
   
   signal s_stall      : std_logic;
   signal s_shift      : std_logic;
@@ -112,6 +113,8 @@ architecture rtl of opa_issue is
   -- These have 0 latency indexes (fed by mux)
   signal r_fast       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_slow       : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_issued     : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_issued     : std_logic_vector(c_num_stat-1 downto 0);
   signal r_bakx0      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   -- These have 0 latency indexes, but 1 latency content
   signal s_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
@@ -119,16 +122,14 @@ architecture rtl of opa_issue is
   signal s_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
   signal r_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
   -- These have 1 latency indexes (fed by sh2)
-  signal s_issued     : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_issued     : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_ready      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_wait1      : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_wait1      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_wait2      : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_wait2      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_final      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_final      : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_kill       : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_kill       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_quash      : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_quash      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_setx       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_archx      : t_opa_matrix(c_num_stat-1 downto 0, c_arch_wide-1 downto 0);
   signal r_aux        : t_opa_matrix(c_num_stat-1 downto 0, c_aux_wide -1 downto 0);
@@ -136,22 +137,27 @@ architecture rtl of opa_issue is
   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
+  signal s_fast_need_issue_raw : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_slow_need_issue_raw : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_fast_need_issue     : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_slow_need_issue     : std_logic_vector(c_num_stat-1 downto 0);
+  
   type t_stat is array(c_num_stat-1 downto 0) of unsigned(c_stat_wide-1 downto 0);
-  signal s_quash1       : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
-  signal s_quasha       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_quashb       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_ready1       : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
+  signal s_ready_pad    : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
   signal s_readya       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyb       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_eu_notstall  : std_logic_vector(c_num_slow-1 downto 0);
-  signal s_eu_issued    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_fast : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_slow : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_fast   : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_slow   : std_logic_vector(c_num_stat-1 downto 0);
   signal s_commit       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_stata_1      : t_stat;
   signal s_statb_1      : t_stat;
   signal s_stata_2      : t_stat;
   signal s_statb_2      : t_stat;
+  
+  signal s_ready_raw   : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_shift : std_logic_vector(c_num_stat-1 downto 0);
   
   -- Need to eat data from the renamer with careful register staging
   -- This is tricky because half of window potentially 1-cycle ahead of the other
@@ -217,34 +223,25 @@ architecture rtl of opa_issue is
 begin
 
   -- Status from EUs
-  s_final <= eu_final_i or f_shift(r_final and not r_quash, r_shift);
-  s_kill  <= eu_kill_i  or f_shift(r_kill  and not r_quash, r_shift);
-  
-  -- Propagate instruction quashing
-  s_quash1 <= c_pad_high0 & r_quash;
-  s_quasha <= f_opa_compose(s_quash1, r_stata);
-  s_quashb <= f_opa_compose(s_quash1, r_statb);
-  s_quash  <= eu_quash_i or f_shift(r_quash and r_issued and not r_final, r_shift) or
-              s_quasha or s_quashb;
-    -- 3 levels with <= 16 stations
-  
-  -- Which stations have ready operands?
-  s_ready1 <= c_pad_high1 & r_ready;
-  s_readya <= f_opa_compose(s_ready1, r_stata);
-  s_readyb <= f_opa_compose(s_ready1, r_statb);
-  s_ready <= eu_ready_i or f_shift(r_ready and not r_quash, r_shift) or 
-             (s_schedule_fast_issue and s_pending_fast); -- <= critical path !!! add lcells
-     -- 2 levels with <= 16 stations
-  
+  s_final <= eu_final_i or f_shift(r_final, r_shift);
+      
   -- Which stations are now issued?
-  s_eu_notstall <= not eu_stall_i;
-  s_eu_issued   <= r_schedule_fast_issue or f_opa_product(f_opa_transpose(r_schedule_slow), s_eu_notstall);
-  s_issued      <= f_shift(s_eu_issued or (r_issued and not (r_quash and r_final)), r_shift);
-    -- 2 levels with slow <= 2
+  s_issued <= f_shift(r_schedule_fast_issue or r_schedule_slow_issue, r_shift) or r_issued;
+  s_fast_need_issue_raw <= not s_issued and r_fast;
+  s_slow_need_issue_raw <= not s_issued and r_slow;
+  fast_need_issue : opa_lcell_vector generic map(g_wide => c_num_stat) port map(a_i => s_fast_need_issue_raw, b_o => s_fast_need_issue);
+  slow_need_issue : opa_lcell_vector generic map(g_wide => c_num_stat) port map(a_i => s_slow_need_issue_raw, b_o => s_slow_need_issue);
+    -- 1 level using extend lut mode (two 5 input functions, sharing 4 input, muxed)
 
+  -- Which stations have ready operands?
+  s_ready_pad <= c_pad_high1 & r_ready;
+  s_readya <= f_opa_compose(s_ready_pad, r_stata);
+  s_readyb <= f_opa_compose(s_ready_pad, r_statb);
+     -- 2.5 levels with <= 32 stations
+  
   -- Which stations are pending issue?
-  s_pending_fast <= s_readya and s_readyb and not f_shift(s_eu_issued or r_issued, r_shift) and r_fast;
-  s_pending_slow <= s_readya and s_readyb and not f_shift(s_eu_issued or r_issued, r_shift) and r_slow;
+  s_pending_fast <= s_readya and s_readyb and s_fast_need_issue;
+  s_pending_slow <= s_readya and s_readyb and s_slow_need_issue;
     -- 3 levels
   
   fast : opa_prefixsum
@@ -265,10 +262,17 @@ begin
     port map(
       bits_i   => s_pending_slow,
       count_o  => s_schedule_slow,
-      total_o  => open);
-   -- 5 levels for <= 12 num_stat (3 pending + 2 arbitrate)
+      total_o  => s_schedule_slow_issue);
+   -- 6 levels for <= 28 num_stat
   
   s_schedule <= f_opa_transpose(f_opa_concat(f_opa_transpose(r_schedule_slow), f_opa_transpose(r_schedule_fast)));
+  
+  s_ready_raw <= f_shift(r_wait1 or r_ready, r_shift);
+  ready_shift : opa_lcell_vector generic map(g_wide => c_num_stat) port map(a_i => s_ready_raw, b_o => s_ready_shift);
+  s_ready  <= (s_schedule_fast_issue and s_pending_fast) or s_ready_shift;
+  
+  s_wait1   <= f_shift(r_wait2, r_shift);
+  s_wait2   <= s_schedule_slow_issue and s_pending_slow;
   
   -- Forward plan to the register file and EUs
   eu_shift_o <= r_shift;
@@ -284,8 +288,7 @@ begin
     -- 2 levels with stations <= 18
   
   -- Determine if the execution window should be shifted
-  s_commit <= (f_shift(r_final, r_shift) or eu_final_i) and not 
-              (f_shift(r_quash, r_shift) or eu_quash_i);
+  s_commit <= f_shift(r_final, r_shift) or eu_final_i;
   s_stall <= not f_opa_and(s_commit(c_decoders-1 downto 0));
   s_shift <= fetch_stb_i and not s_stall;
   fetch_stall_o <= s_stall or not rst_n_i;
@@ -308,7 +311,7 @@ begin
   -- Tell the committer about our data
   rename_shift_o <= r_shift;
   commit_shift_o <= r_shift;
-  commit_kill_o  <= r_kill(c_decoders-1 downto 0);
+  commit_kill_o  <= (others => '0');
   commit_setx_o  <= r_setx(c_decoders-1 downto 0);
   commit : for i in 0 to c_decoders-1 generate
     arch : for b in 0 to c_arch_wide-1 generate
@@ -442,6 +445,19 @@ begin
       end if;
     end if;
   end process;
+  
+  stations_0rl : process(rst_n_i, clk_i) is
+  begin
+    if rst_n_i = '0' then
+      r_issued <= (others => '1');
+    elsif rising_edge(clk_i) then
+      if s_shift = '1' then -- load enable
+        r_issued <= c_decoder_zeros & s_issued(c_num_stat-1 downto c_decoders);
+      else
+        r_issued <= s_issued;
+      end if;
+    end if;
+  end process;
 
   -- Register the stations, 0-latency with reset, with clock enable
   stations_0rc : process(rst_n_i, clk_i) is
@@ -477,24 +493,24 @@ begin
   begin
     if rst_n_i = '0' then
       r_shift  <= '0';
-      r_issued <= (others => '1');
       r_ready  <= (others => '1');
+      r_wait1  <= (others => '0');
+      r_wait2  <= (others => '0');
       r_final  <= (others => '1');
-      r_kill   <= (others => '0');
-      r_quash  <= (others => '0');
       r_schedule_fast <= (others => (others => '0'));
       r_schedule_slow <= (others => (others => '0'));
       r_schedule_fast_issue <= (others => '0');
+      r_schedule_slow_issue <= (others => '0');
     elsif rising_edge(clk_i) then
       r_shift  <= s_shift;
-      r_issued <= s_issued;
       r_ready  <= s_ready;
+      r_wait1  <= s_wait1;
+      r_wait2  <= s_wait2;
       r_final  <= s_final;
-      r_kill   <= s_kill;
-      r_quash  <= s_quash;
       r_schedule_fast <= s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast);
       r_schedule_slow <= s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow);
       r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
+      r_schedule_slow_issue <= s_schedule_slow_issue and s_pending_slow;
     end if;
   end process;
   

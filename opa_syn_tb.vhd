@@ -19,7 +19,7 @@ end opa_syn_tb;
 
 architecture rtl of opa_syn_tb is
 
-  constant c_config : t_opa_config := c_opa_huge;
+  constant c_config : t_opa_config := c_opa_large;
 
   type t_ops is array(15 downto 0) of std_logic_vector(67 downto 0);
   signal r_ops : t_ops :=
@@ -51,7 +51,7 @@ architecture rtl of opa_syn_tb is
   signal d_stall  : std_logic;
   signal d_ack    : std_logic;
   signal d_err    : std_logic;
-  signal d_addr   : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal d_addr   : std_logic_vector(c_config.da_bits       -1 downto 0);
   signal d_sel    : std_logic_vector(2**c_config.log_width/8-1 downto 0);
   signal d_data_o : std_logic_vector(2**c_config.log_width  -1 downto 0);
   signal d_data_i : std_logic_vector(2**c_config.log_width  -1 downto 0);

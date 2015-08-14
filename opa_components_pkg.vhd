@@ -167,11 +167,9 @@ package opa_components_pkg is
       -- Exceptions from the EUs
       eu_shift_o     : out std_logic;
       eu_stat_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_num_stat(g_config)-1 downto 0);
-      eu_ready_i     : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0); -- these can be slow
       eu_final_i     : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
       eu_quash_i     : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
       eu_kill_i      : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-      eu_stall_i     : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0); -- must be fast
       
       -- Regfile needs to fetch these for EU
       regfile_stb_o  : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);

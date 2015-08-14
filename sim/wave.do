@@ -19,6 +19,10 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_issued
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_issued
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_ready
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_ready
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_wait1
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_wait1
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_wait2
+add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_wait2
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_final
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_final
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_kill
@@ -27,11 +31,9 @@ add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_quash
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_quash
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_commit
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stat_o
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_ready_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_final_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_quash_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_kill_i
-add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/eu_stall_i
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_readya
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/s_readyb
 add wave -noupdate /opa_sim_tb/opa_tb/opa_core/issue/r_stata

@@ -28,13 +28,10 @@ package opa_pkg is
   constant c_opa_small : t_opa_config := ( 4, 5, 2,  6, 1, 1, false, 32, 1,  8, 4, 1,  8);
   
   -- 32-bit processor, 2-issue, 12 stations, 2 EU, 2048x 16KB pages, 32KB cache
-  constant c_opa_mid   : t_opa_config := ( 4, 5, 2, 12, 1, 1, true,  32, 2, 10, 4, 2, 10);
+  constant c_opa_mid   : t_opa_config := ( 4, 5, 2, 14, 2, 1, true,  32, 2, 10, 4, 2, 10);
   
-  -- 64-bit processor, 2-issue, 12 stations, 2 EU, 4096x 32KB pages, 128KB cache
-  constant c_opa_large : t_opa_config := ( 4, 6, 2, 12, 1, 1, true,  32, 4, 10, 4, 4, 10);
-  
-  -- 64-bit processor, 4-issue, 36 stations, 4 EU, 4096x 32KB pages, 128KB cache
-  constant c_opa_huge  : t_opa_config := ( 4, 6, 4, 36, 2, 2, true,  64, 4, 10, 4, 4, 10);
+  -- 64-bit processor, 4-issue, 12 stations, 2 EU, 4096x 32KB pages, 128KB cache
+  constant c_opa_large : t_opa_config := ( 4, 6, 4, 28, 3, 2, true,  32, 4, 10, 4, 4, 10);
   
   type t_opa_target is record
     lut_width  : natural; -- How many inputs to combine at once
