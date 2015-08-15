@@ -137,27 +137,23 @@ architecture rtl of opa_issue is
   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
-  signal s_fast_need_issue_raw : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_slow_need_issue_raw : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_fast_need_issue     : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_slow_need_issue     : std_logic_vector(c_num_stat-1 downto 0);
-  
   type t_stat is array(c_num_stat-1 downto 0) of unsigned(c_stat_wide-1 downto 0);
-  signal s_ready_pad    : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
-  signal s_readya       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_readyb       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_pending_fast : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_pending_slow : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_ready_fast   : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_ready_slow   : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_commit       : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_stata_1      : t_stat;
-  signal s_statb_1      : t_stat;
-  signal s_stata_2      : t_stat;
-  signal s_statb_2      : t_stat;
-  
-  signal s_ready_raw   : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_ready_shift : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_fast_need_issue : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_slow_need_issue : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_raw       : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_shift     : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_pad       : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
+  signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_readyb          : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_pending_fast    : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_pending_slow    : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_fast      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_slow      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_commit          : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_stata_1         : t_stat;
+  signal s_statb_1         : t_stat;
+  signal s_stata_2         : t_stat;
+  signal s_statb_2         : t_stat;
   
   -- Need to eat data from the renamer with careful register staging
   -- This is tricky because half of window potentially 1-cycle ahead of the other
@@ -227,10 +223,8 @@ begin
       
   -- Which stations are now issued?
   s_issued <= f_shift(r_schedule_fast_issue or r_schedule_slow_issue, r_shift) or r_issued;
-  s_fast_need_issue_raw <= not s_issued and r_fast;
-  s_slow_need_issue_raw <= not s_issued and r_slow;
-  fast_need_issue : opa_lcell_vector generic map(g_wide => c_num_stat) port map(a_i => s_fast_need_issue_raw, b_o => s_fast_need_issue);
-  slow_need_issue : opa_lcell_vector generic map(g_wide => c_num_stat) port map(a_i => s_slow_need_issue_raw, b_o => s_slow_need_issue);
+  s_fast_need_issue <= not s_issued and r_fast;
+  s_slow_need_issue <= not s_issued and r_slow;
     -- 1 level using extend lut mode (two 5 input functions, sharing 4 input, muxed)
 
   -- Which stations have ready operands?
