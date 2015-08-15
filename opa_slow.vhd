@@ -44,7 +44,7 @@ architecture rtl of opa_slow is
   constant c_decoder_zeros : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
   
   constant c_regout    : boolean := true;
-  constant c_regwal    : boolean := c_reg_wide > 2*g_target.mul_width; -- needs wallace
+  constant c_regwal    : boolean := false;
   constant c_dsp_delay : natural := 2; -- registered input+output
   constant c_add_delay : natural := f_opa_choose(c_regout, c_dsp_delay+1, c_dsp_delay);
   constant c_wal_delay : natural := f_opa_choose(c_regwal, c_add_delay+1, c_add_delay);
