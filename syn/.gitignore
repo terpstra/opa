@@ -1,0 +1,17 @@
+c5_pin_model_dump.txt
+db/
+incremental_db/
+opa_syn_tb.asm.rpt
+opa_syn_tb.done
+opa_syn_tb.fit.rpt
+opa_syn_tb.fit.smsg
+opa_syn_tb.fit.summary
+opa_syn_tb.flow.rpt
+opa_syn_tb.jdi
+opa_syn_tb.map.rpt
+opa_syn_tb.map.summary
+opa_syn_tb.pin
+opa_syn_tb.sof
+opa_syn_tb.sta.rpt
+opa_syn_tb.sta.summary
+opa_syn_tb_assignment_defaults.qdf
