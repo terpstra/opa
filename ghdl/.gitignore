@@ -1,0 +1,4 @@
+*.o
+*.cf
+opa_sim_tb
+testbench.vcd

@@ -1,0 +1,33 @@
+[*]
+[*] GTKWave Analyzer v3.3.62 (w)1999-2014 BSI
+[*] Sat Aug 15 14:43:49 2015
+[*]
+[dumpfile] "/home/terpstra/opa/ghdl/testbench.vcd"
+[dumpfile_mtime] "Sat Aug 15 14:41:37 2015"
+[dumpfile_size] 863034
+[savefile] "/home/terpstra/opa/ghdl/wave.gtkw"
+[timestart] 0
+[size] 1920 1134
+[pos] -51 -51
+*-24.000000 1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] opa_tb.
+[treeopen] opa_tb.opa_core.
+[treeopen] opa_tb.opa_core.regfile.
+[sst_width] 218
+[signals_width] 148
+[sst_expanded] 1
+[sst_vpaned_height] 329
+@28
+opa_tb.clk_i
+@800023
+opa_tb.opa_core.regfile.eu_stb_o[4:0]
+@29
+(0)opa_tb.opa_core.regfile.eu_stb_o[4:0]
+(1)opa_tb.opa_core.regfile.eu_stb_o[4:0]
+(2)opa_tb.opa_core.regfile.eu_stb_o[4:0]
+(3)opa_tb.opa_core.regfile.eu_stb_o[4:0]
+(4)opa_tb.opa_core.regfile.eu_stb_o[4:0]
+@1001201
+-group_end
+[pattern_trace] 1
+[pattern_trace] 0
