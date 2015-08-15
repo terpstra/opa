@@ -273,8 +273,8 @@ package body opa_functions_pkg is
     assert (x'high(1) = y'high(1)) report "matrix-matrix dimension mismatch" severity failure;
     
     for i in result'range(1) loop
-      for j in x'length(2)-1 downto 0 loop
-        result(i,j+y'high(2)+1) := x(i,j+x'low(2));
+      for j in x'length(2) downto 1 loop
+        result(i,j-1+y'high(2)+1) := x(i,j-1+x'low(2));
       end loop;
       for j in y'range(2) loop
         result(i,j) := y(i,j);

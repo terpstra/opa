@@ -42,8 +42,8 @@ architecture rtl of opa_fast is
   signal r_regb : std_logic_vector(regfile_regb_i'range);
   signal r_aux  : std_logic_vector(regfile_aux_i'range);
 
-  type t_logic is array(r_rega'range) of unsigned(1 downto 0);
-  signal s_logic_in : t_logic;
+  type t_logic is array(natural range <>) of unsigned(1 downto 0);
+  signal s_logic_in : t_logic(r_rega'range);
   
   signal s_immediate  : std_logic_vector(r_rega'range);
   signal s_logic      : std_logic_vector(r_rega'range);

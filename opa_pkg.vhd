@@ -75,6 +75,3 @@ package opa_pkg is
   end component;
   
 end package;
-
-package body opa_pkg is
-end opa_pkg;
