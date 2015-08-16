@@ -60,5 +60,3 @@ can also try speculative register file loading => 2*n*n m10ks down to 2*n
 	=> 3-cycle writes go into readable bypass register
 	=> write-back happens on 4th cycle
 	(just like how in-order CPUs do it)
-
-regfile - use load-enable to mux between bypass/memory
