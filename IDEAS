@@ -1,29 +1,64 @@
+roll-out:
+	implement reads: direct + byte select + sign-extend
+	implement write-to-store-buffer
+	implement store finalizer scheduler [a]
+	implement write port
+	implement low-bits CAM [0]
+	implement write alias wake-up [1]
+	implement riscv decode => widen aux [2]
+	implement branch fault detection
+	implement fetcher
+	implement noop converter (fault => speculative ops become copies)
+	remove commit map
+	implement TLB+L1 [3]
+	try speculative issue [4]
+	branch predictor
+	implement FPU [5]
+
+[a] finalize ready writes preceded by entirely final operations => implies in-order writeback
+
+[0] easiest is to check low 14 bits to avoid virtual memory confusion
+	 => page memcpy slow. don’t care.
+	... for now just pay 14 bits per station
+
+[1] make issue wake-up a strobe => allows reissue with same circuit
+	... write’s final=>high concurrent to aliased load’s final+issued=>low
+
+pending:	both args are ready and !issued
+issued:		sent to EUs
+ready:		pulsed 0|2 cycles after issue => clears issue and sets ready[ab]
+final:		EU says it will not fault (=> ready)
+fault:		change of program flow    (=> !final)
+shift only when last decode are final
+
+test program: mul, mul, mul, mul, write, load, load, load, load, load, load
+=> check that all loads see same value
+
+[2] combine immediate + PC in decode stage
+... aux will be fucking huge. probably need to move it into m10k. 
+  fast*decode m10ks?! urg. at least no mux logic needed
+  find a better solution! (TM)
+
+[3] include a nocache bit for IO mappings
+
+[4] speculate that every pending 1 cycle op was issued => break issue into
+two pipeline steps
+
+r_speculative_ready <= r_ready | s_fast_schedule | s_wait1 | s_pending_fast;
+s_pending_fast <= f_mux(r_speculative_ready) and r_fast and not s_issued;
+r_pending_fast <= s_pending_fast;
+
+s_fast_issue <= f_prefix(r_pending_fast);
+s_issued <= r_issued or s_fast_issue;
+r_issued <= s_issued and s_pending_fast;
+r_ready <= r_ready | s_fast_schedule | s_wait0;
+
+can also try speculative register file loading => 2*n*n m10ks down to 2*n
+
+[5] FPU ops take 4 cycles, but live in slow EUs
+... to avoid additional write ports, add an extra bypass on slow memories.
+	=> 3-cycle writes go into readable bypass register
+	=> write-back happens on 4th cycle
+	(just like how in-order CPUs do it)
+
 regfile - use load-enable to mux between bypass/memory
-regfile - use station aux bits to mux aux ram immediate/PC
-
-my goal long-term: ... call parallelism
-
-decode - put aux into MLAB/M9k 
-  just a single writer that puts all the stuff in for all ops at once
-  put a reference into the renamer
-  just need (1+EU)* copies of the memory and pull it 1st step of regfile+retire
-   (must be a register when it reaches EU)
-  => can help with using 64-bit wide immediates
-
----------------------------------------------------------------------------------------------------------------------
-
-TODO:
-memory unit
-  select lines (byte ops)
-  TLB + nocache bit
-branches
-fetcher
-
----------------------------------------------------------------------------------------------------------------------
-
-
-... problem: FP is much slower than other slow ops
-    => two outputs? no. it's +50% memory use! stall somehow? or mux?
-
-BTB updated by retirement
-trace cache also writes on retire
