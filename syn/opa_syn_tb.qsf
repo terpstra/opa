@@ -1,5 +1,5 @@
 set_global_assignment -name FAMILY "Cyclone V"
-set_global_assignment -name DEVICE 5CEBA4F17C6
+set_global_assignment -name DEVICE 5CEBA4F17C8
 set_global_assignment -name TOP_LEVEL_ENTITY opa_syn_tb
 set_global_assignment -name VHDL_FILE ../opa_rename.vhd
 set_global_assignment -name VHDL_FILE ../opa_functions_pkg.vhd
@@ -28,7 +28,7 @@ set_global_assignment -name VHDL_FILE ../opa_dbus.vhd
 
 
 
-set_global_assignment -name LAST_QUARTUS_VERSION 14.0
+set_global_assignment -name LAST_QUARTUS_VERSION 15.0.2
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
