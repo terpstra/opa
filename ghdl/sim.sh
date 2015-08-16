@@ -7,15 +7,11 @@ for i in \
 	opa_components_pkg.vhd	\
 	opa_commit.vhd		\
 	opa_core_tb.vhd		\
-	opa_dbus.vhd		\
 	opa_decode.vhd		\
 	opa_dpram.vhd		\
 	opa_fast.vhd		\
 	opa_issue.vhd		\
-	opa_l1d.vhd		\
 	opa_lcell.vhd		\
-	opa_ldst.vhd		\
-	opa_lsb.vhd		\
 	opa_prefixsum.vhd	\
 	opa_prim_mul.vhd	\
 	opa_prim_ternary.vhd	\
