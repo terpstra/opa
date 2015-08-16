@@ -1,6 +1,5 @@
 regfile - use load-enable to mux between bypass/memory
 regfile - use station aux bits to mux aux ram immediate/PC
-renamer - if optimizing copies: leave them in place for commit to see
 
 my goal long-term: ... call parallelism
 
