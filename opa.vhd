@@ -26,7 +26,7 @@ entity opa is
     d_stall_i : in  std_logic;
     d_ack_i   : in  std_logic;
     d_err_i   : in  std_logic;
-    d_addr_o  : out std_logic_vector(g_config.da_bits-1 downto 0);
+    d_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
     d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
     d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
     d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0));
@@ -339,6 +339,11 @@ begin
         regfile_regb_i => s_regfile_eu_regb(f_opa_slow_index(g_config, i)),
         regfile_bakx_i => s_regfile_eu_bakx(f_opa_slow_index(g_config, i)),
         regfile_aux_i  => s_regfile_eu_aux(f_opa_slow_index(g_config, i)),
+        l1d_stb_o      => open,
+        l1d_sext_o     => open,
+        l1d_size_o     => open,
+        l1d_adr_o      => open,
+        l1d_dat_i      => (others => '0'),
         regfile_stb_o  => eu_regfile_stb(f_opa_slow_index(g_config, i)),
         regfile_bakx_o => s_eu_regfile_bakx(f_opa_slow_index(g_config, i)),
         regfile_regx_o => s_eu_regfile_regx(f_opa_slow_index(g_config, i)));

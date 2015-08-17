@@ -28,7 +28,6 @@ package opa_functions_pkg is
   function f_opa_arch_wide(conf : t_opa_config) return natural;
   function f_opa_back_wide(conf : t_opa_config) return natural;
   function f_opa_stat_wide(conf : t_opa_config) return natural;
-  function f_opa_dadr_wide(conf : t_opa_config) return natural;
   function f_opa_reg_wide (conf : t_opa_config) return natural;
   
   -- Mapping of execution units
@@ -168,11 +167,6 @@ package body opa_functions_pkg is
   begin
     return f_opa_log2(f_opa_num_stat(conf) + f_opa_decoders(conf));
   end f_opa_stat_wide;
-  
-  function f_opa_dadr_wide(conf : t_opa_config) return natural is
-  begin
-    return conf.da_bits;
-  end f_opa_dadr_wide;
   
   function f_opa_reg_wide(conf : t_opa_config) return natural is
   begin

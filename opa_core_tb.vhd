@@ -41,7 +41,7 @@ architecture rtl of opa_core_tb is
   signal d_stall  : std_logic;
   signal d_ack    : std_logic;
   signal d_err    : std_logic;
-  signal d_addr   : std_logic_vector(c_config.da_bits       -1 downto 0);
+  signal d_addr   : std_logic_vector(2**c_config.log_width  -1 downto 0);
   signal d_sel    : std_logic_vector(2**c_config.log_width/8-1 downto 0);
   signal d_data_o : std_logic_vector(2**c_config.log_width  -1 downto 0);
   signal d_data_i : std_logic_vector(2**c_config.log_width  -1 downto 0);

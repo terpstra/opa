@@ -281,6 +281,12 @@ package opa_components_pkg is
       regfile_bakx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       regfile_aux_i  : in  std_logic_vector(c_aux_wide-1 downto 0);
       
+      l1d_stb_o      : out std_logic;
+      l1d_sext_o     : out std_logic;
+      l1d_size_o     : out std_logic_vector(1 downto 0); -- quad,word,nibble,byte
+      l1d_adr_o      : out std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
+      l1d_dat_i      : in  std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
+      
       regfile_stb_o  : out std_logic;
       regfile_bakx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
       regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0));
