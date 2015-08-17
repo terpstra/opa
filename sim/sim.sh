@@ -19,6 +19,7 @@ for i in \
 	opa_rename.vhd		\
 	opa_sim_tb.vhd		\
 	opa_slow.vhd		\
+	opa_l1d.vhd		\
 	opa.vhd;		\
 do ghdl -a --std=02 --ieee=synopsys ../$i
 done
