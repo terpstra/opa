@@ -3,9 +3,7 @@ pipeline
 	1 - latched in rename   => assign bak{abx}
 	2 - latched in mux      => decode stations
 	3 - shifted into r_fast => issue (wake-up+select)
-	    potentially register r_pending and use speculative wake-up
 	4 - r_schedule          => select bak{abx} && decode regfile mux
-            potentially register bak{abx}
 	5 - m10k reg input      => mux m10k output and bypass
         6 - r_reg[ab] in EU     => execute	address decode
 	7 -                        execute	L1 fetch + TLB-way select + L1 matrix

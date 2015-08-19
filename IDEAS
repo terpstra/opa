@@ -11,7 +11,6 @@ roll-out:
 	implement noop converter (fault => speculative ops become copies)
 	remove commit map
 	implement TLB+L1 [3]
-	try speculative issue [4]
 	branch predictor
 	implement FPU [5]
 
@@ -40,20 +39,6 @@ test program: mul, mul, mul, mul, write, load, load, load, load, load, load
   find a better solution! (TM)
 
 [3] include a nocache bit for IO mappings
-
-[4] speculate that every pending 1 cycle op was issued => break issue into
-two pipeline steps
-
-r_speculative_ready <= r_ready | s_fast_schedule | s_wait1 | s_pending_fast;
-s_pending_fast <= f_mux(r_speculative_ready) and r_fast and not s_issued;
-r_pending_fast <= s_pending_fast;
-
-s_fast_issue <= f_prefix(r_pending_fast);
-s_issued <= r_issued or s_fast_issue;
-r_issued <= s_issued and s_pending_fast;
-r_ready <= r_ready | s_fast_schedule | s_wait0;
-
-can also try speculative register file loading => 2*n*n m10ks down to 2*n
 
 [5] FPU ops take 4 cycles, but live in slow EUs
 ... to avoid additional write ports, add an extra bypass on slow memories.
