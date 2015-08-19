@@ -26,5 +26,5 @@ do ghdl -a --std=93 --ieee=standard --syn-binding  ../$i
 done
 ghdl -e --std=93 --ieee=standard --syn-binding opa_sim_tb
 
-./opa_sim_tb --stop-time=500ns --vcd=testbench.vcd 2>&1 | grep -v metavalue
-gtkwave testbench.vcd wave.gtkw
+./opa_sim_tb --stop-time=500ns --wave=testbench.ghw 2>&1 | grep -v metavalue
+gtkwave testbench.ghw wave.gtkw
