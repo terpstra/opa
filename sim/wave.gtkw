@@ -1,31 +1,36 @@
 [*]
 [*] GTKWave Analyzer v3.3.62 (w)1999-2014 BSI
-[*] Sat Aug 15 15:03:25 2015
+[*] Wed Aug 19 14:08:48 2015
 [*]
-[dumpfile] "/home/terpstra/opa/ghdl/testbench.vcd"
-[dumpfile_mtime] "Sat Aug 15 14:53:20 2015"
-[dumpfile_size] 3118682
-[savefile] "/home/terpstra/opa/ghdl/wave.gtkw"
-[timestart] 36200000
-[size] 1920 1134
-[pos] -1 -1
-*-26.000000 60700000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[dumpfile] "/home/terpstra/idle/opa/sim/testbench.vcd"
+[dumpfile_mtime] "Wed Aug 19 14:07:34 2015"
+[dumpfile_size] 3344011
+[savefile] "/home/terpstra/idle/opa/sim/wave.gtkw"
+[timestart] 0
+[size] 1920 1231
+[pos] 246 0
+*-23.000000 25750000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] opa_tb.
 [treeopen] opa_tb.opa_core.
 [treeopen] opa_tb.opa_core.fastx(0).
-[treeopen] opa_tb.opa_core.regfile.
+[treeopen] opa_tb.opa_core.fastx(1).
+[treeopen] opa_tb.opa_core.fastx(2).
+[treeopen] opa_tb.opa_core.slowx(0).
+[treeopen] opa_tb.opa_core.slowx(0).slow.
+[treeopen] opa_tb.opa_core.slowx(1).
+[treeopen] opa_tb.opa_core.slowx(1).slow.
 [sst_width] 218
-[signals_width] 277
+[signals_width] 486
 [sst_expanded] 1
-[sst_vpaned_height] 329
+[sst_vpaned_height] 363
 @28
 opa_tb.clk_i
 opa_tb.opa_core.rst_n_i
 opa_tb.opa_core.stb_i
 opa_tb.opa_core.stall_o
-@800023
+@800022
 opa_tb.opa_core.issue.s_issued[27:0]
-@29
+@28
 (0)opa_tb.opa_core.issue.s_issued[27:0]
 (1)opa_tb.opa_core.issue.s_issued[27:0]
 (2)opa_tb.opa_core.issue.s_issued[27:0]
@@ -54,7 +59,7 @@ opa_tb.opa_core.issue.s_issued[27:0]
 (25)opa_tb.opa_core.issue.s_issued[27:0]
 (26)opa_tb.opa_core.issue.s_issued[27:0]
 (27)opa_tb.opa_core.issue.s_issued[27:0]
-@1001201
+@1001200
 -group_end
 @800022
 opa_tb.opa_core.regfile.eu_stb_o[4:0]
@@ -65,6 +70,90 @@ opa_tb.opa_core.regfile.eu_stb_o[4:0]
 (3)opa_tb.opa_core.regfile.eu_stb_o[4:0]
 (4)opa_tb.opa_core.regfile.eu_stb_o[4:0]
 @1001200
+-group_end
+@420
+opa_tb.opa_core.slowx(1).slow.prim.r_a[63:0]
+opa_tb.opa_core.slowx(1).slow.prim.r_b[63:0]
+opa_tb.opa_core.slowx(0).slow.prim.r_a[63:0]
+opa_tb.opa_core.slowx(0).slow.prim.r_b[63:0]
+opa_tb.opa_core.fastx(2).fast.r_rega[63:0]
+opa_tb.opa_core.fastx(2).fast.r_regb[63:0]
+opa_tb.opa_core.fastx(1).fast.r_rega[63:0]
+opa_tb.opa_core.fastx(1).fast.r_regb[63:0]
+opa_tb.opa_core.fastx(0).fast.r_rega[63:0]
+opa_tb.opa_core.fastx(0).fast.r_regb[63:0]
+opa_tb.opa_core.slowx(1).slow.regfile_regx_o[63:0]
+opa_tb.opa_core.slowx(0).slow.regfile_regx_o[63:0]
+opa_tb.opa_core.fastx(2).fast.regfile_regx_o[63:0]
+opa_tb.opa_core.fastx(1).fast.regfile_regx_o[63:0]
+@c00420
+opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+@28
+(0)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(1)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(2)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(3)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(4)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(5)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(6)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(7)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(8)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(9)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(10)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(11)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(12)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(13)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(14)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(15)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(16)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(17)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(18)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(19)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(20)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(21)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(22)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(23)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(24)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(25)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(26)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(27)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(28)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(29)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(30)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(31)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(32)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(33)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(34)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(35)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(36)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(37)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(38)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(39)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(40)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(41)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(42)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(43)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(44)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(45)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(46)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(47)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(48)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(49)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(50)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(51)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(52)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(53)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(54)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(55)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(56)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(57)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(58)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(59)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(60)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(61)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(62)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+(63)opa_tb.opa_core.fastx(0).fast.regfile_regx_o[63:0]
+@1401200
 -group_end
 [pattern_trace] 1
 [pattern_trace] 0

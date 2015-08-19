@@ -167,8 +167,10 @@ architecture rtl of opa_prim_mul is
   type t_raw_mul_out is array(c_raw_parts*c_raw_parts  -1 downto 0) of unsigned(2*c_raw_mul_wide-1 downto 0);
   type t_add_mul_out is array(c_add_parts*c_add_parts/2-1 downto 0) of unsigned(3*c_add_mul_wide-1 downto 0);
   type t_sum_in      is array(c_num_sum-1                 downto 0) of unsigned(2*c_wide-1         downto 0);
-  signal r_a     : unsigned(c_wide-1 downto 0);
-  signal r_b     : unsigned(c_wide-1 downto 0);
+  signal r_a     : unsigned(g_wide-1 downto 0);
+  signal r_b     : unsigned(g_wide-1 downto 0);
+  signal s_a     : unsigned(c_wide-1 downto 0) := (others => '0');
+  signal s_b     : unsigned(c_wide-1 downto 0) := (others => '0');
   signal s_mul_a : t_add_mul_out;
   signal s_mul_r : t_raw_mul_out;
   signal r_mul_a : t_add_mul_out; -- optional register (g_regwal)
@@ -198,20 +200,20 @@ begin
   edge1 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_a <= (others => '0');
-      r_b <= (others => '0');
-      r_a(a_i'range) <= unsigned(a_i);
-      r_b(b_i'range) <= unsigned(b_i);
+      r_a <= unsigned(a_i);
+      r_b <= unsigned(b_i);
     end if;
   end process;
+  s_a(a_i'range) <= r_a;
+  s_b(b_i'range) <= r_b;
   
   -- Deal with simple DSP hardware
   raw_mul : if not c_post_adder generate
     mul_rows : for i in 0 to c_raw_parts-1 generate
       mul_cols : for j in 0 to c_raw_parts-1 generate
         s_mul_r(i*c_raw_parts + j) <= 
-          r_a(c_raw_mul_wide*(i+1)-1 downto c_raw_mul_wide*i) *
-          r_b(c_raw_mul_wide*(j+1)-1 downto c_raw_mul_wide*j);
+          s_a(c_raw_mul_wide*(i+1)-1 downto c_raw_mul_wide*i) *
+          s_b(c_raw_mul_wide*(j+1)-1 downto c_raw_mul_wide*j);
       end generate;
     end generate;
     -- Register the results of native DSP blocks
@@ -260,10 +262,10 @@ begin
       mul_cols : for j in 0 to c_add_parts-1 generate
         s_mul_a(i*c_add_parts + j) <= 
           (c_zeros &
-           (r_a(c_add_mul_wide*(2*i+1)-1 downto c_add_mul_wide*(2*i+0)) *
-            r_b(c_add_mul_wide*(  j+1)-1 downto c_add_mul_wide*   j))) +
-          ((r_a(c_add_mul_wide*(2*i+2)-1 downto c_add_mul_wide*(2*i+1)) *
-            r_b(c_add_mul_wide*(  j+1)-1 downto c_add_mul_wide*   j)) &
+           (s_a(c_add_mul_wide*(2*i+1)-1 downto c_add_mul_wide*(2*i+0)) *
+            s_b(c_add_mul_wide*(  j+1)-1 downto c_add_mul_wide*   j))) +
+          ((s_a(c_add_mul_wide*(2*i+2)-1 downto c_add_mul_wide*(2*i+1)) *
+            s_b(c_add_mul_wide*(  j+1)-1 downto c_add_mul_wide*   j)) &
            c_zeros);
       end generate;
     end generate;

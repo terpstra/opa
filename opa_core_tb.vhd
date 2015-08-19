@@ -19,7 +19,7 @@ architecture rtl of opa_core_tb is
   type t_ops is array(15 downto 0) of std_logic_vector(67 downto 0);
   constant c_op : t_ops := 
     (0      => x"02099209920992099",
-     1      => x"1411141110aa70bb8",
+     1      => x"105a701b840784078",
      2      => x"12666266620782078",
      3      => x"12000200020782078",
      4      => x"12000200000202000",
