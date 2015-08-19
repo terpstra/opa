@@ -1,6 +1,7 @@
 #! /bin/sh
 
 set -e
+
 for i in \
 	opa_pkg.vhd 		\
 	opa_functions_pkg.vhd	\
@@ -20,10 +21,10 @@ for i in \
 	opa_sim_tb.vhd		\
 	opa_slow.vhd		\
 	opa_l1d.vhd		\
-	opa.vhd;		\
-do ghdl -a --std=02 --ieee=synopsys ../$i
+	opa.vhd;			\
+do ghdl -a --std=93 --ieee=standard --syn-binding  ../$i
 done
+ghdl -e --std=93 --ieee=standard --syn-binding opa_sim_tb
 
-ghdl -e --std=02 --ieee=synopsys opa_sim_tb
-./opa_sim_tb --stop-time=500ns --vcd=testbench.vcd
+./opa_sim_tb --stop-time=500ns --vcd=testbench.vcd 2>&1 | grep -v metavalue
 gtkwave testbench.vcd wave.gtkw
