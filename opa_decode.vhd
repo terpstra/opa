@@ -221,6 +221,27 @@ begin
   end generate;
   
   s_ops_sub <= unsigned(f_opa_1hot_dec(s_jump_taken)) + s_pc_off;
+  fill : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_fill <= (others => '0');
+    elsif rising_edge(clk_i) then
+      if s_progress = '1' then
+        if s_accept = '1' then
+          r_fill <= r_fill + s_ops_sub; -- r_fill - c_decoders + (c_decoders - s_ops_sub)
+        else
+          r_fill <= r_fill - c_decoders;
+        end if;
+      else
+        if s_accept = '1' then
+          r_fill <= r_fill + c_decoders - s_ops_sub;
+        else
+          r_fill <= r_fill;
+        end if;
+      end if;
+    end if;
+  end process;
+  
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
@@ -230,21 +251,11 @@ begin
         r_pc (c_decoders*2-1 downto 0) <= s_pc (c_decoders*3-1 downto c_decoders);
         r_pc (c_decoders*3-1 downto c_decoders*2) <= (others => fetch_pcn_i);
         r_aux <= r_aux+1;
-        if s_accept = '1' then
-          r_fill <= r_fill + s_ops_sub; -- r_fill - c_decoders + (c_decoders - s_ops_sub)
-        else
-          r_fill <= r_fill - c_decoders;
-        end if;
       else
         r_ops <= s_ops;
         r_pcf <= s_pcf;
         r_pc  <= s_pc;
         r_aux <= r_aux;
-        if s_accept = '1' then
-          r_fill <= r_fill + c_decoders - s_ops_sub;
-        else
-          r_fill <= r_fill;
-        end if;
       end if;
     end if;
   end process;

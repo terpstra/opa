@@ -27,7 +27,7 @@ end opa_dpram;
 
 architecture rtl of opa_dpram is
   type t_memory is array(g_size-1 downto 0) of std_logic_vector(g_width-1 downto 0);
-  signal r_memory : t_memory;
+  signal r_memory : t_memory := (others => (others => '0'));
   
   signal r_bypass : std_logic;
   signal r_data_n : std_logic_vector(g_width-1 downto 0);
