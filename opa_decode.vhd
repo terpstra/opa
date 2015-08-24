@@ -68,6 +68,8 @@ architecture rtl of opa_decode is
   constant c_aux_wide : natural := f_opa_aux_wide(g_config);
   constant c_fetch_wide : natural := f_opa_fetch_wide(g_config);
   
+  constant c_min_imm_pc : natural := f_opa_choose(c_imm_wide<c_adr_wide, c_imm_wide, c_adr_wide);
+  
   constant c_zeros : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
   
   type t_op_array  is array(natural range <>) of t_opa_op;
@@ -103,7 +105,8 @@ architecture rtl of opa_decode is
   signal s_imm           : t_opa_matrix(c_decoders-1 downto 0, c_imm_wide-1 downto 0);
   signal s_static_jump   : std_logic_vector(c_decoders-1 downto 0);
   signal s_static_mux    : std_logic_vector(1 downto 0);
-  signal s_static_imm    : unsigned(c_imm_wide-1 downto 0);
+  signal s_static_imm    : std_logic_vector(c_imm_wide-1 downto 0);
+  signal s_static_imm_pad: unsigned(c_adr_wide-1 downto c_op_align);
   signal s_static_pc     : unsigned(c_adr_wide-1 downto c_op_align);
   signal s_static_target : unsigned(c_adr_wide-1 downto c_op_align);
   
@@ -167,16 +170,21 @@ begin
   -- What is our prediction?
   s_static_jump <= f_opa_pick_small(s_often_jump and not s_mask_skip);
   s_static_mux  <= f_opa_product(f_opa_transpose(s_mux), s_static_jump);
-  s_static_imm  <= unsigned(f_opa_product(f_opa_transpose(s_imm), s_static_jump));
+  s_static_imm  <= f_opa_product(f_opa_transpose(s_imm), s_static_jump);
   
   s_static_pc(c_adr_wide-1 downto c_fetch_wide) <= unsigned(fetch_pc_i(c_adr_wide-1 downto c_fetch_wide));
   s_static_pc(c_fetch_wide-1 downto c_op_align) <= unsigned(f_opa_1hot_dec(s_static_jump));
   
+  s_static_imm_pad(c_min_imm_pc-1 downto c_op_align) <= unsigned(s_static_imm(c_min_imm_pc-1 downto c_op_align));
+  pad : if c_imm_wide < c_adr_wide generate
+    s_static_imm_pad(c_adr_wide-1 downto c_imm_wide) <= (others => s_static_imm_pad(c_imm_wide-1));
+  end generate;
+  
   with s_static_mux select
   s_static_target <= 
-    s_static_imm(s_static_target'range)               when c_opa_jump_to_immediate,
-    s_static_imm(s_static_target'range) + s_static_pc when c_opa_jump_add_immediate,
-    (others => '-')                                   when others;
+    s_static_imm_pad               when c_opa_jump_to_immediate,
+    s_static_imm_pad + s_static_pc when c_opa_jump_add_immediate,
+    (others => '-')                when others;
 
   s_jump_taken <= s_static_jump when s_fault='1' else fetch_jump_i;
   
@@ -202,7 +210,7 @@ begin
   -- Select the new buffer fill state
   s_idx_base <= s_pc_off - r_fill(s_idx_base'range);
   ops : for i in 0 to c_decoders*3-1 generate
-    s_idx(i) <= s_idx_base + to_unsigned(i, c_dec_wide);
+    s_idx(i) <= s_idx_base + to_unsigned(i mod c_decoders, c_dec_wide);
     s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(to_integer(s_idx(i)));
     s_pcf(i) <= r_pcf(i) when i < r_fill else fetch_pc_i(c_fetch_wide-1 downto c_op_align);
     s_pc (i) <= r_pc (i)    when i < r_fill else 

@@ -59,15 +59,13 @@ architecture rtl of opa_issue is
   constant c_num_slow  : natural := f_opa_num_slow (g_config);
   constant c_back_wide : natural := f_opa_back_wide(g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide (g_config);
-  constant c_dec_wide  : natural := f_opa_aux_wide (g_config);
+  constant c_dec_wide  : natural := f_opa_dec_wide (g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_decoders  : natural := f_opa_decoders (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   
   constant c_decoder_zeros : std_logic_vector(c_decoders -1 downto 0) := (others => '0');
   constant c_stat_ones     : std_logic_vector(c_num_stat -1 downto 0) := (others => '1');
-  constant c_fast_ones     : std_logic_vector(c_num_fast -1 downto 0) := (others => '1');
-  constant c_slow_ones     : std_logic_vector(c_num_slow -1 downto 0) := (others => '1');
 
   -- Instructions have these flags:
   --   issued: was previously selected by arbitration and not stalled
@@ -297,8 +295,8 @@ begin
   writeback : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_rf_wstb_fast1 <= f_opa_product(r_schedule_fast, c_fast_ones);
-      r_rf_wstb_slow1 <= f_opa_product(r_schedule_slow, c_slow_ones);
+      r_rf_wstb_fast1 <= f_opa_product(r_schedule_fast, c_stat_ones);
+      r_rf_wstb_slow1 <= f_opa_product(r_schedule_slow, c_stat_ones);
       r_rf_bakx_fast1 <= f_opa_product(r_schedule_fast, r_bakx1);
       r_rf_bakx_slow1 <= f_opa_product(r_schedule_slow, r_bakx1);
       r_rf_wstb_slow2 <= r_rf_wstb_slow1;
