@@ -7,35 +7,36 @@ use work.opa_pkg.all;
 use work.opa_isa_base_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
-use work.opa_isa_pkg.all;
 
--- Probably split this into 3 parts: icache, fetch, decode
 entity opa_fetch is
   generic(
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
-    clk_i          : in  std_logic;
-    rst_n_i        : in  std_logic;
+    clk_i           : in  std_logic;
+    rst_n_i         : in  std_logic;
     
-    -- Instruction bus. Not Wishbone! Data must follow
-    i_stb_o        : out std_logic;
-    i_ack_i        : in  std_logic;
-    i_err_i        : in  std_logic;
-    i_addr_o       : out std_logic_vector(f_opa_adr_wide(g_config)          -1 downto 0);
-    i_data_i       : in  std_logic_vector(c_op_wide*f_opa_decoders(g_config)-1 downto 0);
+    -- Deliver our prediction
+    decode_stb_o    : out std_logic;
+    decode_stall_i  : in  std_logic;
+    decode_hit_o    : out std_logic;
+    decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    decode_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    
+    -- Push a return stack entry
+    decode_push_i   : in  std_logic;
+    decode_ret_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    
+    -- Fixup PC to new target
+    decode_fault_i  : in  std_logic;
+    decode_return_i : in  std_logic;
+    decode_jump_o   : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    decode_source_o : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    decode_target_o : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
     
     -- Branch misprediction reported by issue stage
-    issue_fault_i  : in  std_logic;
-    issue_pc_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    
-    -- Branch misprediction reported by the decode stage
-    decode_o
-    
-    -- Flow control for new instructions
-    issue_stb_o    : out std_logic;
-    issue_stall_i  : in  std_logic);
+    -- !!! write this
 end opa_fetch;
 
 architecture rtl of opa_fetch is
@@ -48,8 +49,8 @@ architecture rtl of opa_fetch is
   constant c_tag_wide : natural := c_btb_wide;
   constant c_out_wide : natural := c_adr_wide + c_tag_wide + c_decoders + 1;
 
-  signal r_pc    : unsigned(c_adr_wide-1 downto 0);
-  signal s_pc    : unsigned(c_adr_wide-1 downto 0);
+  signal r_pc    : unsigned(c_adr_wide-1 downto c_op_align);
+  signal s_pc    : unsigned(c_adr_wide-1 downto c_op_align);
   signal r_tag   : std_logic_vector(c_tag_wide-1 downto 0);
   signal s_tag   : std_logic_vector(c_tag_wide-1 downto 0);
   signal s_hash  : std_logic_vector(c_btb_wide-1 downto 0);
@@ -58,16 +59,11 @@ architecture rtl of opa_fetch is
   
 begin
 
-  -- !!!! when issue faults, how do we know which entry address was used?
-  -- pc_i is NOT the PC we used in the BTB lookup => need to record this information?
-  --    record low bits from # log(decoders)
-  -- store pc of op, AND pc op was fetched at (differ only in low bits)
-  
   -- Consider making this N-way
   btb : opa_dpram
      generic(
        g_width  => c_btb_wide,
-       g_size   => 1024,
+       g_size   => c_num_btb,
        g_bypass => true,
        g_regout => false);
      port(
@@ -104,17 +100,6 @@ begin
       r_match <= s_match;
     end if;
   end process;
-  
-  -- Decoder: determine if the prediction made sense
-  --   branch was on a !c_opa_jump_never op
-  --   branch missing on a c_opa_jump_always op
-  --   no match, and is a jump_often op
-  -- ... if these checks are costly, don't do them; issue will detect
-  
-  -- If BTB miss and there is a jump_(often|always), fault the static prediction in
-  -- If the prediction makes no sense, fault the static prediction in
-  --   ... is this really needed? => if not, we also don't need jump_seldom?
-  --   odds of a false hit are <10^-6
   
   -- Use MLABs for the PC/imm+arg data => shallow depth! (window/decoder <= 32) (80 wide)
   --   we pay decoders*EU copies ... altho this is somewhat ok, b/c EU reads two at once
