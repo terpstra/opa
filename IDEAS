@@ -3,22 +3,19 @@ roll-out:
 	implement write-to-store-buffer
 	implement store finalizer scheduler [a]
 	implement write port
-	implement low-bits CAM [0]
+	implement load-alias detection CAM [0]
 	implement write alias wake-up [1]
-	implement riscv decode => widen aux [2]
 	implement branch fault detection
 	implement fetcher
 	implement noop converter (fault => speculative ops become copies)
-	remove commit map
 	implement TLB+L1 [3]
 	branch predictor
 	implement FPU [5]
 
 [a] finalize ready writes preceded by entirely final operations => implies in-order writeback
+    use the same procedure for faults
 
-[0] easiest is to check low 14 bits to avoid virtual memory confusion
-	 => page memcpy slow. don’t care.
-	... for now just pay 14 bits per station
+[0] use 2*M10k as a 32-entry 18-bit CAM of load address hashes
 
 [1] make issue wake-up a strobe => allows reissue with same circuit
 	... write’s final=>high concurrent to aliased load’s final+issued=>low
@@ -32,11 +29,6 @@ shift only when last decode are final
 
 test program: mul, mul, mul, mul, write, load, load, load, load, load, load
 => check that all loads see same value
-
-[2] combine immediate + PC in decode stage
-... aux will be fucking huge. probably need to move it into m10k. 
-  fast*decode m10ks?! urg. at least no mux logic needed
-  find a better solution! (TM)
 
 [3] include a nocache bit for IO mappings
 
