@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
+use work.opa_isa_base_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
@@ -15,36 +16,70 @@ entity opa_regfile is
     clk_i        : in  std_logic;
     rst_n_i      : in  std_logic;
     
-    -- Which registers to read for each EU
-    issue_stb_i  : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    issue_bakx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    issue_bakb_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    issue_aux_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, c_aux_wide-1 downto 0);
+    -- Record PC + immediate data
+    decode_stb_i : in  std_logic;
+    decode_aux_i : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
+    decode_arg_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
+    decode_imm_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
+    decode_pc_i  : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    decode_pcf_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
-    -- The resulting register data
-    eu_stb_o     : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    eu_rega_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config) -1 downto 0);
-    eu_regb_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config) -1 downto 0);
-    eu_bakx_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    eu_aux_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, c_aux_wide-1 downto 0);
+    -- Issue has dispatched these instructions to us
+    issue_rstb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    issue_aux_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide  (g_config)-1 downto 0);
+    issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide  (g_config)-1 downto 0);
+    issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
+    issue_bakb_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
     
-    -- The results to record; bakx must arrive 1-cycle before regx
-    eu_stb_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    eu_bakx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    eu_regx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config) -1 downto 0));
+    -- Feed the EUs one cycle later (they register this => result is two cycles later)
+    eu_stb_o     : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    eu_rega_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide  (g_config)-1 downto 0);
+    eu_regb_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide  (g_config)-1 downto 0);
+    eu_arg_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
+    eu_imm_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
+    eu_pc_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    eu_pcn_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    
+    -- Issue has indicated these EUs will write now
+    issue_wstb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    issue_bakx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
+    
+    -- The results arrive two cycles after the issue said they would
+    eu_regx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide  (g_config)-1 downto 0));
 end opa_regfile;
 
 architecture rtl of opa_regfile is
 
-  constant c_executers : natural := f_opa_executers(g_config);
-  constant c_num_back  : natural := f_opa_num_back(g_config);
-  constant c_back_wide : natural := f_opa_back_wide(g_config);
-  constant c_reg_wide  : natural := f_opa_reg_wide(g_config);
+  constant c_executers : natural := f_opa_executers (g_config);
+  constant c_decoders  : natural := f_opa_decoders  (g_config);
+  constant c_num_back  : natural := f_opa_num_back  (g_config);
+  constant c_num_aux   : natural := f_opa_num_aux   (g_config);
+  constant c_back_wide : natural := f_opa_back_wide (g_config);
+  constant c_reg_wide  : natural := f_opa_reg_wide  (g_config);
+  constant c_adr_wide  : natural := f_opa_adr_wide  (g_config);
+  constant c_fetch_wide: natural := f_opa_fetch_wide(g_config);
+  constant c_arg_wide  : natural := f_opa_arg_wide  (g_config);
+  constant c_aux_wide  : natural := f_opa_aux_wide  (g_config);
+  constant c_imm_wide  : natural := f_opa_imm_wide  (g_config);
+  constant c_dec_wide  : natural := f_opa_dec_wide  (g_config);
+  constant c_pc_wide   : natural := c_adr_wide   - c_op_align;
+  constant c_pcf_wide  : natural := c_fetch_wide - c_op_align;
+  
+  constant c_aux_num_arg   : natural := c_decoders;
+  constant c_aux_num_imm   : natural := c_decoders;
+  constant c_aux_num_pc    : natural := c_decoders + 1;
+  constant c_aux_num_pcf   : natural := c_decoders;
+  constant c_aux_off_arg   : natural := 0;
+  constant c_aux_off_imm   : natural := c_aux_num_arg * c_arg_wide;
+  constant c_aux_off_pc    : natural := c_aux_num_arg * c_imm_wide + c_aux_off_imm;
+  constant c_aux_off_pcf   : natural := c_aux_num_pc  * c_pc_wide  + c_aux_off_pc;
+  constant c_aux_data_wide : natural := c_aux_num_pc  * c_pcf_wide + c_aux_off_pcf;
   
   constant c_labels : t_opa_matrix := f_opa_labels(c_executers);
   constant c_ones : std_logic_vector(c_executers-1 downto 0) := (others => '1');
-      
+  
   -- Bypass logic. We combine:
   --   EU outputs (fast+slow)
   --   reg of last cycle
@@ -163,6 +198,31 @@ architecture rtl of opa_regfile is
   signal s_w_addr   : t_address;
   signal s_w_data   : t_data_in;
   
+  type t_aux_address  is array(c_executers-1 downto 0) of std_logic_vector(c_aux_wide-1 downto 0);
+  type t_aux_data_out is array(c_executers-1 downto 0) of std_logic_vector(c_aux_data_wide-1 downto 0);
+  signal s_aux_addr  : t_aux_address;
+  signal s_aux_rdata : t_aux_data_out;
+  signal s_aux_wdata : std_logic_vector(c_aux_data_wide-1 downto 0);
+  
+  type t_aux_imm_mux  is array(c_executers*c_imm_wide-1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
+  type t_aux_arg_mux  is array(c_executers*c_arg_wide-1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
+  type t_aux_pc_mux   is array(c_executers*c_pc_wide -1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
+  type t_aux_pcn_mux  is array(c_executers*c_pc_wide -1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
+  type t_aux_pcf_mux  is array(c_executers*c_pcf_wide-1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
+  signal r_dec         : t_opa_matrix(c_executers-1 downto 0, c_dec_wide-1 downto 0);
+  signal s_aux_imm_mux : t_aux_imm_mux;
+  signal s_aux_arg_mux : t_aux_arg_mux;
+  signal s_aux_pc_mux  : t_aux_pc_mux;
+  signal s_aux_pcn_mux : t_aux_pcn_mux;
+  signal s_aux_pcf_mux : t_aux_pcf_mux;
+  signal s_arg         : t_opa_matrix(c_executers-1 downto 0, c_arg_wide-1 downto 0);
+  signal s_imm         : t_opa_matrix(c_executers-1 downto 0, c_imm_wide-1 downto 0);
+  signal s_pc          : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
+  signal s_pcn         : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
+  signal s_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal s_imm_pad     : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0) := (others => (others => '0'));
+  signal s_pc_pad      : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0) := (others => (others => '0'));
+  
   type t_mux is array(c_executers*c_reg_wide-1 downto 0) of std_logic_vector(c_num_mux-1 downto 0);
   signal s_mux_a     : t_mux;
   signal s_mux_b     : t_mux;
@@ -174,17 +234,16 @@ begin
   input : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      eu_stb_o  <= issue_stb_i;
-      eu_bakx_o <= issue_bakx_i;
-      eu_aux_o  <= issue_aux_i;
-      r_stb  <= eu_stb_i;
-      r_bakx <= eu_bakx_i;
-      r_regx <= eu_regx_i;
+      eu_stb_o <= issue_rstb_i;
+      r_dec    <= issue_dec_i;
+      r_stb    <= issue_wstb_i;
+      r_bakx   <= issue_bakx_i;
+      r_regx   <= eu_regx_i;
     end if;
   end process;
   
   -- Calculate the new mapping from back registers to units
-  s_map_match <= f_opa_match_index(c_num_back, eu_bakx_i) and f_opa_dup_row(c_num_back, eu_stb_i);
+  s_map_match <= f_opa_match_index(c_num_back, issue_bakx_i) and f_opa_dup_row(c_num_back, issue_wstb_i);
   s_map_set   <= f_opa_product(s_map_match, c_ones);
   s_map_value <= f_opa_product(s_map_match, c_mem_indexes);
   
@@ -203,10 +262,10 @@ begin
   
   -- Detect if we will need a bypass
   -- Note: it is impossible for a backing register to be writen in two consequetive cycles
-  s_eu_match_a  <= f_opa_match(issue_baka_i, eu_bakx_i) and f_opa_dup_row(c_executers, eu_stb_i);
-  s_eu_match_b  <= f_opa_match(issue_bakb_i, eu_bakx_i) and f_opa_dup_row(c_executers, eu_stb_i);
-  s_reg_match_a <= f_opa_match(issue_baka_i, r_bakx)    and f_opa_dup_row(c_executers, r_stb);
-  s_reg_match_b <= f_opa_match(issue_bakb_i, r_bakx)    and f_opa_dup_row(c_executers, r_stb);
+  s_eu_match_a  <= f_opa_match(issue_baka_i, issue_bakx_i) and f_opa_dup_row(c_executers, issue_wstb_i);
+  s_eu_match_b  <= f_opa_match(issue_bakb_i, issue_bakx_i) and f_opa_dup_row(c_executers, issue_wstb_i);
+  s_reg_match_a <= f_opa_match(issue_baka_i, r_bakx)       and f_opa_dup_row(c_executers, r_stb);
+  s_reg_match_b <= f_opa_match(issue_bakb_i, r_bakx)       and f_opa_dup_row(c_executers, r_stb);
   s_value_a     <= f_opa_product(s_eu_match_a, c_eu_indexes) or f_opa_product(s_reg_match_a, c_reg_indexes);
   s_value_b     <= f_opa_product(s_eu_match_b, c_eu_indexes) or f_opa_product(s_reg_match_b, c_reg_indexes);
   s_bypass_a    <= f_opa_product(s_eu_match_a, c_ones) or f_opa_product(s_reg_match_a, c_ones);
@@ -248,6 +307,101 @@ begin
     end if;
   end process;
   
+  remap_aux_adr : for u in 0 to c_executers-1 generate
+    s_aux_addr(u) <= f_opa_select_row(issue_aux_i, u);
+  end generate;
+  
+  remap_aux_wdata : for d in 0 to c_decoders-1 generate
+    -- We stride the data so that the muxed bits are adjacent (from same MLAB)
+    arg : for b in 0 to c_arg_wide-1 generate
+      s_aux_wdata(c_aux_off_arg + b*c_aux_num_arg + d) <= decode_arg_i(d,b);
+    end generate;
+    imm : for b in 0 to c_imm_wide-1 generate
+      s_aux_wdata(c_aux_off_imm + b*c_aux_num_imm + d) <= decode_imm_i(d,b);
+    end generate;
+    pc  : for b in 0 to c_pc_wide-1 generate
+      s_aux_wdata(c_aux_off_pc  + b*c_aux_num_pc  + d) <= decode_pc_i (d,b+c_op_align);
+    end generate;
+    pcf : for b in 0 to c_pcf_wide-1 generate
+      s_aux_wdata(c_aux_off_pcf + b*c_aux_num_pcf + d) <= decode_pcf_i(d,b+c_op_align);
+    end generate;
+  end generate;
+  pcn : for b in 0 to c_pc_wide-1 generate
+    s_aux_wdata(c_aux_off_pc + b*c_aux_num_pc + c_decoders) <= decode_pcn_i(b+c_op_align);
+  end generate;
+  
+  auxs : for u in 0 to c_executers-1 generate
+    aux : opa_dpram
+      generic map(
+        g_width  => c_aux_data_wide,
+        g_size   => c_num_aux,
+        g_bypass => false,
+        g_regout => false)
+      port map(
+        clk_i    => clk_i,
+        rst_n_i  => rst_n_i,
+        r_en_i   => issue_rstb_i(u),
+        r_addr_i => s_aux_addr(u),
+        r_data_o => s_aux_rdata(u),
+        w_en_i   => decode_stb_i,
+        w_addr_i => decode_aux_i,
+        w_data_i => s_aux_wdata);
+  end generate;
+  
+  demux_aux : for u in 0 to c_executers-1 generate
+    dec : for d in 0 to c_decoders-1 generate
+      arg : for b in 0 to c_arg_wide-1 generate
+        s_aux_arg_mux(f_idx(u,b))(d) <= s_aux_rdata(u)(c_aux_off_arg + b*c_aux_num_arg + d);
+      end generate;
+      imm : for b in 0 to c_imm_wide-1 generate
+        s_aux_imm_mux(f_idx(u,b))(d) <= s_aux_rdata(u)(c_aux_off_imm + b*c_aux_num_imm + d);
+      end generate;
+      pc : for b in 0 to c_pc_wide-1 generate
+        s_aux_pc_mux (f_idx(u,b))(d) <= s_aux_rdata(u)(c_aux_off_pc  + b*c_aux_num_pc  + d);
+      end generate;
+      pcn : for b in 0 to c_pc_wide-1 generate
+        s_aux_pcn_mux(f_idx(u,b))(d) <= s_aux_rdata(u)(c_aux_off_pc  + b*c_aux_num_pc  + d + 1);
+      end generate;
+      pcf : for b in 0 to c_pcf_wide-1 generate
+        s_aux_pcf_mux(f_idx(u,b))(d) <= s_aux_rdata(u)(c_aux_off_pcf + b*c_aux_num_pcf + d);
+      end generate;
+    end generate;
+    arg : for b in 0 to c_arg_wide-1 generate
+      s_arg(u,b) <= s_aux_arg_mux(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+    end generate;
+    imm : for b in 0 to c_imm_wide-1 generate
+      s_imm(u,b) <= s_aux_imm_mux(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+      s_imm_pad(u,b) <= s_imm(u,b);
+    end generate;
+    pc : for b in 0 to c_pc_wide-1 generate
+      s_pc (u,b+c_op_align) <= s_aux_pc_mux (f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+      s_pc_pad(u,b+c_op_align) <= s_pc(u,b+c_op_align);
+    end generate;
+    pcn : for b in 0 to c_pc_wide-1 generate
+      s_pcn(u,b+c_op_align) <= s_aux_pcn_mux(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+    end generate;
+    pcf : for b in 0 to c_pcf_wide-1 generate
+      s_pcf(u,b+c_op_align) <= s_aux_pcf_mux(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+    end generate;
+    
+    sext_imm : if c_imm_wide < c_reg_wide generate
+      imm : for b in c_imm_wide to c_reg_wide-1 generate
+        s_imm_pad(u,b) <= s_imm(u,c_imm_wide-1);
+      end generate;
+    end generate;
+    sext_adr : if c_adr_wide < c_reg_wide generate
+      imm : for b in c_adr_wide to c_reg_wide-1 generate
+        s_pc_pad(u,b) <= s_pc(u,c_adr_wide-1);
+      end generate;
+    end generate;
+  end generate;
+  
+  eu_arg_o <= s_arg;
+  eu_imm_o <= s_imm;
+  eu_pc_o  <= s_pc;
+  eu_pcf_o <= s_pcf;
+  eu_pcn_o <= s_pcn;
+  
   remap_rf_in : for u in 0 to c_executers-1 generate
     s_ra_addr(u) <= f_opa_select_row(issue_baka_i, u);
     s_rb_addr(u) <= f_opa_select_row(issue_bakb_i, u);
@@ -266,7 +420,7 @@ begin
         port map(
           clk_i    => clk_i,
           rst_n_i  => rst_n_i,
-          r_en_i   => issue_stb_i(r),
+          r_en_i   => issue_rstb_i(r),
           r_addr_i => s_ra_addr(r),
           r_data_o => s_ra_data(f_idx(r, w)),
           w_en_i   => r_stb(w),
@@ -281,7 +435,7 @@ begin
         port map(
           clk_i    => clk_i,
           rst_n_i  => rst_n_i,
-          r_en_i   => issue_stb_i(r),
+          r_en_i   => issue_rstb_i(r),
           r_addr_i => s_rb_addr(r),
           r_data_o => s_rb_data(f_idx(r, w)),
           w_en_i   => r_stb(w),
@@ -312,9 +466,9 @@ begin
         s_mux_b(f_idx(u,b))(f_eu(v+1)-1 downto f_eu(v)) <= (others => eu_regx_i(v,b));
       end generate;
       
-      -- Select from immediate !!!
-      s_mux_a(f_idx(u,b))(c_imm) <= '1'; -- aux(b);
-      s_mux_b(f_idx(u,b))(c_imm) <= '1'; -- aux(b);
+      -- Select from PC+immediate
+      s_mux_a(f_idx(u,b))(c_imm) <= s_pc_pad (u,b);
+      s_mux_b(f_idx(u,b))(c_imm) <= s_imm_pad(u,b);
       
       -- Execute the mux
       eu_rega_o(u,b) <= s_mux_a(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_mux_idx_a,u))));

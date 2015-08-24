@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
+use work.opa_isa_base_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
@@ -16,9 +17,12 @@ entity opa is
     rst_n_i        : in  std_logic;
 
     -- Incoming data
-    stb_i          : in  std_logic;
-    stall_o        : out std_logic;
-    data_i         : in  std_logic_vector(g_config.num_decode*c_op_wide-1 downto 0);
+    i_stb_o   : out std_logic;
+    i_stall_i : in  std_logic;
+    i_ack_i   : in  std_logic;
+    i_err_i   : in  std_logic;
+    i_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+    i_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
     
     -- Wishbone data bus
     d_stb_o   : out std_logic;
@@ -34,10 +38,6 @@ end opa;
 
 architecture rtl of opa is
 
-  -- Quartus 11+ likes to replace my registers with a slow FIFO. Stop it.
-  attribute altera_attribute : string; 
-  attribute altera_attribute of rtl : architecture is "-name AUTO_SHIFT_REGISTER_RECOGNITION OFF";
-  
   constant c_decoders  : natural := f_opa_decoders (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_num_fast  : natural := f_opa_num_fast (g_config);
@@ -49,80 +49,104 @@ architecture rtl of opa is
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_arch_wide : natural := f_opa_arch_wide(g_config);
   constant c_reg_wide  : natural := f_opa_reg_wide(g_config);
+  constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
+  constant c_arg_wide  : natural := f_opa_arg_wide(g_config);
+  constant c_imm_wide  : natural := f_opa_imm_wide(g_config);
+  constant c_aux_wide  : natural := f_opa_aux_wide(g_config);
+  constant c_dec_wide  : natural := f_opa_dec_wide(g_config);
+  constant c_fetch_wide  : natural := f_opa_fetch_wide(g_config);
   
   constant c_executer_ones : std_logic_vector(c_executers-1 downto 0) := (others => '1');
   
+  signal fetch_decode_stb       : std_logic;
+  signal fetch_decode_hit       : std_logic;
+  signal fetch_decode_jump      : std_logic_vector(c_decoders-1 downto 0);
+  signal fetch_decode_pc        : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal fetch_decode_pcn       : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal icache_decode_dat      : std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
+  
+  signal decode_fetch_stall     : std_logic;
+  signal decode_fetch_push      : std_logic;
+  signal decode_fetch_ret       : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal decode_fetch_fault     : std_logic;
+  signal decode_fetch_return    : std_logic;
+  signal decode_fetch_jump      : std_logic_vector(c_decoders-1 downto 0);
+  signal decode_fetch_source    : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal decode_fetch_target    : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal decode_rename_stb      : std_logic;
   signal decode_rename_fast     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_slow     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_setx     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_geta     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_getb     : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_rename_aux      : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
+  signal decode_rename_aux      : std_logic_vector(c_aux_wide-1 downto 0);
   signal decode_rename_archx    : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
   signal decode_rename_archa    : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
   signal decode_rename_archb    : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
+  signal decode_regfile_stb     : std_logic;
+  signal decode_regfile_aux     : std_logic_vector(c_aux_wide-1 downto 0);
+  signal decode_regfile_arg     : t_opa_matrix(c_decoders-1 downto 0, c_arg_wide-1 downto 0);
+  signal decode_regfile_imm     : t_opa_matrix(c_decoders-1 downto 0, c_imm_wide-1 downto 0);
+  signal decode_regfile_pc      : t_opa_matrix(c_decoders-1 downto 0, c_adr_wide-1 downto c_op_align);
+  signal decode_regfile_pcf     : t_opa_matrix(c_decoders-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal decode_regfile_pcn     : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  
+  signal rename_decode_stall    : std_logic;
+  signal rename_issue_stb       : std_logic;
   signal rename_issue_fast      : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_slow      : std_logic_vector(c_decoders-1 downto 0);
-  signal rename_issue_setx      : std_logic_vector(c_decoders-1 downto 0);
-  signal rename_issue_aux       : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
-  signal rename_issue_archx     : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
+  signal rename_issue_aux       : std_logic_vector(c_aux_wide-1 downto 0);
+  signal rename_issue_oldx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_bakx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_baka      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_bakb      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_stata     : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
   signal rename_issue_statb     : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
+  
+  signal issue_rename_stall     : std_logic;
   signal issue_rename_shift     : std_logic;
-  signal issue_eu_shift         : std_logic;
-  signal issue_eu_stat          : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
-  signal issue_regfile_stb      : std_logic_vector(c_executers-1 downto 0);
-  signal issue_regfile_bakx     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
+  signal issue_rename_oldx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal issue_regfile_rstb     : std_logic_vector(c_executers-1 downto 0);
+  signal issue_regfile_aux      : t_opa_matrix(c_executers-1 downto 0, c_aux_wide-1 downto 0);
+  signal issue_regfile_dec      : t_opa_matrix(c_executers-1 downto 0, c_dec_wide-1 downto 0);
   signal issue_regfile_baka     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_bakb     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
-  signal issue_regfile_aux      : t_opa_matrix(c_executers-1 downto 0, c_aux_wide-1  downto 0);    
-  signal issue_commit_shift     : std_logic;
-  signal issue_commit_kill      : std_logic_vector(c_decoders-1 downto 0);
-  signal issue_commit_setx      : std_logic_vector(c_decoders-1 downto 0);
-  signal issue_commit_archx     : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1  downto 0);
-  signal issue_commit_bakx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1  downto 0);
-  signal commit_rename_kill     : std_logic;
-  signal commit_rename_map      : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1  downto 0);
-  signal commit_rename_bakx     : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1  downto 0);
+  signal issue_regfile_wstb     : std_logic_vector(c_executers-1 downto 0);
+  signal issue_regfile_bakx     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
+  
   signal regfile_eu_stb         : std_logic_vector(c_executers-1 downto 0);
   signal regfile_eu_rega        : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1  downto 0);
   signal regfile_eu_regb        : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1  downto 0);
-  signal regfile_eu_bakx        : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
-  signal regfile_eu_aux         : t_opa_matrix(c_executers-1 downto 0, c_aux_wide-1  downto 0);
-  signal eu_issue_ready         : std_logic_vector(c_num_stat-1 downto 0);
-  signal eu_issue_final         : std_logic_vector(c_num_stat-1 downto 0);
-  signal eu_issue_quash         : std_logic_vector(c_num_stat-1 downto 0);
-  signal eu_issue_kill          : std_logic_vector(c_num_stat-1 downto 0);
-  signal eu_issue_stall         : std_logic_vector(c_num_slow-1 downto 0);
-  signal eu_regfile_stb         : std_logic_vector(c_executers-1 downto 0);
-  signal eu_regfile_bakx        : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
+  signal regfile_eu_arg         : t_opa_matrix(c_executers-1 downto 0, c_arg_wide-1  downto 0);
+  signal regfile_eu_imm         : t_opa_matrix(c_executers-1 downto 0, c_imm_wide-1  downto 0);
+  signal regfile_eu_pc          : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
+  signal regfile_eu_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal regfile_eu_pcn         : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
+  
   signal eu_regfile_regx        : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0);
+  signal eu_issue_fault         : std_logic_vector(c_executers-1 downto 0);
+  signal eu_issue_pc            : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
+  signal eu_issue_pcf           : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal eu_issue_pcn           : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   
-  type t_stat is array (c_executers-1 downto 0) of std_logic_vector(c_num_stat -1 downto 0);
   type t_reg  is array (c_executers-1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
-  type t_bak  is array (c_executers-1 downto 0) of std_logic_vector(c_back_wide-1 downto 0);
-  type t_aux  is array (c_executers-1 downto 0) of std_logic_vector(c_aux_wide -1 downto 0);
+  type t_arg  is array (c_executers-1 downto 0) of std_logic_vector(c_arg_wide -1 downto 0);
+  type t_imm  is array (c_executers-1 downto 0) of std_logic_vector(c_imm_wide -1 downto 0);
+  type t_pc   is array (c_executers-1 downto 0) of std_logic_vector(c_adr_wide -1 downto c_op_align);
+  type t_pcf  is array (c_executers-1 downto 0) of std_logic_vector(c_fetch_wide -1 downto c_op_align);
   
-  signal s_issue_eu_stat   : t_stat;
-  signal s_eu_issue_ready  : t_stat;
-  signal s_eu_issue_final  : t_stat;
-  signal s_eu_issue_quash  : t_stat;
-  signal s_eu_issue_kill   : t_stat;
   signal s_regfile_eu_rega : t_reg;
   signal s_regfile_eu_regb : t_reg;
-  signal s_regfile_eu_bakx : t_bak;
-  signal s_regfile_eu_aux  : t_aux;
-  signal s_eu_regfile_bakx : t_bak;
+  signal s_regfile_eu_arg  : t_arg;
+  signal s_regfile_eu_imm  : t_imm;
+  signal s_regfile_eu_pc   : t_pc;
+  signal s_regfile_eu_pcf  : t_pcf;
+  signal s_regfile_eu_pcn  : t_pc;
   signal s_eu_regfile_regx : t_reg;
+  signal s_eu_issue_pc     : t_pc;
+  signal s_eu_issue_pcf    : t_pcf;
+  signal s_eu_issue_pcn    : t_pc;
   
-  signal s_eu_issue_ready_m : t_opa_matrix(c_num_stat-1 downto 0, c_executers-1 downto 0);
-  signal s_eu_issue_final_m : t_opa_matrix(c_num_stat-1 downto 0, c_executers-1 downto 0);
-  signal s_eu_issue_quash_m : t_opa_matrix(c_num_stat-1 downto 0, c_executers-1 downto 0);
-  signal s_eu_issue_kill_m  : t_opa_matrix(c_num_stat-1 downto 0, c_executers-1 downto 0);
-
 begin
 
   check_issue_divisible : 
@@ -144,6 +168,16 @@ begin
     assert (g_config.num_slow >= 1)
     report "num_slow must be >= 1"
     severity failure;
+  
+  check_imm :
+    assert (c_imm_wide <= 2**g_config.log_width)
+    report "registers must be larger than ISA immediates"
+    severity failure;
+    
+  check_adr :
+    assert (g_config.adr_width <= 2**g_config.log_width)
+    report "registers must be larger than virtual address space"
+    severity failure;
 
   decode : opa_decode
     generic map(
@@ -152,7 +186,22 @@ begin
     port map(
       clk_i          => clk_i,
       rst_n_i        => rst_n_i,
-      fetch_dat_i    => data_i,
+      fetch_stb_i    => fetch_decode_stb,
+      fetch_stall_o  => decode_fetch_stall,
+      fetch_hit_i    => fetch_decode_hit,
+      fetch_pc_i     => fetch_decode_pc,
+      fetch_pcn_i    => fetch_decode_pcn,
+      fetch_jump_i   => fetch_decode_jump,
+      icache_dat_i   => icache_decode_dat,
+      fetch_push_o   => decode_fetch_push,
+      fetch_ret_o    => decode_fetch_ret,
+      fetch_fault_o  => decode_fetch_fault,
+      fetch_return_o => decode_fetch_return,
+      fetch_jump_o   => decode_fetch_jump,
+      fetch_source_o => decode_fetch_source,
+      fetch_target_o => decode_fetch_target,
+      rename_stb_o   => decode_rename_stb,
+      rename_stall_i => rename_decode_stall,
       rename_fast_o  => decode_rename_fast,
       rename_slow_o  => decode_rename_slow,
       rename_setx_o  => decode_rename_setx,
@@ -161,7 +210,14 @@ begin
       rename_aux_o   => decode_rename_aux,
       rename_archx_o => decode_rename_archx,
       rename_archa_o => decode_rename_archa,
-      rename_archb_o => decode_rename_archb);
+      rename_archb_o => decode_rename_archb,
+      regfile_stb_o  => decode_regfile_stb,
+      regfile_aux_o  => decode_regfile_aux,
+      regfile_arg_o  => decode_regfile_arg,
+      regfile_imm_o  => decode_regfile_imm,
+      regfile_pc_o   => decode_regfile_pc,
+      regfile_pcf_o  => decode_regfile_pcf,
+      regfile_pcn_o  => decode_regfile_pcn);
       
   rename : opa_rename
     generic map(
@@ -170,6 +226,8 @@ begin
     port map(
       clk_i          => clk_i,
       rst_n_i        => rst_n_i,
+      decode_stb_i   => decode_rename_stb,
+      decode_stall_o => rename_decode_stall,
       decode_fast_i  => decode_rename_fast,
       decode_slow_i  => decode_rename_slow,
       decode_setx_i  => decode_rename_setx,
@@ -179,20 +237,19 @@ begin
       decode_archx_i => decode_rename_archx,
       decode_archa_i => decode_rename_archa,
       decode_archb_i => decode_rename_archb,
-      commit_kill_i  => commit_rename_kill,
-      commit_map_i   => commit_rename_map,
-      commit_bakx_i  => commit_rename_bakx,
-      issue_shift_i  => issue_rename_shift,
+      issue_stb_o    => rename_issue_stb,
+      issue_stall_i  => issue_rename_stall,
       issue_fast_o   => rename_issue_fast,
       issue_slow_o   => rename_issue_slow,
-      issue_setx_o   => rename_issue_setx,
       issue_aux_o    => rename_issue_aux,
-      issue_archx_o  => rename_issue_archx,
+      issue_oldx_o   => rename_issue_oldx,
       issue_bakx_o   => rename_issue_bakx,
       issue_baka_o   => rename_issue_baka,
       issue_bakb_o   => rename_issue_bakb,
       issue_stata_o  => rename_issue_stata,
-      issue_statb_o  => rename_issue_statb);
+      issue_statb_o  => rename_issue_statb,
+      issue_shift_i  => issue_rename_shift,
+      issue_oldx_i   => issue_rename_oldx);
   
   issue : opa_issue
     generic map(
@@ -201,71 +258,61 @@ begin
     port map(
       clk_i          => clk_i,
       rst_n_i        => rst_n_i,
-      fetch_stb_i    => stb_i,
-      fetch_stall_o  => stall_o,
-      rename_shift_o => issue_rename_shift,
+      rename_stb_i   => rename_issue_stb,
+      rename_stall_o => issue_rename_stall,
       rename_fast_i  => rename_issue_fast,
       rename_slow_i  => rename_issue_slow,
-      rename_setx_i  => rename_issue_setx,
       rename_aux_i   => rename_issue_aux,
-      rename_archx_i => rename_issue_archx,
+      rename_oldx_i  => rename_issue_oldx,
       rename_bakx_i  => rename_issue_bakx,
       rename_baka_i  => rename_issue_baka,
       rename_bakb_i  => rename_issue_bakb,
       rename_stata_i => rename_issue_stata,
       rename_statb_i => rename_issue_statb,
-      eu_shift_o     => issue_eu_shift,
-      eu_stat_o      => issue_eu_stat,
-      eu_final_i     => eu_issue_final,
-      eu_quash_i     => eu_issue_quash,
-      eu_kill_i      => eu_issue_kill,
-      regfile_stb_o  => issue_regfile_stb,
-      regfile_bakx_o => issue_regfile_bakx,
+      rename_shift_o => issue_rename_shift,
+      rename_oldx_o  => issue_rename_oldx,
+      eu_fault_i     => eu_issue_fault,
+      eu_pc_i        => eu_issue_pc,
+      eu_pcf_i       => eu_issue_pcf,
+      eu_pcn_i       => eu_issue_pcn,
+      regfile_rstb_o => issue_regfile_rstb,
+      regfile_aux_o  => issue_regfile_aux,
+      regfile_dec_o  => issue_regfile_dec,
       regfile_baka_o => issue_regfile_baka,
       regfile_bakb_o => issue_regfile_bakb,
-      regfile_aux_o  => issue_regfile_aux,
-      commit_shift_o => issue_commit_shift,
-      commit_kill_o  => issue_commit_kill,
-      commit_setx_o  => issue_commit_setx,
-      commit_archx_o => issue_commit_archx,
-      commit_bakx_o  => issue_commit_bakx);
+      regfile_wstb_o => issue_regfile_wstb,
+      regfile_bakx_o => issue_regfile_bakx);
   
-  commit : opa_commit
-    generic map(
-      g_config => g_config,
-      g_target => g_target)
-    port map(
-      clk_i         => clk_i,
-      rst_n_i       => rst_n_i,
-      issue_shift_i => issue_commit_shift,
-      issue_kill_i  => issue_commit_kill,
-      issue_setx_i  => issue_commit_setx,
-      issue_archx_i => issue_commit_archx,
-      issue_bakx_i  => issue_commit_bakx,
-      rename_kill_o => commit_rename_kill,
-      rename_map_o  => commit_rename_map,
-      rename_bakx_o => commit_rename_bakx);
-
   regfile : opa_regfile
     generic map(
       g_config => g_config,
       g_target => g_target)
     port map(
-      clk_i          => clk_i,
-      rst_n_i        => rst_n_i,
-      issue_stb_i    => issue_regfile_stb,
-      issue_bakx_i   => issue_regfile_bakx,
-      issue_baka_i   => issue_regfile_baka,
-      issue_bakb_i   => issue_regfile_bakb,
-      issue_aux_i    => issue_regfile_aux,
-      eu_stb_o       => regfile_eu_stb,
-      eu_rega_o      => regfile_eu_rega,
-      eu_regb_o      => regfile_eu_regb,
-      eu_bakx_o      => regfile_eu_bakx,
-      eu_aux_o       => regfile_eu_aux,
-      eu_stb_i       => eu_regfile_stb,
-      eu_bakx_i      => eu_regfile_bakx,
-      eu_regx_i      => eu_regfile_regx);
+      clk_i        => clk_i,
+      rst_n_i      => rst_n_i,
+      decode_stb_i => decode_regfile_stb,
+      decode_aux_i => decode_regfile_aux,
+      decode_arg_i => decode_regfile_arg,
+      decode_imm_i => decode_regfile_imm,
+      decode_pc_i  => decode_regfile_pc,
+      decode_pcf_i => decode_regfile_pcf,
+      decode_pcn_i => decode_regfile_pcn,
+      issue_rstb_i => issue_regfile_rstb,
+      issue_aux_i  => issue_regfile_aux,
+      issue_dec_i  => issue_regfile_dec,
+      issue_baka_i => issue_regfile_baka,
+      issue_bakb_i => issue_regfile_bakb,
+      eu_stb_o     => regfile_eu_stb,
+      eu_rega_o    => regfile_eu_rega,
+      eu_regb_o    => regfile_eu_regb,
+      eu_arg_o     => regfile_eu_arg,
+      eu_imm_o     => regfile_eu_imm,
+      eu_pc_o      => regfile_eu_pc,
+      eu_pcf_o     => regfile_eu_pcf,
+      eu_pcn_o     => regfile_eu_pcn,
+      issue_wstb_i => issue_regfile_wstb,
+      issue_bakx_i => issue_regfile_bakx,
+      eu_regx_i    => eu_regfile_regx);
   
   -- Relabel matrix between issue+regfile and EUs
   eus : for u in 0 to c_executers-1 generate
@@ -274,26 +321,23 @@ begin
       s_regfile_eu_regb(u)(b) <= regfile_eu_regb(u,b);
       eu_regfile_regx(u,b) <= s_eu_regfile_regx(u)(b);
     end generate;
-    reg : for b in 0 to c_back_wide-1 generate
-      s_regfile_eu_bakx(u)(b) <= regfile_eu_bakx(u,b);
-      eu_regfile_bakx(u,b) <= s_eu_regfile_bakx(u)(b);
+    arg : for b in 0 to c_arg_wide-1 generate
+      s_regfile_eu_arg(u)(b) <= regfile_eu_arg(u,b);
     end generate;
-    aux : for b in 0 to c_aux_wide-1 generate
-      s_regfile_eu_aux(u)(b) <= regfile_eu_aux(u,b);
+    imm : for b in 0 to c_imm_wide-1 generate
+      s_regfile_eu_imm(u)(b) <= regfile_eu_imm(u,b);
     end generate;
-    stat : for b in 0 to c_num_stat-1 generate
-      s_issue_eu_stat(u)(b) <= issue_eu_stat(u,b);
-      s_eu_issue_ready_m(b,u) <= s_eu_issue_ready(u)(b);
-      s_eu_issue_final_m(b,u) <= s_eu_issue_final(u)(b);
-      s_eu_issue_quash_m(b,u) <= s_eu_issue_quash(u)(b);
-      s_eu_issue_kill_m (b,u) <= s_eu_issue_kill (u)(b);
+    pc : for b in c_op_align to c_adr_wide-1 generate
+      s_regfile_eu_pc (u)(b) <= regfile_eu_pc (u,b);
+      s_regfile_eu_pcn(u)(b) <= regfile_eu_pcn(u,b);
+      eu_issue_pc (u,b) <= s_eu_issue_pc (u)(b);
+      eu_issue_pcn(u,b) <= s_eu_issue_pcn(u)(b);
+    end generate;
+    pcf : for b in c_op_align to c_fetch_wide-1 generate
+      s_regfile_eu_pcf(u)(b) <= regfile_eu_pcf(u,b);
+      eu_issue_pcf(u,b) <= s_eu_issue_pcf(u)(b);
     end generate;
   end generate;
-  
-  eu_issue_ready <= f_opa_product(s_eu_issue_ready_m, c_executer_ones);
-  eu_issue_final <= f_opa_product(s_eu_issue_final_m, c_executer_ones);
-  eu_issue_quash <= f_opa_product(s_eu_issue_quash_m, c_executer_ones);
-  eu_issue_kill  <= f_opa_product(s_eu_issue_kill_m,  c_executer_ones);
   
   fastx : for i in 0 to c_num_fast-1 generate
     fast : opa_fast
@@ -303,20 +347,19 @@ begin
       port map(
         clk_i          => clk_i,
         rst_n_i        => rst_n_i,
-        issue_shift_i  => issue_eu_shift,
-        issue_stat_i   => s_issue_eu_stat(f_opa_fast_index(g_config, i)),
-        issue_final_o  => s_eu_issue_final(f_opa_fast_index(g_config, i)),
-        issue_kill_o   => s_eu_issue_kill(f_opa_fast_index(g_config, i)),
-        regfile_stb_i  => regfile_eu_stb(f_opa_fast_index(g_config, i)),
+        regfile_stb_i  => regfile_eu_stb   (f_opa_fast_index(g_config, i)), 
         regfile_rega_i => s_regfile_eu_rega(f_opa_fast_index(g_config, i)),
         regfile_regb_i => s_regfile_eu_regb(f_opa_fast_index(g_config, i)),
-        regfile_bakx_i => s_regfile_eu_bakx(f_opa_fast_index(g_config, i)),
-        regfile_aux_i  => s_regfile_eu_aux(f_opa_fast_index(g_config, i)),
-        regfile_stb_o  => eu_regfile_stb(f_opa_fast_index(g_config, i)),
-        regfile_bakx_o => s_eu_regfile_bakx(f_opa_fast_index(g_config, i)),
-        regfile_regx_o => s_eu_regfile_regx(f_opa_fast_index(g_config, i)));
-    s_eu_issue_ready(f_opa_fast_index(g_config, i)) <= (others => '0');
-    s_eu_issue_quash(f_opa_fast_index(g_config, i)) <= (others => '0');
+        regfile_arg_i  => s_regfile_eu_arg (f_opa_fast_index(g_config, i)),
+        regfile_imm_i  => s_regfile_eu_imm (f_opa_fast_index(g_config, i)),
+        regfile_pc_i   => s_regfile_eu_pc  (f_opa_fast_index(g_config, i)),
+        regfile_pcf_i  => s_regfile_eu_pcf (f_opa_fast_index(g_config, i)),
+        regfile_pcn_i  => s_regfile_eu_pcn (f_opa_fast_index(g_config, i)),
+        regfile_regx_o => s_eu_regfile_regx(f_opa_fast_index(g_config, i)),
+        issue_fault_o  => eu_issue_fault   (f_opa_fast_index(g_config, i)),
+        issue_pc_o     => s_eu_issue_pc    (f_opa_fast_index(g_config, i)),
+        issue_pcf_o    => s_eu_issue_pcf   (f_opa_fast_index(g_config, i)),
+        issue_pcn_o    => s_eu_issue_pcn   (f_opa_fast_index(g_config, i)));
   end generate;
   
   slowx : for i in 0 to c_num_slow-1 generate
@@ -327,26 +370,19 @@ begin
       port map(
         clk_i          => clk_i,
         rst_n_i        => rst_n_i,
-        issue_shift_i  => issue_eu_shift,
-        issue_stat_i   => s_issue_eu_stat(f_opa_slow_index(g_config, i)),
-        issue_ready_o  => s_eu_issue_ready(f_opa_slow_index(g_config, i)),
-        issue_final_o  => s_eu_issue_final(f_opa_slow_index(g_config, i)),
-        issue_quash_o  => s_eu_issue_quash(f_opa_slow_index(g_config, i)),
-        issue_kill_o   => s_eu_issue_kill(f_opa_slow_index(g_config, i)),
-        issue_stall_o  => eu_issue_stall(i),
-        regfile_stb_i  => regfile_eu_stb(f_opa_slow_index(g_config, i)),
+        regfile_stb_i  => regfile_eu_stb   (f_opa_slow_index(g_config, i)), 
         regfile_rega_i => s_regfile_eu_rega(f_opa_slow_index(g_config, i)),
         regfile_regb_i => s_regfile_eu_regb(f_opa_slow_index(g_config, i)),
-        regfile_bakx_i => s_regfile_eu_bakx(f_opa_slow_index(g_config, i)),
-        regfile_aux_i  => s_regfile_eu_aux(f_opa_slow_index(g_config, i)),
-        l1d_stb_o      => open,
-        l1d_sext_o     => open,
-        l1d_size_o     => open,
-        l1d_adr_o      => open,
-        l1d_dat_i      => (others => '0'),
-        regfile_stb_o  => eu_regfile_stb(f_opa_slow_index(g_config, i)),
-        regfile_bakx_o => s_eu_regfile_bakx(f_opa_slow_index(g_config, i)),
-        regfile_regx_o => s_eu_regfile_regx(f_opa_slow_index(g_config, i)));
+        regfile_arg_i  => s_regfile_eu_arg (f_opa_slow_index(g_config, i)),
+        regfile_imm_i  => s_regfile_eu_imm (f_opa_slow_index(g_config, i)),
+        regfile_pc_i   => s_regfile_eu_pc  (f_opa_slow_index(g_config, i)),
+        regfile_pcf_i  => s_regfile_eu_pcf (f_opa_slow_index(g_config, i)),
+        regfile_pcn_i  => s_regfile_eu_pcn (f_opa_slow_index(g_config, i)),
+        regfile_regx_o => s_eu_regfile_regx(f_opa_slow_index(g_config, i)),
+        issue_fault_o  => eu_issue_fault   (f_opa_slow_index(g_config, i)),
+        issue_pc_o     => s_eu_issue_pc    (f_opa_slow_index(g_config, i)),
+        issue_pcf_o    => s_eu_issue_pcf   (f_opa_slow_index(g_config, i)),
+        issue_pcn_o    => s_eu_issue_pcn   (f_opa_slow_index(g_config, i)));
   end generate;
   
   d_data_o(31) <= s_eu_regfile_regx(0)(31);

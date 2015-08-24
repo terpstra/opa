@@ -69,9 +69,13 @@ begin
     port map(
       clk_i   => clk_i,
       rst_n_i => rstn_i,
-      stb_i   => s_stb,
-      stall_o => s_stall,
-      data_i  => s_op,
+      
+      i_stb_o   => open,
+      i_stall_i => '0',
+      i_ack_i   => '1',
+      i_err_i   => '0',
+      i_addr_o  => open,
+      i_data_i  => (others => '0'),
       
       d_stb_o   => d_stb,
       d_we_o    => d_we,

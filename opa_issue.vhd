@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
+use work.opa_isa_base_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
@@ -15,43 +16,39 @@ entity opa_issue is
     clk_i          : in  std_logic;
     rst_n_i        : in  std_logic;
     
-    -- We need to know if the fetch has something for us
-    fetch_stb_i    : in  std_logic;
-    fetch_stall_o  : out std_logic;
-    
     -- Values the renamer provides us
-    rename_shift_o : out std_logic;
+    rename_stb_i   : in  std_logic;
+    rename_stall_o : out std_logic;
     rename_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_aux_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, c_aux_wide-1                downto 0);
-    rename_archx_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+    rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
+    rename_oldx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_baka_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_bakb_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_stata_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
     rename_statb_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+
+    -- Feed the renamer new bak registers
+    rename_shift_o : out std_logic;
+    rename_oldx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
     -- Exceptions from the EUs
-    eu_shift_o     : out std_logic;
-    eu_stat_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_num_stat(g_config)-1 downto 0);
-    eu_final_i     : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-    eu_quash_i     : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-    eu_kill_i      : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-    
+    eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+     
     -- Regfile needs to fetch these for EU
-    regfile_stb_o  : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    regfile_rstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide (g_config)-1 downto 0);
+    regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide(g_config)-1 downto 0);
     regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     regfile_bakb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, c_aux_wide-1 downto 0);
     
-    -- Let the commit know which registers are retired
-    commit_shift_o : out std_logic;
-    commit_kill_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    commit_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    commit_archx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-    commit_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
+    -- Regfile should capture result from EU
+    regfile_wstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
 end opa_issue;
 
 architecture rtl of opa_issue is
@@ -61,13 +58,16 @@ architecture rtl of opa_issue is
   constant c_num_fast  : natural := f_opa_num_fast (g_config);
   constant c_num_slow  : natural := f_opa_num_slow (g_config);
   constant c_back_wide : natural := f_opa_back_wide(g_config);
-  constant c_arch_wide : natural := f_opa_arch_wide(g_config);
+  constant c_aux_wide  : natural := f_opa_aux_wide (g_config);
+  constant c_dec_wide  : natural := f_opa_aux_wide (g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_decoders  : natural := f_opa_decoders (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   
   constant c_decoder_zeros : std_logic_vector(c_decoders -1 downto 0) := (others => '0');
   constant c_stat_ones     : std_logic_vector(c_num_stat -1 downto 0) := (others => '1');
+  constant c_fast_ones     : std_logic_vector(c_num_fast -1 downto 0) := (others => '1');
+  constant c_slow_ones     : std_logic_vector(c_num_slow -1 downto 0) := (others => '1');
 
   -- Instructions have these flags:
   --   issued: was previously selected by arbitration and not stalled
@@ -130,12 +130,11 @@ architecture rtl of opa_issue is
   signal r_wait2      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_final      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_final      : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_setx       : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_archx      : t_opa_matrix(c_num_stat-1 downto 0, c_arch_wide-1 downto 0);
   signal r_aux        : t_opa_matrix(c_num_stat-1 downto 0, c_aux_wide -1 downto 0);
+  signal r_oldx       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
+  signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_baka       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
-  signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
   type t_stat is array(c_num_stat-1 downto 0) of unsigned(c_stat_wide-1 downto 0);
   signal s_fast_need_issue : std_logic_vector(c_num_stat-1 downto 0);
@@ -149,7 +148,6 @@ architecture rtl of opa_issue is
   signal s_pending_slow    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_fast      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_slow      : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_commit          : std_logic_vector(c_num_stat-1 downto 0);
   signal s_stata_1         : t_stat;
   signal s_statb_1         : t_stat;
   signal s_stata_2         : t_stat;
@@ -161,12 +159,10 @@ architecture rtl of opa_issue is
   signal r_mux_fast   : std_logic_vector(c_decoders-1 downto 0);
   signal r_sh1_slow   : std_logic_vector(c_decoders-1 downto 0);
   signal r_mux_slow   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sh1_setx   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sh2_setx   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sh1_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
-  signal r_sh2_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide-1  downto 0);
-  signal r_sh1_archx  : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
-  signal r_sh2_archx  : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
+  signal r_sh1_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
+  signal r_sh2_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
+  signal r_sh1_oldx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal r_sh2_oldx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sh1_bakx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sh2_bakx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_mux_bakx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
@@ -183,8 +179,18 @@ architecture rtl of opa_issue is
   
   signal s_new_stata  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
   signal s_new_statb  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
-  signal s_matchn_a   : t_opa_matrix(c_decoders -1 downto 0, c_num_stat -1 downto 0);
-  signal s_matchn_b   : t_opa_matrix(c_decoders -1 downto 0, c_num_stat -1 downto 0);
+  signal s_matchn_a   : t_opa_matrix(c_decoders-1 downto 0, c_num_stat -1 downto 0);
+  signal s_matchn_b   : t_opa_matrix(c_decoders-1 downto 0, c_num_stat -1 downto 0);
+  
+  -- Scheduled writeback
+  signal r_rf_wstb_fast1 : std_logic_vector(c_num_fast-1 downto 0);
+  signal r_rf_wstb_slow1 : std_logic_vector(c_num_slow-1 downto 0);
+  signal r_rf_wstb_slow2 : std_logic_vector(c_num_slow-1 downto 0);
+  signal r_rf_wstb_slow3 : std_logic_vector(c_num_slow-1 downto 0);
+  signal r_rf_bakx_fast1 : t_opa_matrix(c_num_fast-1 downto 0, c_back_wide-1 downto 0);
+  signal r_rf_bakx_slow1 : t_opa_matrix(c_num_slow-1 downto 0, c_back_wide-1 downto 0);
+  signal r_rf_bakx_slow2 : t_opa_matrix(c_num_slow-1 downto 0, c_back_wide-1 downto 0);
+  signal r_rf_bakx_slow3 : t_opa_matrix(c_num_slow-1 downto 0, c_back_wide-1 downto 0);
   
   function f_pad(x : std_logic) return std_logic_vector is
     variable result : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
@@ -194,6 +200,20 @@ architecture rtl of opa_issue is
   end f_pad;
   constant c_pad_high0 : std_logic_vector(c_decoders-1 downto 0) := f_pad('0');
   constant c_pad_high1 : std_logic_vector(c_decoders-1 downto 0) := f_pad('1');
+  
+  function f_decoder_labels(decoders : natural) return t_opa_matrix is
+    variable result : t_opa_matrix(c_num_stat-1 downto 0, c_dec_wide-1 downto 0);
+    variable value : unsigned(result'range(2));
+  begin
+    for s in result'range(1) loop
+      value := to_unsigned(s mod c_decoders, value'length);
+      for b in value'range loop
+        result(s,b) := value(b);
+      end loop;
+    end loop;
+    return result;
+  end f_decoder_labels;
+  constant c_decoder_labels : t_opa_matrix := f_decoder_labels(c_decoders);
   
   function f_decrement(x : unsigned(c_stat_wide-1 downto 0)) return unsigned is
     constant cu_num_stat : unsigned(x'range) := to_unsigned(c_num_stat+c_decoders-1, x'length);
@@ -218,9 +238,6 @@ architecture rtl of opa_issue is
   
 begin
 
-  -- Status from EUs
-  s_final <= eu_final_i or f_shift(r_final, r_shift);
-      
   -- Which stations are now issued?
   s_issued <= f_shift(r_schedule_fast_issue or r_schedule_slow_issue, r_shift) or r_issued;
   s_fast_need_issue <= not s_issued and r_fast;
@@ -259,8 +276,6 @@ begin
       total_o  => s_schedule_slow_issue);
    -- 6 levels for <= 28 num_stat
   
-  s_schedule <= f_opa_transpose(f_opa_concat(f_opa_transpose(r_schedule_slow), f_opa_transpose(r_schedule_fast)));
-  
   s_ready_raw <= f_shift(r_wait1 or r_ready, r_shift);
   ready_shift : opa_lcell_vector generic map(g_wide => c_num_stat) port map(a_i => s_ready_raw, b_o => s_ready_shift);
   s_ready  <= (s_schedule_fast_issue and s_pending_fast) or s_ready_shift;
@@ -268,24 +283,39 @@ begin
   s_wait1   <= f_shift(r_wait2, r_shift);
   s_wait2   <= s_schedule_slow_issue and s_pending_slow;
   
-  -- Forward plan to the register file and EUs
-  eu_shift_o <= r_shift;
-  eu_stat_o  <= s_schedule;
-
   -- Which registers does each EU need to use?
   -- r_bak[abx], r_aux shifted one cycle later, so s_stat has correct index
-  regfile_stb_o  <= f_opa_product(s_schedule, c_stat_ones);
-  regfile_bakx_o <= f_opa_product(s_schedule, r_bakx1);
+  s_schedule <= f_opa_transpose(f_opa_concat(f_opa_transpose(r_schedule_slow), f_opa_transpose(r_schedule_fast)));
+  regfile_rstb_o <= f_opa_product(s_schedule, c_stat_ones);
   regfile_baka_o <= f_opa_product(s_schedule, r_baka);
   regfile_bakb_o <= f_opa_product(s_schedule, r_bakb);
   regfile_aux_o  <= f_opa_product(s_schedule, r_aux);
+  regfile_dec_o  <= f_opa_product(s_schedule, c_decoder_labels);
     -- 2 levels with stations <= 18
   
+  -- Report writeback to the regfile
+  writeback : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      r_rf_wstb_fast1 <= f_opa_product(r_schedule_fast, c_fast_ones);
+      r_rf_wstb_slow1 <= f_opa_product(r_schedule_slow, c_slow_ones);
+      r_rf_bakx_fast1 <= f_opa_product(r_schedule_fast, r_bakx1);
+      r_rf_bakx_slow1 <= f_opa_product(r_schedule_slow, r_bakx1);
+      r_rf_wstb_slow2 <= r_rf_wstb_slow1;
+      r_rf_bakx_slow2 <= r_rf_bakx_slow1;
+      r_rf_wstb_slow3 <= r_rf_wstb_slow2;
+      r_rf_bakx_slow3 <= r_rf_bakx_slow2;
+    end if;
+  end process;
+  
+  regfile_wstb_o <= r_rf_wstb_slow3 & r_rf_wstb_fast1;
+  regfile_bakx_o <= f_opa_transpose(f_opa_concat(f_opa_transpose(r_rf_bakx_slow3), f_opa_transpose(r_rf_bakx_fast1)));
+  
   -- Determine if the execution window should be shifted
-  s_commit <= f_shift(r_final, r_shift) or eu_final_i;
-  s_stall <= not f_opa_and(s_commit(c_decoders-1 downto 0));
-  s_shift <= fetch_stb_i and not s_stall;
-  fetch_stall_o <= s_stall or not rst_n_i;
+  s_final <= f_shift(r_final or r_ready, r_shift); -- !!! bogus; faults go here
+  s_stall <= not f_opa_and(s_final(c_decoders-1 downto 0));
+  s_shift <= rename_stb_i and not s_stall;
+  rename_stall_o <= s_stall or not rst_n_i;
     -- 2 levels with decoders <= 2
   
   -- Prepare decremented versions of the station references
@@ -302,17 +332,11 @@ begin
       -- 1 level with stations <= 32 (5 stat + 1 shift)
   end generate;
   
-  -- Tell the committer about our data
+  -- Feed back unused registers to the renamer
   rename_shift_o <= r_shift;
-  commit_shift_o <= r_shift;
-  commit_kill_o  <= (others => '0');
-  commit_setx_o  <= r_setx(c_decoders-1 downto 0);
-  commit : for i in 0 to c_decoders-1 generate
-    arch : for b in 0 to c_arch_wide-1 generate
-      commit_archx_o(i, b) <= r_archx(i, b);
-    end generate;
-    back : for b in 0 to c_back_wide-1 generate
-      commit_bakx_o(i, b) <= r_bakx1(i, b);
+  oldx : for i in 0 to c_decoders-1 generate
+    bits : for b in 0 to c_back_wide-1 generate
+      rename_oldx_o(i, b) <= r_oldx(i, b);
     end generate;
   end generate;
   
@@ -331,31 +355,23 @@ begin
   begin
     if rst_n_i = '0' then
       -- Load no-ops on power-on
-      r_sh1_setx  <= (others => '0');
-      r_sh2_setx  <= (others => '0');
       r_sh1_fast  <= (others => '1');
       r_sh1_slow  <= (others => '0');
-      r_sh1_baka  <= (others => (others => '0'));
-      r_sh1_bakb  <= (others => (others => '0'));
-      r_sh1_stata <= (others => (others => '0'));
-      r_sh1_statb <= (others => (others => '0'));
       for b in 0 to c_back_wide-1 loop
         for i in 0 to c_decoders-1 loop
+          r_sh1_oldx(i,b) <= to_unsigned(c_num_arch+c_num_stat+c_decoders+i, c_back_wide)(b);
           r_sh1_bakx(i,b) <= to_unsigned(c_num_arch+c_num_stat+c_decoders+i, c_back_wide)(b);
+          r_sh2_oldx(i,b) <= to_unsigned(c_num_arch+c_num_stat+i, c_back_wide)(b);
           r_sh2_bakx(i,b) <= to_unsigned(c_num_arch+c_num_stat+i, c_back_wide)(b);
         end loop;
       end loop;
     elsif rising_edge(clk_i) then
       if r_shift = '1' then
-        r_sh1_setx  <= rename_setx_i;
-        r_sh2_setx  <= r_sh1_setx;
         r_sh1_fast  <= rename_fast_i;
         r_sh1_slow  <= rename_slow_i;
-        r_sh1_baka  <= rename_baka_i;
-        r_sh1_bakb  <= rename_bakb_i;
-        r_sh1_stata <= rename_stata_i;
-        r_sh1_statb <= rename_statb_i;
+        r_sh1_oldx  <= rename_oldx_i;
         r_sh1_bakx  <= rename_bakx_i;
+        r_sh2_oldx  <= r_sh1_oldx;
         r_sh2_bakx  <= r_sh1_bakx;
       end if;
     end if;
@@ -366,10 +382,18 @@ begin
   begin
     if rising_edge(clk_i) then
       if r_shift = '1' then -- clock enable
-        r_sh1_aux   <= rename_aux_i;
-        r_sh1_archx <= rename_archx_i;
+        -- i expect register deduplication to optimize this away all the
+        -- way from rename_aux_i through r_aux until regfile_aux_o.
+        for i in 0 to c_decoders-1 loop
+          for b in 0 to c_aux_wide-1 loop
+            r_sh1_aux(i,b) <= rename_aux_i(b);
+          end loop;
+        end loop;
+        r_sh1_baka  <= rename_baka_i;
+        r_sh1_bakb  <= rename_bakb_i;
+        r_sh1_stata <= rename_stata_i;
+        r_sh1_statb <= rename_statb_i;
         r_sh2_aux   <= r_sh1_aux;
-        r_sh2_archx <= r_sh1_archx;
         r_sh2_baka  <= r_sh1_baka;
         r_sh2_bakb  <= r_sh1_bakb;
       end if;
@@ -508,16 +532,39 @@ begin
     end if;
   end process;
   
+  -- Register the stations, 1-latency with reset, with clock enable
+  stations_1rc : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      for b in 0 to c_back_wide-1 loop
+        for i in 0 to c_num_stat-1 loop
+          r_oldx (i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
+          r_bakx1(i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
+        end loop;
+      end loop;
+    elsif rising_edge(clk_i) then
+      if r_shift = '1' then -- clock enable port
+        for i in 0 to c_num_stat-c_decoders-1 loop
+          for b in 0 to c_back_wide-1 loop
+            r_oldx (i,b) <= r_oldx (i+c_decoders,b);
+            r_bakx1(i,b) <= r_bakx1(i+c_decoders,b);
+          end loop;
+        end loop;
+        for i in c_num_stat-c_decoders to c_num_stat-1 loop
+          for b in 0 to c_back_wide-1 loop
+            r_oldx (i,b) <= r_sh2_oldx(i-(c_num_stat-c_decoders),b);
+            r_bakx1(i,b) <= r_sh2_bakx(i-(c_num_stat-c_decoders),b);
+          end loop;
+        end loop;
+      end if;
+    end if;
+  end process;
+
   -- Register the stations, 1-latency without reset, with clock enable
   stations_1c : process(clk_i) is
   begin
     if rising_edge(clk_i) then
       if r_shift = '1' then -- clock enable port
-        for i in 0 to c_num_stat-c_decoders-1 loop
-          for b in 0 to c_arch_wide-1 loop
-            r_archx(i,b) <= r_archx(i+c_decoders,b);
-          end loop;
-        end loop;
         for i in 0 to c_num_stat-c_decoders-1 loop
           for b in 0 to c_aux_wide-1 loop
             r_aux(i,b)   <= r_aux  (i+c_decoders,b);
@@ -528,9 +575,6 @@ begin
           end loop;
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
-          for b in 0 to c_arch_wide-1 loop
-            r_archx(i,b) <= r_sh2_archx(i-(c_num_stat-c_decoders),b);
-          end loop;
           for b in 0 to c_aux_wide-1 loop
             r_aux  (i,b) <= r_sh2_aux  (i-(c_num_stat-c_decoders),b);
           end loop;
@@ -543,31 +587,4 @@ begin
     end if;
   end process;
   
-  -- Register the stations, 1-latency with reset, with clock enable
-  stations_1rc : process(clk_i, rst_n_i) is
-  begin
-    if rst_n_i = '0' then
-      r_setx <= (others => '0');
-      for b in 0 to c_back_wide-1 loop
-        for i in 0 to c_num_stat-1 loop
-          r_bakx1(i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
-        end loop;
-      end loop;
-    elsif rising_edge(clk_i) then
-      if r_shift = '1' then -- clock enable port
-        r_setx <= r_sh2_setx & r_setx(c_num_stat-1 downto c_decoders);
-        for i in 0 to c_num_stat-c_decoders-1 loop
-          for b in 0 to c_back_wide-1 loop
-            r_bakx1(i,b) <= r_bakx1(i+c_decoders,b);
-          end loop;
-        end loop;
-        for i in c_num_stat-c_decoders to c_num_stat-1 loop
-          for b in 0 to c_back_wide-1 loop
-            r_bakx1(i,b) <= r_sh2_bakx(i-(c_num_stat-c_decoders),b);
-          end loop;
-        end loop;
-      end if;
-    end if;
-  end process;
-
 end rtl;

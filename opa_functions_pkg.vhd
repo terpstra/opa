@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
+use work.opa_isa_base_pkg.all;
 
 package opa_functions_pkg is
 
@@ -14,8 +15,6 @@ package opa_functions_pkg is
   function f_opa_or(x : std_logic_vector) return std_logic;
   function f_opa_and(x : std_logic_vector) return std_logic;
   
-  constant c_aux_wide   : natural := 10;
-  
   -- Decode config into useful values
   function f_opa_decoders (conf : t_opa_config) return natural;
   function f_opa_executers(conf : t_opa_config) return natural;
@@ -25,10 +24,18 @@ package opa_functions_pkg is
   function f_opa_num_stat (conf : t_opa_config) return natural;
   function f_opa_num_arch (conf : t_opa_config) return natural;
   function f_opa_num_back (conf : t_opa_config) return natural;
+  function f_opa_num_aux  (conf : t_opa_config) return natural;
+  function f_opa_num_fetch(conf : t_opa_config) return natural; -- in bytes
   function f_opa_arch_wide(conf : t_opa_config) return natural;
   function f_opa_back_wide(conf : t_opa_config) return natural;
   function f_opa_stat_wide(conf : t_opa_config) return natural;
+  function f_opa_adr_wide (conf : t_opa_config) return natural;
+  function f_opa_aux_wide (conf : t_opa_config) return natural;
   function f_opa_reg_wide (conf : t_opa_config) return natural;
+  function f_opa_arg_wide (conf : t_opa_config) return natural;
+  function f_opa_imm_wide (conf : t_opa_config) return natural;
+  function f_opa_dec_wide (conf : t_opa_config) return natural;
+  function f_opa_fetch_wide(conf : t_opa_config) return natural;
   
   -- Mapping of execution units
   function f_opa_support_fp(conf : t_opa_config) return boolean;
@@ -60,8 +67,131 @@ package opa_functions_pkg is
   function f_opa_1hot_dec(x : t_opa_matrix) return t_opa_matrix;
   
   -- Take the '1' in the row with the biggest index
+  function f_opa_pick_small(x : std_logic_vector) return std_logic_vector;
   function f_opa_pick_big(x : std_logic_vector) return std_logic_vector;
   function f_opa_pick_big(x : t_opa_matrix) return t_opa_matrix;
+  
+  -- Define the arguments needed for operations in our execution units
+  constant c_arg_wide : natural := 7;
+  
+  constant c_opa_jump_never  : std_logic_vector(1 downto 0) := "00";
+  constant c_opa_jump_seldom : std_logic_vector(1 downto 0) := "01";
+  constant c_opa_jump_often  : std_logic_vector(1 downto 0) := "10";
+  constant c_opa_jump_always : std_logic_vector(1 downto 0) := "11";
+  
+  constant c_opa_jump_to_immediate  : std_logic_vector(1 downto 0) := "00";
+  constant c_opa_jump_add_immediate : std_logic_vector(1 downto 0) := "01";
+  constant c_opa_jump_return_stack  : std_logic_vector(1 downto 0) := "10";
+  constant c_opa_jump_unknown       : std_logic_vector(1 downto 0) := "11";
+  
+  -- General information every instruction must provide
+  type t_opa_op is record
+    -- Information for the fetch stage
+    jump  : std_logic_vector(1 downto 0); -- static prediction
+    dest  : std_logic_vector(1 downto 0);
+    push  : std_logic;  -- push return stack
+    -- Information for the rename stage
+    geta  : std_logic; -- 1=rega, 0=PC
+    getb  : std_logic; -- 1=regb, 0=imm
+    setx  : std_logic;
+    archa : std_logic_vector(c_log_arch-1 downto 0);
+    archb : std_logic_vector(c_log_arch-1 downto 0);
+    archx : std_logic_vector(c_log_arch-1 downto 0);
+    -- Information for the issue stage
+    fast  : std_logic; -- goes to fast/slow EU
+    -- Information for the execute stage
+    imm   : std_logic_vector(c_imm_wide-1 downto 0);
+    arg   : std_logic_vector(c_arg_wide-1 downto 0);
+  end record t_opa_op;
+  
+  -- Fast execute units operate in one of four modes
+  --   lut   (00): result[i]=table(a[i]b[i])        fault=(b+imm)!=pcn          target=b  + imm
+  -- !!! the above won't work for both jal and jalr. must still check jal as no comparison in decode.
+  --   addlu (01): result=(nota^a)+(notb^b)+cin     fault=taken!=(a=b)xor(nota) target=PC +(imm|0)
+  --   addhs (01): result=(nota^a)+(notb^b)+cin>>31 fault=taken!=result         target=PC +(imm|0)
+  --   addhu (01): result=(nota^a)+(notb^b)+cin>>32 fault=taken!=result         target=PC +(imm|0)
+  -- An example of instructions each mode can handle:
+  --   lut:   XORI, ORI,  ANDI,  XOR, OR, AND, JAL, JALR, LUI
+  --   addlu: BEQ,  BNE,  AUIPC, ADDI, ADD, SUB
+  --   addhs: BLT,  BGE,  SLTI,  SLT
+  --   addhu: BLTU, BGEU, SLTIU, SLTU
+  
+  constant c_opa_fast_lut  : std_logic_vector(1 downto 0) := "00";
+  constant c_opa_fast_addl : std_logic_vector(1 downto 0) := "01";
+  constant c_opa_fast_addh : std_logic_vector(1 downto 0) := "10";
+  -- fourth option is reserved. maybe shifter, equality, or sign-extension.
+  
+  type t_opa_fast is record
+    mode  : std_logic_vector(1 downto 0);
+    table : std_logic_vector(3 downto 0);
+    fault : std_logic; -- when fault mux is high, restart cpu at target
+  end record t_opa_fast;
+  
+  -- A convenience type for creating t_opa_fast's table
+  type t_opa_adder is record 
+    nota   : std_logic;
+    notb   : std_logic;
+    cin    : std_logic;
+    sign   : std_logic;
+  end record t_opa_adder;
+  
+  -- Slow execute units operate in one of four modes
+  --   mul   (00)
+  --   shift (01)
+  --   load  (10)
+  --   store (11)
+  -- An example of instructions each mode can handle:
+  --   mul:   MUL, MULH, MULHSU, MULHU  [DIV, DIVU, REM, REMU]
+  --   shift: SLLI, SRLI, SRAI, SLL, SRL, SRA
+  --   load:  LB, LH, LW, LBU, LHU
+  --   store: SB, SH, SW
+  
+  constant c_opa_slow_mul   : std_logic_vector(1 downto 0) := "00";
+  constant c_opa_slow_shift : std_logic_vector(1 downto 0) := "01";
+  constant c_opa_slow_load  : std_logic_vector(1 downto 0) := "10";
+  constant c_opa_slow_store : std_logic_vector(1 downto 0) := "11";
+  
+  type t_opa_slow is record
+    mode  : std_logic_vector(1 downto 0);
+    table : std_logic_vector(3 downto 0);
+  end record t_opa_slow;
+  
+  type t_opa_mul is record
+    sexta  : std_logic; -- DIV|DIVU
+    sextb  : std_logic;
+    high   : std_logic; -- MULH|REM vs. MUL|DIV
+    divide : std_logic;
+  end record t_opa_mul;
+  
+  type t_opa_shift is record
+    right  : std_logic;
+    sext   : std_logic;
+  end record t_opa_shift;
+  
+  constant c_opa_ldst_byte : std_logic_vector(1 downto 0) := "00";
+  constant c_opa_ldst_half : std_logic_vector(1 downto 0) := "01";
+  constant c_opa_ldst_word : std_logic_vector(1 downto 0) := "10";
+  constant c_opa_ldst_quad : std_logic_vector(1 downto 0) := "11";
+  
+  type t_opa_ldst is record
+    size   : std_logic_vector(1 downto 0); -- 1,2,4,8
+    sext   : std_logic;
+  end record t_opa_ldst;
+  
+  -- Encode to/from types
+  function f_opa_arg_from_fast(x : t_opa_fast) return std_logic_vector;
+  function f_opa_arg_from_slow(x : t_opa_slow) return std_logic_vector;
+  function f_opa_fast_from_arg(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_fast;
+  function f_opa_slow_from_arg(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_slow;
+  
+  function f_opa_fast_from_adder(x : t_opa_adder) return std_logic_vector;
+  function f_opa_slow_from_mul  (x : t_opa_mul)   return std_logic_vector;
+  function f_opa_slow_from_shift(x : t_opa_shift) return std_logic_vector;
+  function f_opa_slow_from_ldst (x : t_opa_ldst)  return std_logic_vector;
+  function f_opa_adder_from_fast(x : std_logic_vector(3 downto 0)) return t_opa_adder;
+  function f_opa_mul_from_slow  (x : std_logic_vector(3 downto 0)) return t_opa_mul;
+  function f_opa_shift_from_slow(x : std_logic_vector(3 downto 0)) return t_opa_shift;
+  function f_opa_ldst_from_slow (x : std_logic_vector(3 downto 0)) return t_opa_ldst;
 
 end package;
 
@@ -142,20 +272,32 @@ package body opa_functions_pkg is
   
   function f_opa_num_arch(conf : t_opa_config) return natural is
   begin
-    return 2**conf.log_arch;
+    return 2**c_log_arch;
   end f_opa_num_arch;
   
   function f_opa_num_back(conf : t_opa_config) return natural is
-    constant pipeline_depth : natural := 3;
+    constant pipeline_depth : natural := 2;
   begin
     return f_opa_num_arch(conf) +
            f_opa_num_stat(conf) +
-           conf.num_decode*pipeline_depth;
+           f_opa_decoders(conf)*pipeline_depth;
   end f_opa_num_back;
+  
+  function f_opa_num_aux(conf : t_opa_config) return natural is
+    constant pipeline_depth : natural := 4;
+  begin
+    return (f_opa_num_stat(conf) + f_opa_decoders(conf)*pipeline_depth) 
+           / f_opa_decoders(conf);
+  end f_opa_num_aux;
+  
+  function f_opa_num_fetch(conf : t_opa_config) return natural is
+  begin
+    return f_opa_decoders(conf) * c_op_avg_size;
+  end f_opa_num_fetch;
   
   function f_opa_arch_wide(conf : t_opa_config) return natural is
   begin 
-    return conf.log_arch;
+    return c_log_arch;
   end f_opa_arch_wide;
   
   function f_opa_back_wide(conf : t_opa_config) return natural is
@@ -168,10 +310,40 @@ package body opa_functions_pkg is
     return f_opa_log2(f_opa_num_stat(conf) + f_opa_decoders(conf));
   end f_opa_stat_wide;
   
+  function f_opa_adr_wide(conf : t_opa_config) return natural is
+  begin
+    return conf.adr_width;
+  end f_opa_adr_wide;
+  
+  function f_opa_aux_wide(conf : t_opa_config) return natural is
+  begin
+    return f_opa_log2(f_opa_num_aux(conf));
+  end f_opa_aux_wide;
+  
   function f_opa_reg_wide(conf : t_opa_config) return natural is
   begin
     return 2**conf.log_width;
   end f_opa_reg_wide;
+  
+  function f_opa_arg_wide(conf : t_opa_config) return natural is
+  begin
+    return c_arg_wide;
+  end f_opa_arg_wide;
+  
+  function f_opa_imm_wide(conf : t_opa_config) return natural is
+  begin
+    return c_imm_wide;
+  end f_opa_imm_wide;
+  
+  function f_opa_dec_wide(conf : t_opa_config) return natural is
+  begin
+    return f_opa_log2(f_opa_decoders(conf));
+  end f_opa_dec_wide;
+  
+  function f_opa_fetch_wide(conf : t_opa_config) return natural is
+  begin
+    return f_opa_log2(f_opa_num_fetch(conf));
+  end f_opa_fetch_wide;
   
   function f_opa_support_fp(conf : t_opa_config) return boolean is
   begin
@@ -415,6 +587,20 @@ package body opa_functions_pkg is
   end f_opa_1hot_dec;
   
   -- This should only be used on small vectors!
+  function f_opa_pick_small(x : std_logic_vector) return std_logic_vector is
+    variable acc : std_logic_vector(x'range);
+  begin
+    assert (x'length <= 4) report "f_opa_pick_small is bad for large inputs" severity warning;
+    for i in x'low to x'high loop
+      if i = x'low then
+        acc(i) := '0';
+      else
+        acc(i) := x(i-1) or acc(i-1);
+      end if;
+    end loop;
+    return not acc and x;
+  end f_opa_pick_small;
+  
   function f_opa_pick_big(x : std_logic_vector) return std_logic_vector is
     variable acc : std_logic_vector(x'range);
   begin
@@ -442,4 +628,110 @@ package body opa_functions_pkg is
     return result;
   end f_opa_pick_big;
   
+  function f_opa_arg_from_fast(x : t_opa_fast) return std_logic_vector is
+    variable result : std_logic_vector(c_arg_wide-1 downto 0) := (others => '-');
+  begin
+    result(1 downto 0) := x.mode;
+    result(5 downto 2) := x.table;
+    result(6) := x.fault;
+    return result;
+  end f_opa_arg_from_fast;
+  
+  function f_opa_arg_from_slow(x : t_opa_slow) return std_logic_vector is
+    variable result : std_logic_vector(c_arg_wide-1 downto 0) := (others => '-');
+  begin
+    result(1 downto 0) := x.mode;
+    result(5 downto 2) := x.table;
+    return result;
+  end f_opa_arg_from_slow;
+  
+  function f_opa_fast_from_arg(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_fast is
+    variable result : t_opa_fast;
+  begin
+    result.mode  := x(1 downto 0);
+    result.table := x(5 downto 2);
+    result.fault := x(6);
+    return result;
+  end f_opa_fast_from_arg;
+  
+  function f_opa_slow_from_arg(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_slow is
+    variable result : t_opa_slow;
+  begin
+    result.mode  := x(1 downto 0);
+    result.table := x(5 downto 2);
+    return result;
+  end f_opa_slow_from_arg;
+  
+  function f_opa_fast_from_adder(x : t_opa_adder) return std_logic_vector is
+    variable result : std_logic_vector(3 downto 0) := (others => '-');
+  begin
+    result(0) := x.nota;
+    result(1) := x.notb;
+    result(2) := x.cin;
+    result(3) := x.sign;
+    return result;
+  end f_opa_fast_from_adder;
+  
+  function f_opa_slow_from_mul  (x : t_opa_mul)   return std_logic_vector is
+    variable result : std_logic_vector(3 downto 0) := (others => '-');
+  begin
+    result(0) := x.sexta;
+    result(1) := x.sextb;
+    result(2) := x.high;
+    result(3) := x.divide;
+    return result;
+  end f_opa_slow_from_mul;
+  
+  function f_opa_slow_from_shift(x : t_opa_shift) return std_logic_vector is
+    variable result : std_logic_vector(3 downto 0) := (others => '-');
+  begin
+    result(0) := x.sext;
+    result(3) := x.right;
+    return result;
+  end f_opa_slow_from_shift;
+  
+  function f_opa_slow_from_ldst (x : t_opa_ldst)  return std_logic_vector is
+    variable result : std_logic_vector(3 downto 0) := (others => '-');
+  begin
+    result(0) := x.sext;
+    result(3 downto 2) := x.size;
+    return result;
+  end f_opa_slow_from_ldst;
+  
+  function f_opa_adder_from_fast(x : std_logic_vector(3 downto 0)) return t_opa_adder is
+    variable result : t_opa_adder;
+  begin
+    result.nota  := x(0);
+    result.notb  := x(1);
+    result.cin   := x(2);
+    result.sign  := x(3);
+    return result;
+  end f_opa_adder_from_fast;
+  
+  function f_opa_mul_from_slow  (x : std_logic_vector(3 downto 0)) return t_opa_mul is
+    variable result : t_opa_mul;
+  begin
+    result.sexta  := x(0);
+    result.sextb  := x(1);
+    result.high   := x(2);
+    result.divide := x(3);
+    return result;
+  end f_opa_mul_from_slow;
+  
+  function f_opa_shift_from_slow(x : std_logic_vector(3 downto 0)) return t_opa_shift is
+    variable result : t_opa_shift;
+  begin
+    result.sext  := x(0);
+    result.right := x(3);
+    return result;
+  end f_opa_shift_from_slow;
+  
+  function f_opa_ldst_from_slow (x : std_logic_vector(3 downto 0)) return t_opa_ldst is
+    variable result : t_opa_ldst;
+  begin
+    result.sext := x(0);
+    result.size := x(3 downto 2);
+    return result;
+  end f_opa_ldst_from_slow;
+
 end opa_functions_pkg;

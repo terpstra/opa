@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
+use work.opa_isa_base_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
@@ -15,50 +16,51 @@ entity opa_fast is
     clk_i          : in  std_logic;
     rst_n_i        : in  std_logic;
     
-    issue_shift_i  : in  std_logic;
-    issue_stat_i   : in  std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-    issue_final_o  : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-    issue_kill_o   : out std_logic_vector(f_opa_num_stat(g_config)-1 downto 0);
-    
     regfile_stb_i  : in  std_logic;
-    regfile_rega_i : in  std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
-    regfile_regb_i : in  std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0);
-    regfile_bakx_i : in  std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
-    regfile_aux_i  : in  std_logic_vector(c_aux_wide-1 downto 0);
+    regfile_rega_i : in  std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
+    regfile_regb_i : in  std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
+    regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide  (g_config)-1 downto 0);
+    regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide  (g_config)-1 downto 0);
+    regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    regfile_regx_o : out std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
     
-    regfile_stb_o  : out std_logic;
-    regfile_bakx_o : out std_logic_vector(f_opa_back_wide(g_config)-1 downto 0);
-    regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config) -1 downto 0));
+    issue_fault_o  : out std_logic;
+    issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    issue_pcf_o    : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    issue_pcn_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align));
 end opa_fast;
 
 architecture rtl of opa_fast is
 
-  constant c_num_stat : natural := f_opa_num_stat(g_config);
-  constant c_decoders : natural := f_opa_decoders(g_config);
-  
-  constant c_decoder_zeros : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
+  signal s_fast  : t_opa_fast;
+  signal s_adder : t_opa_adder;
 
   signal r_rega : std_logic_vector(regfile_rega_i'range);
   signal r_regb : std_logic_vector(regfile_regb_i'range);
-  signal r_imm  : std_logic_vector(7 downto 0);
-  signal r_sext : std_logic;
+  signal r_imm  : std_logic_vector(regfile_imm_i'range);
+  signal r_pc   : std_logic_vector(regfile_pc_i'range);
+  signal r_pcf  : std_logic_vector(regfile_pcf_i'range);
+  signal r_pcn  : std_logic_vector(regfile_pcn_i'range);
+  
   signal r_lut  : std_logic_vector(3 downto 0);
   signal r_nota : std_logic;
   signal r_notb : std_logic;
   signal r_cin  : std_logic;
-  signal r_mux  : std_logic_vector(1 downto 0);
+  signal r_sign : std_logic;
+  signal r_mode : std_logic_vector(1 downto 0);
 
   type t_logic is array(natural range <>) of unsigned(1 downto 0);
   signal s_logic_in : t_logic(r_rega'range);
   
-  signal s_immediate  : std_logic_vector(r_rega'range);
   signal s_logic      : std_logic_vector(r_rega'range);
   signal s_nota       : std_logic_vector(r_rega'range);
   signal s_notb       : std_logic_vector(r_rega'range);
   signal s_widea      : std_logic_vector(r_rega'left+2 downto 0);
   signal s_wideb      : std_logic_vector(r_rega'left+2 downto 0);
   signal s_widex      : std_logic_vector(r_rega'left+2 downto 0);
-  signal s_adder      : std_logic_vector(r_rega'range);
+  signal s_sum_low    : std_logic_vector(r_rega'range);
   signal s_comparison : std_logic_vector(r_rega'range);
 
   attribute dont_merge : boolean;
@@ -66,23 +68,24 @@ architecture rtl of opa_fast is
   
   -- Do not merge these registers; they are used in different places!
   attribute dont_merge of r_imm  : signal is true;
-  attribute dont_merge of r_sext : signal is true;
   attribute dont_merge of r_lut  : signal is true;
   attribute dont_merge of r_nota : signal is true;
   attribute dont_merge of r_notb : signal is true;
   attribute dont_merge of r_cin  : signal is true;
-  attribute dont_merge of r_mux  : signal is true;
+  attribute dont_merge of r_mode : signal is true;
   
   -- These are fanned out to 64 bits; make it easier to fit
   -- attribute maxfan of r_lut  : signal is 8;
-  -- attribute maxfan of r_mux  : signal is 8;
+  -- attribute maxfan of r_mode : signal is 8;
 begin
 
-  issue_final_o <= issue_stat_i when issue_shift_i='0' else (c_decoder_zeros & issue_stat_i(c_num_stat-1 downto c_decoders));
-  issue_kill_o  <= (others => '0');
+  issue_fault_o <= '0';
+  issue_pc_o    <= r_pc;
+  issue_pcf_o   <= r_pcf;
+  issue_pcn_o   <= r_pcn;
   
-  regfile_stb_o  <= regfile_stb_i;
-  regfile_bakx_o <= regfile_bakx_i;
+  s_fast  <= f_opa_fast_from_arg(regfile_arg_i);
+  s_adder <= f_opa_adder_from_fast(s_fast.table);
   
   -- Register our inputs
   main : process(clk_i) is
@@ -90,19 +93,19 @@ begin
     if rising_edge(clk_i) then
       r_rega <= regfile_rega_i;
       r_regb <= regfile_regb_i;
-      r_imm  <= regfile_aux_i(7 downto 0);
-      r_sext <= regfile_aux_i(7);
-      r_lut  <= regfile_aux_i(3 downto 0);
-      r_nota <= regfile_aux_i(0);
-      r_notb <= regfile_aux_i(1);
-      r_cin  <= regfile_aux_i(2);
-      r_mux  <= regfile_aux_i(regfile_aux_i'left downto regfile_aux_i'left-1);
+      r_imm  <= regfile_imm_i;
+      r_pc   <= regfile_pc_i;
+      r_pcf  <= regfile_pcf_i;
+      r_pcn  <= regfile_pcn_i;
+      
+      r_mode <= s_fast.mode;
+      r_lut  <= s_fast.table;
+      r_nota <= s_adder.nota;
+      r_notb <= s_adder.notb;
+      r_cin  <= s_adder.cin;
+      r_sign <= s_adder.sign;
     end if;
   end process;
-  
-  -- Result is a sign-extended immediate
-  s_immediate(7 downto 0) <= r_imm;
-  s_immediate(s_immediate'left downto 8) <= (others => r_sext);
   
   -- Result is a logic function
   logic : for i in r_rega'range generate
@@ -122,17 +125,18 @@ begin
   s_wideb(0) <= r_cin;
   s_widex <= std_logic_vector(unsigned(s_widea) + unsigned(s_wideb));
   
-  s_adder <= s_widex(r_rega'left+1 downto 1);
-  s_comparison(0) <= s_widex(r_rega'left+2);
+  s_sum_low <= s_widex(r_rega'left+1 downto 1);
+  s_comparison(0) <= s_widex(r_rega'left+2) xor ((r_rega(31) xor r_regb(31)) and r_sign);
   s_comparison(r_rega'left downto 1) <= (others => '0');
   
   -- Send result to regfile
-  with r_mux select
+  with r_mode select
   regfile_regx_o <= 
-    s_immediate     when "00",
-    s_logic         when "01",
-    s_adder         when "10",
-    s_comparison    when "11",
+    s_logic         when c_opa_fast_lut,
+    s_sum_low       when c_opa_fast_addl,
+    s_comparison    when c_opa_fast_addh,
     (others => '-') when others;
-
+  
+  -- !!! test pcn
+  
 end rtl;

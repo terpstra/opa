@@ -19,7 +19,7 @@ end opa_syn_tb;
 
 architecture rtl of opa_syn_tb is
 
-  constant c_config : t_opa_config := c_opa_large;
+  constant c_config : t_opa_config := c_opa_mid;
 
   type t_ops is array(15 downto 0) of std_logic_vector(67 downto 0);
   signal r_ops : t_ops :=
