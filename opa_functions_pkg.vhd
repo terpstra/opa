@@ -70,6 +70,7 @@ package opa_functions_pkg is
   function f_opa_pick_small(x : std_logic_vector) return std_logic_vector;
   function f_opa_pick_big(x : std_logic_vector) return std_logic_vector;
   function f_opa_pick_big(x : t_opa_matrix) return t_opa_matrix;
+  function f_opa_reverse(x : std_logic_vector) return std_logic_vector;
   
   -- Define the arguments needed for operations in our execution units
   constant c_arg_wide : natural := 7;
@@ -627,6 +628,15 @@ package body opa_functions_pkg is
     end loop;
     return result;
   end f_opa_pick_big;
+  
+  function f_opa_reverse(x : std_logic_vector) return std_logic_vector is
+    variable result : std_logic_vector(x'range);
+  begin
+    for i in x'low to x'high loop
+      result(i) := x((x'high-i) + x'low);
+    end loop;
+    return result;
+  end f_opa_reverse;
   
   function f_opa_arg_from_fast(x : t_opa_fast) return std_logic_vector is
     variable result : std_logic_vector(c_arg_wide-1 downto 0) := (others => '-');

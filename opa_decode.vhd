@@ -226,7 +226,7 @@ begin
     -- an alternative is to only s_stb when >= c_decoders+1
   end generate;
   
-  s_ops_sub <= unsigned(f_opa_1hot_dec(s_jump_taken)) + s_pc_off;
+  s_ops_sub <= unsigned(f_opa_1hot_dec(f_opa_reverse(s_jump_taken))) + s_pc_off;
   fill : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
@@ -244,7 +244,7 @@ begin
       
       if s_progress = '1' then
         if s_accept = '1' then
-          r_fill <= r_fill + s_ops_sub; -- r_fill - c_decoders + (c_decoders - s_ops_sub)
+          r_fill <= r_fill - s_ops_sub; -- r_fill - c_decoders + (c_decoders - s_ops_sub)
         else
           r_fill <= r_fill - c_decoders;
         end if;

@@ -36,7 +36,12 @@ end opa_predict;
 
 architecture rtl of opa_predict is
 
-  constant c_adr_wide : natural := f_opa_adr_wide(g_config);
+  constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
+  constant c_num_fetch : natural := f_opa_num_fetch(g_config);
+  
+  constant c_fetch_adr : unsigned(c_adr_wide-1 downto 0) := to_unsigned(c_num_fetch, c_adr_wide);
+  constant c_increment : unsigned(c_adr_wide-1 downto c_op_align) := c_fetch_adr(c_adr_wide-1 downto c_op_align);
+  constant c_mask      : unsigned(c_adr_wide-1 downto c_op_align) := not (c_increment - 1);
 
   signal r_pc : unsigned(c_adr_wide-1 downto c_op_align);
   signal s_pc : unsigned(c_adr_wide-1 downto c_op_align);
@@ -44,18 +49,20 @@ architecture rtl of opa_predict is
 begin
 
   -- World's simplest branch predictor!
-  s_pc <= r_pc + 1 when decode_fault_i='0' else unsigned(decode_target_i);
+  s_pc <= (r_pc + c_increment) and c_mask when decode_fault_i='0' else unsigned(decode_target_i);
   
   main : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_pc          <= (others => '0');
+      r_pc          <= c_increment;
       decode_jump_o <= (others => '0');
       decode_hit_o  <= '0';
     elsif rising_edge(clk_i) then
-      r_pc          <= s_pc;
-      decode_jump_o <= (others => '0');
-      decode_hit_o  <= '0';
+      if icache_stall_i = '0' then
+        r_pc          <= s_pc(r_pc'range);
+        decode_jump_o <= (others => '0');
+        decode_hit_o  <= '0';
+      end if;
     end if;
   end process;
   

@@ -47,6 +47,9 @@ architecture rtl of opa_icache is
   constant c_tag_wide  : natural := c_adr_wide - c_page_wide;
   constant c_size      : natural := c_page_size/c_num_fetch;
   
+  constant c_fetch_adr : unsigned(c_adr_wide-1 downto 0) := to_unsigned(c_num_fetch, c_adr_wide);
+  constant c_increment : unsigned(c_adr_wide-1 downto c_op_align) := c_fetch_adr(c_adr_wide-1 downto c_op_align);
+  
   signal r_hit   : std_logic;
   signal s_stall : std_logic;
   signal s_dstb  : std_logic;
@@ -87,27 +90,31 @@ begin
       w_addr_i => r_pc2 (c_page_wide-1 downto c_fetch_wide),
       w_data_i => s_wraw);
   
-  s_rtag  <= s_rraw(s_rraw'left downto s_rdata'length);
+  -- !!! add a valid bit; inverting the tag is temporary
+  s_rtag  <= not s_rraw(s_rraw'left downto s_rdata'length);
   s_rdata <= s_rraw(s_rdata'range);
-  s_wraw(s_wraw'left downto s_wdata'length) <= r_pc2(s_rtag'range);
+  s_wraw(s_wraw'left downto s_wdata'length) <= not r_pc2(s_rtag'range);
   s_wraw(s_wdata'range) <= s_wdata;
 
-  hit : process(clk_i, rst_n_i) is
+  pc : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
       r_hit <= '0';
+      r_pc1 <= std_logic_vector(c_increment);
+      r_pc2 <= (others => '0');
     elsif rising_edge(clk_i) then
       if s_stall = '0' then
         r_hit <= f_opa_bit(r_pc1(s_rtag'range) = s_rtag);
+        r_pc1 <= predict_pc_i;
+        r_pc2 <= r_pc1;
       end if;
     end if;
   end process;
-  main : process(clk_i) is
+  
+  rdata : process(clk_i) is
   begin
     if rising_edge(clk_i) then
       if s_stall = '0' then
-        r_pc1   <= predict_pc_i;
-        r_pc2   <= r_pc1;
         r_rdata <= s_rdata;
       end if;
     end if;
