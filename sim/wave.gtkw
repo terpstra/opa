@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.62 (w)1999-2014 BSI
-[*] Mon Aug 24 12:32:08 2015
+[*] Tue Aug 25 22:04:10 2015
 [*]
-[dumpfile] "/home/terpstra/idle/opa/sim/testbench.ghw"
-[dumpfile_mtime] "Mon Aug 24 12:28:00 2015"
-[dumpfile_size] 1494507
-[savefile] "/home/terpstra/idle/opa/sim/wave.gtkw"
+[dumpfile] "/home/terpstra/opa/sim/testbench.ghw"
+[dumpfile_mtime] "Tue Aug 25 21:52:38 2015"
+[dumpfile_size] 2027089
+[savefile] "/home/terpstra/opa/sim/wave.gtkw"
 [timestart] 0
-[size] 2560 1384
+[size] 1920 1134
 [pos] 0 26
-*-23.000000 9640000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-24.000000 17780000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.opa_sim_tb.
 [treeopen] top.opa_sim_tb.opa_tb.
@@ -21,9 +21,11 @@
 [treeopen] top.opa_sim_tb.opa_tb.opa_core.decode.r_ops.[2].
 [treeopen] top.opa_sim_tb.opa_tb.opa_core.decode.r_ops.[3].
 [treeopen] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc.
+[treeopen] top.opa_sim_tb.opa_tb.opa_core.icache.
+[treeopen] top.opa_sim_tb.opa_tb.opa_core.predict.
 [treeopen] top.opa_sim_tb.opa_tb.opa_core.slowx[1].slow.
-[sst_width] 357
-[signals_width] 233
+[sst_width] 289
+[signals_width] 276
 [sst_expanded] 1
 [sst_vpaned_height] 620
 @28
@@ -159,15 +161,146 @@ top.opa_sim_tb.opa_tb.opa_core.regfile.eu_arg_o[0,6]
 @1001200
 -group_end
 @28
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_stb_i
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_stall_o
 top.opa_sim_tb.opa_tb.opa_core.decode.rename_stb_o
 top.opa_sim_tb.opa_tb.opa_core.decode.rename_stall_i
 @24
 #{top.opa_sim_tb.opa_tb.opa_core.decode.r_fill[3:0]} top.opa_sim_tb.opa_tb.opa_core.decode.r_fill[3] top.opa_sim_tb.opa_tb.opa_core.decode.r_fill[2] top.opa_sim_tb.opa_tb.opa_core.decode.r_fill[1] top.opa_sim_tb.opa_tb.opa_core.decode.r_fill[0]
-#{top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[38:2]} top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[38] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[37] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[36] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[35] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[34] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[33] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[32] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[31] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[30] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[29] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[28] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[27] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[26] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[25] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[24] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[23] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[22] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[21] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[20] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[19] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[18] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[17] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[16] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[15] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[14] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[13] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[12] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[11] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[10] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[9] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[8] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[7] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[6] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[5] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[4] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[3] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_pc_i[2]
-@22
+@28
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_stb_i
+@c00022
 #{top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[127:0]} top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[127] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[126] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[125] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[124] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[123] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[122] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[121] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[120] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[119] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[118] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[117] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[116] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[115] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[114] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[113] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[112] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[111] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[110] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[109] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[108] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[107] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[106] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[105] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[104] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[103] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[102] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[101] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[100] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[99] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[98] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[97] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[96] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[95] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[94] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[93] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[92] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[91] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[90] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[89] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[88] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[87] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[86] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[85] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[84] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[83] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[82] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[81] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[80] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[79] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[78] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[77] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[76] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[75] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[74] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[73] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[72] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[71] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[70] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[69] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[68] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[67] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[66] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[65] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[64] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[63] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[62] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[61] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[60] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[59] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[58] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[57] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[56] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[55] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[54] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[53] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[52] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[51] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[50] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[49] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[48] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[47] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[46] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[45] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[44] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[43] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[42] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[41] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[40] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[39] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[38] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[37] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[36] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[35] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[34] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[33] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[32] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[31] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[30] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[29] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[28] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[27] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[26] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[25] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[24] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[23] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[22] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[21] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[20] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[19] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[18] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[17] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[16] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[15] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[14] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[13] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[12] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[11] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[10] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[9] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[8] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[7] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[6] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[5] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[4] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[3] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[2] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[1] top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[0]
+@28
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[127]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[126]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[125]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[124]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[123]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[122]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[121]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[120]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[119]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[118]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[117]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[116]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[115]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[114]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[113]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[112]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[111]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[110]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[109]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[108]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[107]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[106]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[105]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[104]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[103]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[102]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[101]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[100]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[99]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[98]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[97]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[96]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[95]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[94]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[93]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[92]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[91]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[90]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[89]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[88]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[87]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[86]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[85]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[84]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[83]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[82]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[81]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[80]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[79]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[78]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[77]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[76]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[75]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[74]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[73]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[72]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[71]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[70]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[69]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[68]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[67]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[66]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[65]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[64]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[63]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[62]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[61]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[60]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[59]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[58]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[57]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[56]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[55]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[54]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[53]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[52]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[51]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[50]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[49]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[48]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[47]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[46]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[45]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[44]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[43]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[42]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[41]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[40]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[39]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[38]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[37]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[36]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[35]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[34]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[33]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[32]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[31]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[30]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[29]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[28]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[27]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[26]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[25]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[24]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[23]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[22]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[21]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[20]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[19]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[18]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[17]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[16]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[15]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[14]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[13]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[12]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[11]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[10]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[9]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[8]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[7]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[6]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[5]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[4]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[3]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[2]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[1]
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_dat_i[0]
+@1401200
+-group_end
+@22
 #{top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][38:2]} top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][38] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][37] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][36] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][35] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][34] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][33] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][32] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][31] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][30] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][29] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][28] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][27] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][26] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][25] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][24] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][23] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][22] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][21] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][20] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][19] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][18] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][17] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][16] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][15] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][14] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][13] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][12] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][11] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][10] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][9] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][8] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][7] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][6] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][5] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][4] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][3] top.opa_sim_tb.opa_tb.opa_core.decode.r_pc[0][2]
 @28
 #{top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[0].jump[1:0]} top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[0].jump[1] top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[0].jump[0]
@@ -207,52 +340,69 @@ top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[2].fast
 #{top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[3].archx[4:0]} top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[3].archx[4] top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[3].archx[3] top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[3].archx[2] top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[3].archx[1] top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[3].archx[0]
 @28
 top.opa_sim_tb.opa_tb.opa_core.decode.r_ops[3].fast
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_fault_o
-@29
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_return_o
+top.opa_sim_tb.opa_tb.opa_core.icache.i_cyc_o
+top.opa_sim_tb.opa_tb.opa_core.icache.i_stb_o
+top.opa_sim_tb.opa_tb.opa_core.icache.i_stall_i
+top.opa_sim_tb.opa_tb.opa_core.icache.i_ack_i
 @22
-#{top.opa_sim_tb.opa_tb.opa_core.decode.fetch_jump_o[3:0]} top.opa_sim_tb.opa_tb.opa_core.decode.fetch_jump_o[3] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_jump_o[2] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_jump_o[1] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_jump_o[0]
-@c00024
-#{top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[38:2]} top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[38] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[37] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[36] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[35] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[34] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[33] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[32] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[31] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[30] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[29] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[28] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[27] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[26] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[25] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[24] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[23] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[22] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[21] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[20] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[19] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[18] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[17] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[16] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[15] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[14] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[13] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[12] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[11] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[10] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[9] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[8] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[7] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[6] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[5] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[4] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[3] top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[2]
+#{top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[63:0]} top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[63] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[62] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[61] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[60] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[59] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[58] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[57] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[56] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[55] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[54] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[53] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[52] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[51] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[50] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[49] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[48] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[47] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[46] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[45] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[44] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[43] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[42] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[41] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[40] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[39] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[38] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[37] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[36] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[35] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[34] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[33] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[32] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[31] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[30] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[29] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[28] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[27] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[26] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[25] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[24] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[23] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[22] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[21] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[20] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[19] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[18] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[17] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[16] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[15] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[14] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[13] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[12] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[11] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[10] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[9] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[8] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[7] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[6] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[5] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[4] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[3] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[2] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[1] top.opa_sim_tb.opa_tb.opa_core.icache.i_addr_o[0]
+#{top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[63:0]} top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[63] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[62] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[61] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[60] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[59] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[58] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[57] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[56] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[55] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[54] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[53] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[52] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[51] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[50] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[49] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[48] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[47] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[46] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[45] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[44] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[43] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[42] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[41] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[40] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[39] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[38] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[37] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[36] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[35] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[34] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[33] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[32] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[31] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[30] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[29] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[28] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[27] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[26] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[25] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[24] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[23] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[22] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[21] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[20] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[19] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[18] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[17] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[16] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[15] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[14] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[13] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[12] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[11] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[10] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[9] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[8] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[7] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[6] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[5] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[4] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[3] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[2] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[1] top.opa_sim_tb.opa_tb.opa_core.icache.i_data_i[0]
+@c00022
+#{top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[38:2]} top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[38] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[37] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[36] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[35] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[34] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[33] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[32] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[31] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[30] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[29] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[28] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[27] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[26] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[25] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[24] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[23] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[22] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[21] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[20] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[19] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[18] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[17] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[16] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[15] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[14] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[13] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[12] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[11] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[10] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[9] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[8] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[7] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[6] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[5] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[4] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[3] top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[2]
 @28
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[38]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[37]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[36]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[35]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[34]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[33]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[32]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[31]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[30]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[29]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[28]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[27]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[26]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[25]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[24]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[23]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[22]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[21]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[20]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[19]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[18]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[17]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[16]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[15]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[14]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[13]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[12]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[11]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[10]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[9]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[8]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[7]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[6]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[5]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[4]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[3]
-top.opa_sim_tb.opa_tb.opa_core.decode.fetch_target_o[2]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[38]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[37]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[36]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[35]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[34]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[33]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[32]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[31]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[30]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[29]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[28]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[27]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[26]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[25]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[24]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[23]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[22]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[21]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[20]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[19]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[18]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[17]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[16]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[15]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[14]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[13]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[12]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[11]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[10]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[9]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[8]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[7]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[6]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[5]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[4]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[3]
+top.opa_sim_tb.opa_tb.opa_core.icache.r_pc1[2]
 @1401200
 -group_end
+@22
+#{top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[38:2]} top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[38] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[37] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[36] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[35] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[34] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[33] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[32] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[31] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[30] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[29] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[28] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[27] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[26] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[25] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[24] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[23] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[22] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[21] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[20] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[19] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[18] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[17] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[16] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[15] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[14] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[13] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[12] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[11] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[10] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[9] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[8] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[7] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[6] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[5] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[4] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[3] top.opa_sim_tb.opa_tb.opa_core.predict.r_pc[2]
+#{top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[38:2]} top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[38] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[37] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[36] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[35] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[34] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[33] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[32] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[31] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[30] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[29] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[28] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[27] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[26] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[25] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[24] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[23] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[22] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[21] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[20] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[19] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[18] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[17] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[16] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[15] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[14] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[13] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[12] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[11] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[10] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[9] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[8] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[7] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[6] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[5] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[4] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[3] top.opa_sim_tb.opa_tb.opa_core.predict.s_pc[2]
+@28
+top.opa_sim_tb.opa_tb.opa_core.predict.icache_stall_i
+@29
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_stall_o
+@28
+top.opa_sim_tb.opa_tb.opa_core.decode.icache_stb_i
+top.opa_sim_tb.opa_tb.opa_core.decode.s_accept
+top.opa_sim_tb.opa_tb.opa_core.decode.s_progress
+@22
+#{top.opa_sim_tb.opa_tb.opa_core.decode.s_jump_taken[3:0]} top.opa_sim_tb.opa_tb.opa_core.decode.s_jump_taken[3] top.opa_sim_tb.opa_tb.opa_core.decode.s_jump_taken[2] top.opa_sim_tb.opa_tb.opa_core.decode.s_jump_taken[1] top.opa_sim_tb.opa_tb.opa_core.decode.s_jump_taken[0]
+@28
+#{top.opa_sim_tb.opa_tb.opa_core.decode.s_ops_sub[1:0]} top.opa_sim_tb.opa_tb.opa_core.decode.s_ops_sub[1] top.opa_sim_tb.opa_tb.opa_core.decode.s_ops_sub[0]
 [pattern_trace] 1
 [pattern_trace] 0

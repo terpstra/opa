@@ -4,7 +4,6 @@ set -e
 
 # incomplete
 #	opa_l1d.vhd
-#	opa_fetch.vhd
 
 for i in 			\
 	opa_pkg.vhd 		\
@@ -17,6 +16,8 @@ for i in 			\
 	opa_prim_ternary.vhd	\
 	opa_prim_mul.vhd	\
 	opa_prefixsum.vhd	\
+	opa_predict.vhd		\
+	opa_icache.vhd		\
 	opa_decode.vhd		\
 	opa_rename.vhd		\
 	opa_issue.vhd		\
@@ -24,6 +25,7 @@ for i in 			\
 	opa_fast.vhd		\
 	opa_slow.vhd		\
 	opa.vhd			\
+	demo/demo.vhd		\
 	opa_core_tb.vhd		\
 	opa_sim_tb.vhd;		\
 do echo $i; ghdl -a --std=93 --ieee=standard --syn-binding  ../$i
