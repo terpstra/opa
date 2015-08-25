@@ -15,6 +15,7 @@ entity opa_dpram is
     g_width  : natural;
     g_size   : natural;
     g_bypass : boolean;
+    g_regin  : boolean;
     g_regout : boolean);
   port(
     clk_i    : in  std_logic;
@@ -29,21 +30,31 @@ end opa_dpram;
 
 architecture syn of opa_dpram is
 
-  signal r_bypass : std_logic;
-  signal s_data   : std_logic_vector(g_width-1 downto 0);
-  signal r_data   : std_logic_vector(g_width-1 downto 0);
+  constant c_m10k      : boolean := g_regin and g_size > 32;
+  constant c_mlab_cin  : string  := f_opa_choose(g_regin,  "INCLOCK",  "UNREGISTERED");
+  constant c_mlab_cout : string  := f_opa_choose(g_regout, "OUTCLOCK", "UNREGISTERED");
+  constant c_m10k_cout : string  := f_opa_choose(g_regout, "CLOCK0",   "UNREGISTERED");
+
+  signal s_bypass     : std_logic;
+  signal r_bypass1    : std_logic;
+  signal r_bypass2    : std_logic;
+  signal s_mux_bypass : std_logic;
+  signal s_data       : std_logic_vector(g_width-1 downto 0);
+  signal r_data1      : std_logic_vector(g_width-1 downto 0);
+  signal r_data2      : std_logic_vector(g_width-1 downto 0);
+  signal s_mux_data   : std_logic_vector(g_width-1 downto 0);
 
 begin
 
-  regout : if g_regout generate
+  regout : if not c_m10k generate
     ram : altdpram
       generic map(
         intended_device_family             => "Arria V",
         indata_aclr                        => "OFF",
-        indata_reg                         => "INCLOCK",
+        indata_reg                         => c_mlab_cin,
         lpm_type                           => "altdpram",
         outdata_aclr                       => "OFF",
-        outdata_reg                        => "OUTCLOCK",
+        outdata_reg                        => c_mlab_cout,
         ram_block_type                     => "MLAB",
         rdaddress_aclr                     => "OFF",
         rdaddress_reg                      => "UNREGISTERED",
@@ -67,12 +78,12 @@ begin
         q         => s_data);
   end generate;
   
-  regin : if not g_regout generate
+  regin : if c_m10k generate
     ram : altsyncram
       generic map(
         intended_device_family             => "Arria V",
         address_aclr_b                     => "NONE",
-        address_reg_b                      => "CLOCK0",
+        address_reg_b                      => "CLOCK0", -- always registered
         clock_enable_input_a               => "BYPASS",
         clock_enable_input_b               => "BYPASS",
         clock_enable_output_b              => "BYPASS",
@@ -81,7 +92,7 @@ begin
         numwords_b                         => g_size,
         operation_mode                     => "DUAL_PORT",
         outdata_aclr_b                     => "NONE",
-        outdata_reg_b                      => "UNREGISTERED",
+        outdata_reg_b                      => c_m10k_cout,
         power_up_uninitialized             => "FALSE",
         ram_block_type                     => "M10K",
         read_during_write_mode_mixed_ports => "DONT_CARE",
@@ -100,14 +111,28 @@ begin
     
   end generate;
   
+  s_data   <= w_data_i;
+  s_bypass <= f_opa_bit(r_addr_i = w_addr_i) and w_en_i;
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_data   <= w_data_i;
-      r_bypass <= f_opa_bit(r_addr_i = w_addr_i);
+      r_data1   <= s_data;
+      r_data2   <= r_data1;
+      r_bypass1 <= s_bypass;
+      r_bypass2 <= r_bypass1;
     end if;
   end process;
   
-  r_data_o <= r_data when (g_bypass and r_bypass = '1') else s_data;
+  s_mux_bypass <= 
+    s_bypass  when (not g_regin and not g_regout) else
+    r_bypass2 when (    g_regin and     g_regout) else
+    r_bypass1;
+  
+  s_mux_data <= 
+    s_data  when (not g_regin and not g_regout) else
+    r_data2 when (    g_regin and     g_regout) else
+    r_data1;
+  
+  r_data_o <= s_mux_data when (g_bypass and s_mux_bypass = '1') else s_data;
 
 end syn;
