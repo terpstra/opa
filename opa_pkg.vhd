@@ -52,6 +52,7 @@ package opa_pkg is
       rst_n_i   : in  std_logic;
 
       -- Wishbone instruction bus
+      i_cyc_o   : out std_logic;
       i_stb_o   : out std_logic;
       i_stall_i : in  std_logic;
       i_ack_i   : in  std_logic;
@@ -60,6 +61,7 @@ package opa_pkg is
       i_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
       
       -- Wishbone data bus
+      d_cyc_o   : out std_logic;
       d_stb_o   : out std_logic;
       d_we_o    : out std_logic;
       d_stall_i : in  std_logic;

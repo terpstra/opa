@@ -9,4 +9,5 @@ package opa_isa_base_pkg is
   constant c_log_arch    : natural :=  5; -- 32 architectural registers
   constant c_imm_wide    : natural := 32;
   constant c_big_endian  : boolean := false;
+  constant c_page_size   : natural := 4096;
 end package;

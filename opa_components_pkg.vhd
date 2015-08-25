@@ -14,6 +14,7 @@ package opa_components_pkg is
       g_width  : natural;
       g_size   : natural;
       g_bypass : boolean;
+      g_regin  : boolean;
       g_regout : boolean);
     port(
       clk_i    : in  std_logic;
@@ -82,6 +83,58 @@ package opa_components_pkg is
       total_o   : out std_logic_vector(g_width-1 downto 0));
   end component;
   
+  component opa_predict is
+    generic(
+      g_config : t_opa_config;
+      g_target : t_opa_target);
+    port(
+      clk_i           : in  std_logic;
+      rst_n_i         : in  std_logic;
+      
+      -- Deliver our prediction
+      icache_stall_i  : in  std_logic;
+      icache_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      decode_hit_o    : out std_logic;
+      decode_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      
+      -- Push a return stack entry
+      decode_push_i   : in  std_logic;
+      decode_ret_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      
+      -- Fixup PC to new target
+      decode_fault_i  : in  std_logic;
+      decode_return_i : in  std_logic;
+      decode_jump_i   : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
+  end component;
+  
+  component opa_icache is
+    generic(
+      g_config : t_opa_config;
+      g_target : t_opa_target);
+    port(
+      clk_i           : in  std_logic;
+      rst_n_i         : in  std_logic;
+      
+      predict_stall_o : out std_logic;
+      predict_pc_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      
+      decode_stb_o    : out std_logic;
+      decode_stall_i  : in  std_logic;
+      decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      decode_dat_o    : out std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
+      
+      i_cyc_o         : out std_logic;
+      i_stb_o         : out std_logic;
+      i_stall_i       : in  std_logic;
+      i_ack_i         : in  std_logic;
+      i_err_i         : in  std_logic;
+      i_addr_o        : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      i_data_i        : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0));
+  end component;
+  
   component opa_decode is
     generic(
       g_config : t_opa_config;
@@ -90,26 +143,28 @@ package opa_components_pkg is
       clk_i          : in  std_logic;
       rst_n_i        : in  std_logic;
 
-      -- Instructions delivered from fetch
-      fetch_stb_i    : in  std_logic;
-      fetch_stall_o  : out std_logic;
-      fetch_hit_i    : in  std_logic;
-      fetch_pc_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      fetch_pcn_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      fetch_jump_i   : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      icache_dat_i   : in  std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
+      -- Predicted jumps?
+      predict_hit_i    : in  std_logic;
+      predict_jump_i   : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       
       -- Push a return stack entry
-      fetch_push_o   : out std_logic;
-      fetch_ret_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      predict_push_o   : out std_logic;
+      predict_ret_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       
       -- Fixup PC to new target
-      fetch_fault_o  : out std_logic;
-      fetch_return_o : out std_logic;
-      fetch_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      fetch_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      fetch_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      predict_fault_o  : out std_logic;
+      predict_return_o : out std_logic;
+      predict_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      predict_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      predict_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
+      -- Instructions delivered from icache
+      icache_stb_i     : in  std_logic;
+      icache_stall_o   : out std_logic;
+      icache_pc_i      : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      icache_pcn_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      icache_dat_i     : in  std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
+      
       -- Feed data to the renamer
       rename_stb_o   : out std_logic;
       rename_stall_i : in  std_logic;

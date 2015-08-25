@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
+use work.demo_bin_pkg.all;
 
 entity opa_core_tb is
   port(
@@ -15,27 +16,14 @@ end opa_core_tb;
 architecture rtl of opa_core_tb is
 
   constant c_config : t_opa_config := c_opa_large;
-
-  type t_ops is array(15 downto 0) of std_logic_vector(67 downto 0);
-  constant c_op : t_ops := 
-    (0      => x"02099209920992099",
-     1      => x"105a701b840784078",
-     2      => x"12666266620782078",
-     3      => x"12000200020782078",
-     4      => x"12000200000202000",
-     5      => x"12000200040004000",
-     6      => x"12000200040002000",
-     7      => x"12000200020002000",
-     10     => x"11101110141014101",
-     11     => x"11222133344444555",
-     others => x"02000200020002000");
-
-  signal r_off : unsigned(3 downto 0);
   
-  signal s_stall : std_logic;
-  signal s_stb   : std_logic;
-  signal s_op    : std_logic_vector(c_config.num_decode*16-1 downto 0);
-  
+  signal i_cyc    : std_logic;
+  signal i_stb    : std_logic;
+  signal i_ack    : std_logic;
+  signal i_addr   : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal i_data   : std_logic_vector(2**c_config.log_width  -1 downto 0);
+
+  signal d_cyc    : std_logic;
   signal d_stb    : std_logic;
   signal d_we     : std_logic;
   signal d_stall  : std_logic;
@@ -51,17 +39,14 @@ begin
   test : process(clk_i, rstn_i) is
   begin
     if rstn_i = '0' then
-      r_off <= (others => '0');
+      i_ack  <= '0';
+      i_data <= (others => '0');
     elsif rising_edge(clk_i) then
-      if s_stall = '0' then
-        r_off <= r_off + 1;
-      end if;
+      i_ack  <= i_cyc and i_stb;
+      i_data <= demo_bin(to_integer(unsigned(i_addr)));
     end if;
   end process;
   
-  s_stb <= c_op(to_integer(r_off))(64);
-  s_op  <= c_op(to_integer(r_off))(s_op'range);
-
   opa_core : opa
     generic map(
       g_config => c_config,
@@ -70,13 +55,15 @@ begin
       clk_i   => clk_i,
       rst_n_i => rstn_i,
       
-      i_stb_o   => open,
+      i_cyc_o   => i_cyc,
+      i_stb_o   => i_stb,
       i_stall_i => '0',
-      i_ack_i   => '1',
+      i_ack_i   => i_ack,
       i_err_i   => '0',
-      i_addr_o  => open,
-      i_data_i  => (others => '0'),
+      i_addr_o  => i_addr,
+      i_data_i  => i_data,
       
+      d_cyc_o   => d_cyc,
       d_stb_o   => d_stb,
       d_we_o    => d_we,
       d_stall_i => d_stall,

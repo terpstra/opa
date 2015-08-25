@@ -17,6 +17,7 @@ entity opa is
     rst_n_i        : in  std_logic;
 
     -- Incoming data
+    i_cyc_o   : out std_logic;
     i_stb_o   : out std_logic;
     i_stall_i : in  std_logic;
     i_ack_i   : in  std_logic;
@@ -25,6 +26,7 @@ entity opa is
     i_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
     
     -- Wishbone data bus
+    d_cyc_o   : out std_logic;
     d_stb_o   : out std_logic;
     d_we_o    : out std_logic;
     d_stall_i : in  std_logic;
@@ -45,6 +47,7 @@ architecture rtl of opa is
   constant c_num_back  : natural := f_opa_num_back (g_config);
   constant c_num_arch  : natural := f_opa_num_arch (g_config);
   constant c_num_stat  : natural := f_opa_num_stat (g_config);
+  constant c_num_fetch : natural := f_opa_num_fetch(g_config);
   constant c_back_wide : natural := f_opa_back_wide(g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_arch_wide : natural := f_opa_arch_wide(g_config);
@@ -56,23 +59,24 @@ architecture rtl of opa is
   constant c_dec_wide  : natural := f_opa_dec_wide(g_config);
   constant c_fetch_wide  : natural := f_opa_fetch_wide(g_config);
   
-  constant c_executer_ones : std_logic_vector(c_executers-1 downto 0) := (others => '1');
+  signal predict_icache_pc      : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal predict_decode_hit     : std_logic;
+  signal predict_decode_jump    : std_logic_vector(c_decoders-1 downto 0);
+
+  signal icache_predict_stall   : std_logic;
+  signal icache_decode_stb      : std_logic;
+  signal icache_decode_pc       : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal icache_decode_pcn      : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal icache_decode_dat      : std_logic_vector(c_num_fetch*8-1 downto 0);
   
-  signal fetch_decode_stb       : std_logic;
-  signal fetch_decode_hit       : std_logic;
-  signal fetch_decode_jump      : std_logic_vector(c_decoders-1 downto 0);
-  signal fetch_decode_pc        : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal fetch_decode_pcn       : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal icache_decode_dat      : std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
-  
-  signal decode_fetch_stall     : std_logic;
-  signal decode_fetch_push      : std_logic;
-  signal decode_fetch_ret       : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal decode_fetch_fault     : std_logic;
-  signal decode_fetch_return    : std_logic;
-  signal decode_fetch_jump      : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_fetch_source    : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal decode_fetch_target    : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal decode_predict_push    : std_logic;
+  signal decode_predict_ret     : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal decode_predict_fault   : std_logic;
+  signal decode_predict_return  : std_logic;
+  signal decode_predict_jump    : std_logic_vector(c_decoders-1 downto 0);
+  signal decode_predict_source  : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal decode_predict_target  : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal decode_icache_stall    : std_logic;
   signal decode_rename_stb      : std_logic;
   signal decode_rename_fast     : std_logic_vector(c_decoders-1 downto 0);
   signal decode_rename_slow     : std_logic_vector(c_decoders-1 downto 0);
@@ -154,7 +158,6 @@ begin
     report "num_stat must be divisible by num_decode"
     severity failure;
   
-  check_decode :
     assert (g_config.num_decode >= 1)
     report "num_decode must be >= 1"
     severity failure;
@@ -179,45 +182,86 @@ begin
     report "registers must be larger than virtual address space"
     severity failure;
 
+  predict : opa_predict
+    generic map(
+      g_config => g_config,
+      g_target => g_target)
+    port map (
+      clk_i           => clk_i,
+      rst_n_i         => rst_n_i,
+      icache_stall_i  => icache_predict_stall,
+      icache_pc_o     => predict_icache_pc,
+      decode_hit_o    => predict_decode_hit,
+      decode_jump_o   => predict_decode_jump,
+      decode_push_i   => decode_predict_push,
+      decode_ret_i    => decode_predict_ret,
+      decode_fault_i  => decode_predict_fault,
+      decode_return_i => decode_predict_return,
+      decode_jump_i   => decode_predict_jump,
+      decode_source_i => decode_predict_source,
+      decode_target_i => decode_predict_target);
+  
+  icache : opa_icache
+    generic map(
+      g_config => g_config,
+      g_target => g_target)
+    port map(
+      clk_i           => clk_i,
+      rst_n_i         => rst_n_i,
+      predict_stall_o => icache_predict_stall,
+      predict_pc_i    => predict_icache_pc,
+      decode_stb_o    => icache_decode_stb,
+      decode_stall_i  => decode_icache_stall,
+      decode_pc_o     => icache_decode_pc,
+      decode_pcn_o    => icache_decode_pcn,
+      decode_dat_o    => icache_decode_dat,
+      i_cyc_o         => i_cyc_o,
+      i_stb_o         => i_stb_o,
+      i_stall_i       => i_stall_i,
+      i_ack_i         => i_ack_i,
+      i_err_i         => i_err_i,
+      i_addr_o        => i_addr_o,
+      i_data_i        => i_data_i);
+  
   decode : opa_decode
     generic map(
       g_config => g_config,
       g_target => g_target)
     port map(
-      clk_i          => clk_i,
-      rst_n_i        => rst_n_i,
-      fetch_stb_i    => fetch_decode_stb,
-      fetch_stall_o  => decode_fetch_stall,
-      fetch_hit_i    => fetch_decode_hit,
-      fetch_pc_i     => fetch_decode_pc,
-      fetch_pcn_i    => fetch_decode_pcn,
-      fetch_jump_i   => fetch_decode_jump,
-      icache_dat_i   => icache_decode_dat,
-      fetch_push_o   => decode_fetch_push,
-      fetch_ret_o    => decode_fetch_ret,
-      fetch_fault_o  => decode_fetch_fault,
-      fetch_return_o => decode_fetch_return,
-      fetch_jump_o   => decode_fetch_jump,
-      fetch_source_o => decode_fetch_source,
-      fetch_target_o => decode_fetch_target,
-      rename_stb_o   => decode_rename_stb,
-      rename_stall_i => rename_decode_stall,
-      rename_fast_o  => decode_rename_fast,
-      rename_slow_o  => decode_rename_slow,
-      rename_setx_o  => decode_rename_setx,
-      rename_geta_o  => decode_rename_geta,
-      rename_getb_o  => decode_rename_getb,
-      rename_aux_o   => decode_rename_aux,
-      rename_archx_o => decode_rename_archx,
-      rename_archa_o => decode_rename_archa,
-      rename_archb_o => decode_rename_archb,
-      regfile_stb_o  => decode_regfile_stb,
-      regfile_aux_o  => decode_regfile_aux,
-      regfile_arg_o  => decode_regfile_arg,
-      regfile_imm_o  => decode_regfile_imm,
-      regfile_pc_o   => decode_regfile_pc,
-      regfile_pcf_o  => decode_regfile_pcf,
-      regfile_pcn_o  => decode_regfile_pcn);
+      clk_i            => clk_i,
+      rst_n_i          => rst_n_i,
+      predict_hit_i    => predict_decode_hit,
+      predict_jump_i   => predict_decode_jump,
+      predict_push_o   => decode_predict_push,
+      predict_ret_o    => decode_predict_ret,
+      predict_fault_o  => decode_predict_fault,
+      predict_return_o => decode_predict_return,
+      predict_jump_o   => decode_predict_jump,
+      predict_source_o => decode_predict_source,
+      predict_target_o => decode_predict_target,
+      icache_stb_i     => icache_decode_stb,
+      icache_stall_o   => decode_icache_stall,
+      icache_pc_i      => icache_decode_pc,
+      icache_pcn_i     => icache_decode_pcn,
+      icache_dat_i     => icache_decode_dat,
+      rename_stb_o     => decode_rename_stb,
+      rename_stall_i   => rename_decode_stall,
+      rename_fast_o    => decode_rename_fast,
+      rename_slow_o    => decode_rename_slow,
+      rename_setx_o    => decode_rename_setx,
+      rename_geta_o    => decode_rename_geta,
+      rename_getb_o    => decode_rename_getb,
+      rename_aux_o     => decode_rename_aux,
+      rename_archx_o   => decode_rename_archx,
+      rename_archa_o   => decode_rename_archa,
+      rename_archb_o   => decode_rename_archb,
+      regfile_stb_o    => decode_regfile_stb,
+      regfile_aux_o    => decode_regfile_aux,
+      regfile_arg_o    => decode_regfile_arg,
+      regfile_imm_o    => decode_regfile_imm,
+      regfile_pc_o     => decode_regfile_pc,
+      regfile_pcf_o    => decode_regfile_pcf,
+      regfile_pcn_o    => decode_regfile_pcn);
       
   rename : opa_rename
     generic map(
