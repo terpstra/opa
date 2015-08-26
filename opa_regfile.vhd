@@ -73,9 +73,9 @@ architecture rtl of opa_regfile is
   constant c_aux_num_pcf   : natural := c_decoders;
   constant c_aux_off_arg   : natural := 0;
   constant c_aux_off_imm   : natural := c_aux_num_arg * c_arg_wide;
-  constant c_aux_off_pc    : natural := c_aux_num_arg * c_imm_wide + c_aux_off_imm;
+  constant c_aux_off_pc    : natural := c_aux_num_imm * c_imm_wide + c_aux_off_imm;
   constant c_aux_off_pcf   : natural := c_aux_num_pc  * c_pc_wide  + c_aux_off_pc;
-  constant c_aux_data_wide : natural := c_aux_num_pc  * c_pcf_wide + c_aux_off_pcf;
+  constant c_aux_data_wide : natural := c_aux_num_pcf * c_pcf_wide + c_aux_off_pcf;
   
   constant c_labels : t_opa_matrix := f_opa_labels(c_executers);
   constant c_ones : std_logic_vector(c_executers-1 downto 0) := (others => '1');
