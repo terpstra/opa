@@ -41,9 +41,6 @@ entity opa_rename is
     issue_bakb_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     issue_stata_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
     issue_statb_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    
-    -- When do we actually rename?
-    issue_shift_i  : in  std_logic;
     issue_oldx_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
 end opa_rename;
 
@@ -107,6 +104,7 @@ architecture rtl of opa_rename is
   signal s_overwrites  : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0);
   signal s_oldx        : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_useless     : std_logic_vector(c_decoders-1 downto 0);
+  signal s_progress    : std_logic;
 
 begin
 
@@ -122,6 +120,7 @@ begin
     end generate;
   end generate;
   
+  s_progress <= decode_stb_i and not issue_stall_i;
   main : process(rst_n_i, clk_i) is
     variable value : std_logic_vector(r_map'range(2));
   begin
@@ -133,7 +132,7 @@ begin
         end loop;
       end loop;
     elsif rising_edge(clk_i) then
-      if issue_shift_i = '1' then -- clock enable
+      if s_progress = '1' then -- clock enable
         r_map <= s_map;
       end if;
     end if;

@@ -277,7 +277,7 @@ package body opa_functions_pkg is
   end f_opa_num_arch;
   
   function f_opa_num_back(conf : t_opa_config) return natural is
-    constant pipeline_depth : natural := 2;
+    constant pipeline_depth : natural := 1;
   begin
     return f_opa_num_arch(conf) +
            f_opa_num_stat(conf) +

@@ -108,7 +108,6 @@ architecture rtl of opa is
   signal rename_issue_statb     : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
   
   signal issue_rename_stall     : std_logic;
-  signal issue_rename_shift     : std_logic;
   signal issue_rename_oldx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_rstb     : std_logic_vector(c_executers-1 downto 0);
   signal issue_regfile_aux      : t_opa_matrix(c_executers-1 downto 0, c_aux_wide-1 downto 0);
@@ -292,7 +291,6 @@ begin
       issue_bakb_o   => rename_issue_bakb,
       issue_stata_o  => rename_issue_stata,
       issue_statb_o  => rename_issue_statb,
-      issue_shift_i  => issue_rename_shift,
       issue_oldx_i   => issue_rename_oldx);
   
   issue : opa_issue
@@ -313,7 +311,6 @@ begin
       rename_bakb_i  => rename_issue_bakb,
       rename_stata_i => rename_issue_stata,
       rename_statb_i => rename_issue_statb,
-      rename_shift_o => issue_rename_shift,
       rename_oldx_o  => issue_rename_oldx,
       eu_fault_i     => eu_issue_fault,
       eu_pc_i        => eu_issue_pc,

@@ -28,9 +28,6 @@ entity opa_issue is
     rename_bakb_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_stata_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
     rename_statb_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-
-    -- Feed the renamer new bak registers
-    rename_shift_o : out std_logic;
     rename_oldx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
     -- Exceptions from the EUs
@@ -108,7 +105,7 @@ architecture rtl of opa_issue is
   signal s_shift      : std_logic;
   signal r_shift      : std_logic;
   
-  -- These have 0 latency indexes (fed by mux)
+  -- These have 0 latency indexes (fed directly)
   signal r_fast       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_slow       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_issued     : std_logic_vector(c_num_stat-1 downto 0);
@@ -119,7 +116,7 @@ architecture rtl of opa_issue is
   signal r_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
   signal s_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
   signal r_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
-  -- These have 1 latency indexes (fed by sh2)
+  -- These have 1 latency indexes (fed by skidpad)
   signal s_ready      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_ready      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_wait1      : std_logic_vector(c_num_stat-1 downto 0);
@@ -151,29 +148,12 @@ architecture rtl of opa_issue is
   signal s_stata_2         : t_stat;
   signal s_statb_2         : t_stat;
   
-  -- Need to eat data from the renamer with careful register staging
-  -- This is tricky because half of window potentially 1-cycle ahead of the other
-  signal r_sh1_fast   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_mux_fast   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sh1_slow   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_mux_slow   : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sh1_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
-  signal r_sh2_aux    : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
-  signal r_sh1_oldx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sh2_oldx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sh1_bakx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sh2_bakx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_mux_bakx   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sh1_baka   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sh2_baka   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_mux_baka   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sh1_bakb   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sh2_bakb   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_mux_bakb   : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sh1_stata  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
-  signal r_mux_stata  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
-  signal r_sh1_statb  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
-  signal r_mux_statb  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
+  -- Accept data from the renamer; use a skidpad to synchronize state
+  signal r_sp_oldx : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal r_sp_bakx : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal r_sp_baka : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal r_sp_bakb : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal r_sp_aux  : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
   
   signal s_new_stata  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
   signal s_new_statb  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
@@ -330,109 +310,55 @@ begin
       -- 1 level with stations <= 32 (5 stat + 1 shift)
   end generate;
   
-  -- Feed back unused registers to the renamer
-  rename_shift_o <= r_shift;
-  oldx : for i in 0 to c_decoders-1 generate
-    bits : for b in 0 to c_back_wide-1 generate
-      rename_oldx_o(i, b) <= r_oldx(i, b);
-    end generate;
-  end generate;
-  
+  -- !!! roll this into renamer cycle using an arch map
   -- Compare to the bakx in stations to find new station's 1hot dependency
-  s_matchn_a  <= f_opa_match(r_mux_baka, r_bakx0);
-  s_matchn_b  <= f_opa_match(r_mux_bakb, r_bakx0);
+  s_matchn_a  <= f_opa_match(rename_baka_i, r_bakx0);
+  s_matchn_b  <= f_opa_match(rename_bakb_i, r_bakx0);
     -- 2 levels
   
   -- Decode to what the new station depends on
-  s_new_stata <= f_opa_1hot_dec(s_matchn_a) or r_mux_stata;
-  s_new_statb <= f_opa_1hot_dec(s_matchn_b) or r_mux_statb;
+  s_new_stata <= f_opa_1hot_dec(s_matchn_a) or rename_stata_i;
+  s_new_statb <= f_opa_1hot_dec(s_matchn_b) or rename_statb_i;
     -- 3 levels with <= 30 stations (5x3:1 decode of [(3=3) and (3=3)])
   
-  -- Register the inputs with reset, with clock enable
-  rename_in_rc : process(clk_i, rst_n_i) is
+  -- Feed back unused registers to the renamer
+  oldx : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      -- Load no-ops on power-on
-      r_sh1_fast  <= (others => '1');
-      r_sh1_slow  <= (others => '0');
       for b in 0 to c_back_wide-1 loop
         for i in 0 to c_decoders-1 loop
-          r_sh1_oldx(i,b) <= to_unsigned(c_num_arch+c_num_stat+c_decoders+i, c_back_wide)(b);
-          r_sh1_bakx(i,b) <= to_unsigned(c_num_arch+c_num_stat+c_decoders+i, c_back_wide)(b);
-          r_sh2_oldx(i,b) <= to_unsigned(c_num_arch+c_num_stat+i, c_back_wide)(b);
-          r_sh2_bakx(i,b) <= to_unsigned(c_num_arch+c_num_stat+i, c_back_wide)(b);
+          rename_oldx_o(i,b) <= to_unsigned(c_num_arch+c_num_stat+i, c_back_wide)(b);
         end loop;
       end loop;
     elsif rising_edge(clk_i) then
-      if r_shift = '1' then
-        r_sh1_fast  <= rename_fast_i;
-        r_sh1_slow  <= rename_slow_i;
-        r_sh1_oldx  <= rename_oldx_i;
-        r_sh1_bakx  <= rename_bakx_i;
-        r_sh2_oldx  <= r_sh1_oldx;
-        r_sh2_bakx  <= r_sh1_bakx;
+      if s_shift = '1' then -- clock enable
+        if r_shift = '1' then -- load enable
+          for b in 0 to c_back_wide-1 loop
+            for i in 0 to c_decoders-1 loop
+              rename_oldx_o(i,b) <= r_oldx(i+c_decoders,b);
+            end loop;
+          end loop;
+        else
+          for b in 0 to c_back_wide-1 loop
+            for i in 0 to c_decoders-1 loop
+              rename_oldx_o(i,b) <= r_oldx(i,b);
+            end loop;
+          end loop;
+        end if;
       end if;
     end if;
   end process;
   
-  -- Register the inputs without reset, with clock enable
-  rename_in_c : process(clk_i) is
+  -- Register the inputs with reset, with clock enable
+  skidpad : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      if r_shift = '1' then -- clock enable
-        -- i expect register deduplication to optimize this away all the
-        -- way from rename_aux_i through r_aux until regfile_aux_o.
-        for i in 0 to c_decoders-1 loop
-          for b in 0 to c_aux_wide-1 loop
-            r_sh1_aux(i,b) <= rename_aux_i(b);
-          end loop;
-        end loop;
-        r_sh1_baka  <= rename_baka_i;
-        r_sh1_bakb  <= rename_bakb_i;
-        r_sh1_stata <= rename_stata_i;
-        r_sh1_statb <= rename_statb_i;
-        r_sh2_aux   <= r_sh1_aux;
-        r_sh2_baka  <= r_sh1_baka;
-        r_sh2_bakb  <= r_sh1_bakb;
-      end if;
-    end if;
-  end process;
-  
-  -- Mux inputs with reset, clock enable, load enable
-  rename_mux_rcl : process(rst_n_i, clk_i) is
-  begin
-    if rst_n_i = '0' then
-      -- Load no-ops on power-on
-      r_mux_fast  <= (others => '1');
-      r_mux_slow  <= (others => '0');
-      r_mux_baka  <= (others => (others => '0'));
-      r_mux_bakb  <= (others => (others => '0'));
-      r_mux_stata <= (others => (others => '0'));
-      r_mux_statb <= (others => (others => '0'));
-      for b in 0 to c_back_wide-1 loop
-        for i in 0 to c_decoders-1 loop
-          r_mux_bakx(i,b) <= to_unsigned(c_num_arch+c_num_stat+i, c_back_wide)(b);
-        end loop;
-      end loop;
-    elsif rising_edge(clk_i) then
-      if s_shift = '1' then   -- clock enable
-        if r_shift = '1' then -- load enable
-          r_mux_fast  <= rename_fast_i;
-          r_mux_slow  <= rename_slow_i;
-          r_mux_baka  <= rename_baka_i;
-          r_mux_bakb  <= rename_bakb_i;
-          r_mux_stata <= rename_stata_i;
-          r_mux_statb <= rename_statb_i;
-          r_mux_bakx  <= rename_bakx_i;
-        else
-          r_mux_fast  <= r_sh1_fast;
-          r_mux_slow  <= r_sh1_slow;
-          r_mux_baka  <= r_sh1_baka;
-          r_mux_bakb  <= r_sh1_bakb;
-          r_mux_stata <= r_sh1_stata;
-          r_mux_statb <= r_sh1_statb;
-          r_mux_bakx  <= r_sh1_bakx;
-        end if;
+      if s_shift = '1' then
+        r_sp_oldx <= rename_oldx_i;
+        r_sp_bakx <= rename_bakx_i;
+        r_sp_baka <= rename_baka_i;
+        r_sp_bakb <= rename_bakb_i;
+        r_sp_aux  <= f_opa_dup_row(c_decoders, rename_aux_i);
       end if;
     end if;
   end process;
@@ -488,8 +414,8 @@ begin
       end loop;
     elsif rising_edge(clk_i) then
       if s_shift = '1' then
-        r_fast <= r_mux_fast  & r_fast(c_num_stat-1 downto c_decoders);
-        r_slow <= r_mux_slow  & r_slow(c_num_stat-1 downto c_decoders);
+        r_fast <= rename_fast_i  & r_fast(c_num_stat-1 downto c_decoders);
+        r_slow <= rename_slow_i  & r_slow(c_num_stat-1 downto c_decoders);
         for i in 0 to c_num_stat-c_decoders-1 loop
           for b in 0 to c_back_wide-1 loop
             r_bakx0(i,b) <= r_bakx0(i+c_decoders,b);
@@ -497,7 +423,7 @@ begin
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
           for b in 0 to c_back_wide-1 loop
-            r_bakx0(i,b) <= r_mux_bakx(i-(c_num_stat-c_decoders),b);
+            r_bakx0(i,b) <= rename_bakx_i(i-(c_num_stat-c_decoders),b);
           end loop;
         end loop;
       end if;
@@ -550,8 +476,8 @@ begin
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
           for b in 0 to c_back_wide-1 loop
-            r_oldx (i,b) <= r_sh2_oldx(i-(c_num_stat-c_decoders),b);
-            r_bakx1(i,b) <= r_sh2_bakx(i-(c_num_stat-c_decoders),b);
+            r_oldx (i,b) <= r_sp_oldx(i-(c_num_stat-c_decoders),b);
+            r_bakx1(i,b) <= r_sp_bakx(i-(c_num_stat-c_decoders),b);
           end loop;
         end loop;
       end if;
@@ -574,11 +500,11 @@ begin
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
           for b in 0 to c_aux_wide-1 loop
-            r_aux  (i,b) <= r_sh2_aux  (i-(c_num_stat-c_decoders),b);
+            r_aux  (i,b) <= r_sp_aux  (i-(c_num_stat-c_decoders),b);
           end loop;
           for b in 0 to c_back_wide-1 loop
-            r_baka (i,b) <= r_sh2_baka (i-(c_num_stat-c_decoders),b);
-            r_bakb (i,b) <= r_sh2_bakb (i-(c_num_stat-c_decoders),b);
+            r_baka (i,b) <= r_sp_baka (i-(c_num_stat-c_decoders),b);
+            r_bakb (i,b) <= r_sp_bakb (i-(c_num_stat-c_decoders),b);
           end loop;
         end loop;
       end if;
