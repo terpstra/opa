@@ -31,18 +31,19 @@ end opa_dpram;
 architecture syn of opa_dpram is
 
   constant c_m10k      : boolean := g_regin and g_size > 32;
-  constant c_mlab_cin  : string  := f_opa_choose(g_regin,  "INCLOCK",  "UNREGISTERED");
+  constant c_mlab_cin  : string  := f_opa_choose(g_regin,  "OUTCLOCK", "UNREGISTERED");
   constant c_mlab_cout : string  := f_opa_choose(g_regout, "OUTCLOCK", "UNREGISTERED");
   constant c_m10k_cout : string  := f_opa_choose(g_regout, "CLOCK0",   "UNREGISTERED");
 
+  signal s_rdata      : std_logic_vector(g_width-1 downto 0);
   signal s_bypass     : std_logic;
   signal r_bypass1    : std_logic;
   signal r_bypass2    : std_logic;
   signal s_mux_bypass : std_logic;
-  signal s_data       : std_logic_vector(g_width-1 downto 0);
-  signal r_data1      : std_logic_vector(g_width-1 downto 0);
-  signal r_data2      : std_logic_vector(g_width-1 downto 0);
-  signal s_mux_data   : std_logic_vector(g_width-1 downto 0);
+  signal s_wdata      : std_logic_vector(g_width-1 downto 0);
+  signal r_wdata1     : std_logic_vector(g_width-1 downto 0);
+  signal r_wdata2     : std_logic_vector(g_width-1 downto 0);
+  signal s_mux_wdata  : std_logic_vector(g_width-1 downto 0);
 
 begin
 
@@ -51,13 +52,13 @@ begin
       generic map(
         intended_device_family             => "Arria V",
         indata_aclr                        => "OFF",
-        indata_reg                         => c_mlab_cin,
+        indata_reg                         => "INCLOCK",
         lpm_type                           => "altdpram",
         outdata_aclr                       => "OFF",
         outdata_reg                        => c_mlab_cout,
         ram_block_type                     => "MLAB",
         rdaddress_aclr                     => "OFF",
-        rdaddress_reg                      => "UNREGISTERED",
+        rdaddress_reg                      => c_mlab_cin,
         rdcontrol_aclr                     => "OFF",
         rdcontrol_reg                      => "UNREGISTERED",
         read_during_write_mode_mixed_ports => "DONT_CARE",
@@ -75,7 +76,7 @@ begin
         data      => w_data_i,
         inclock   => clk_i,
         rdaddress => r_addr_i,
-        q         => s_data);
+        q         => s_rdata);
   end generate;
   
   regin : if c_m10k generate
@@ -107,17 +108,17 @@ begin
         address_a => w_addr_i,
         data_a    => w_data_i,
         address_b => r_addr_i,
-        q_b       => s_data);
+        q_b       => s_rdata);
     
   end generate;
   
-  s_data   <= w_data_i;
+  s_wdata   <= w_data_i;
   s_bypass <= f_opa_bit(r_addr_i = w_addr_i) and w_en_i;
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_data1   <= s_data;
-      r_data2   <= r_data1;
+      r_wdata1  <= s_wdata;
+      r_wdata2  <= r_wdata1;
       r_bypass1 <= s_bypass;
       r_bypass2 <= r_bypass1;
     end if;
@@ -128,11 +129,11 @@ begin
     r_bypass2 when (    g_regin and     g_regout) else
     r_bypass1;
   
-  s_mux_data <= 
-    s_data  when (not g_regin and not g_regout) else
-    r_data2 when (    g_regin and     g_regout) else
-    r_data1;
+  s_mux_wdata <= 
+    s_wdata  when (not g_regin and not g_regout) else
+    r_wdata2 when (    g_regin and     g_regout) else
+    r_wdata1;
   
-  r_data_o <= s_mux_data when (g_bypass and s_mux_bypass = '1') else s_data;
+  r_data_o <= s_mux_wdata when (g_bypass and s_mux_bypass = '1') else s_rdata;
 
 end syn;
