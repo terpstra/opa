@@ -53,6 +53,7 @@ architecture rtl of opa_icache is
   signal r_hit   : std_logic;
   signal s_stall : std_logic;
   signal s_dstb  : std_logic;
+  signal s_repeat: std_logic;
   signal s_wen   : std_logic;
   signal r_wen   : std_logic;
   signal r_icyc  : std_logic;
@@ -72,12 +73,14 @@ architecture rtl of opa_icache is
 
 begin
 
+  -- !!! figure out a way get a read address stall in dpram
   s_raddr <= predict_pc_i when s_stall='0' else r_pc1;
+  
   cache : opa_dpram
     generic map(
       g_width  => s_rtag'length + s_rdata'length,
       g_size   => c_size,
-      g_bypass => true, -- !!! confirm/test false is wrong => then make bypass just use r_wdata
+      g_bypass => false,
       g_regin  => true,
       g_regout => false)
     port map(
@@ -95,6 +98,11 @@ begin
   s_wraw(s_wraw'left downto s_wdata'length) <= not r_pc2(s_rtag'range);
   s_wraw(s_wdata'range) <= s_wdata;
 
+  -- The r_pc[12] comparison ensures that if we just wrote to the cache,
+  -- and there were two back-to-back fetches of the same address, we get
+  -- the new data as output.
+  s_repeat <= f_opa_bit(r_pc1 = r_pc2);
+  
   pc : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
@@ -103,7 +111,7 @@ begin
       r_pc2 <= (others => '0');
     elsif rising_edge(clk_i) then
       if s_stall = '0' then
-        r_hit <= f_opa_bit(r_pc1(s_rtag'range) = s_rtag);
+        r_hit <= f_opa_bit(r_pc1(s_rtag'range) = s_rtag) or s_repeat;
         r_pc1 <= predict_pc_i;
         r_pc2 <= r_pc1;
       end if;
@@ -113,7 +121,7 @@ begin
   rdata : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      if s_stall = '0' then
+      if s_stall = '0' and s_repeat = '0' then
         r_rdata <= s_rdata;
       end if;
       if s_wen = '1' then
