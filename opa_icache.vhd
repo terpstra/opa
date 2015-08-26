@@ -116,6 +116,9 @@ begin
       if s_stall = '0' then
         r_rdata <= s_rdata;
       end if;
+      if s_wen = '1' then
+        r_rdata <= s_wdata;
+      end if;
     end if;
   end process;
   
@@ -127,7 +130,7 @@ begin
   decode_stb_o  <= s_dstb;
   decode_pc_o   <= r_pc2;
   decode_pcn_o  <= r_pc1;
-  decode_dat_o  <= r_rdata when r_wen='0' else r_wdata;
+  decode_dat_o  <= r_rdata;
   
   -- When accepting data into the line, endian matters
   big : if c_big_endian generate
