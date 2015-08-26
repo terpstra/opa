@@ -1,46 +1,28 @@
 set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CEBA4F17C8
 set_global_assignment -name TOP_LEVEL_ENTITY opa_syn_tb
-set_global_assignment -name VHDL_FILE ../opa_rename.vhd
-set_global_assignment -name VHDL_FILE ../opa_functions_pkg.vhd
-set_global_assignment -name VHDL_FILE ../opa.vhd
-set_global_assignment -name VHDL_FILE ../opa_dpram_altera.vhd
-set_global_assignment -name VHDL_FILE ../opa_fast.vhd
-set_global_assignment -name VHDL_FILE ../opa_prim_mul.vhd
-set_global_assignment -name VHDL_FILE ../opa_issue.vhd
-set_global_assignment -name VHDL_FILE ../opa_prefixsum.vhd
-set_global_assignment -name VHDL_FILE ../opa_components_pkg.vhd
-set_global_assignment -name SDC_FILE opa_syn_tb.sdc
-set_global_assignment -name VHDL_FILE ../opa_lsb.vhd
-set_global_assignment -name VHDL_FILE ../opa_regfile.vhd
-set_global_assignment -name VHDL_FILE ../opa_sim_tb.vhd
-set_global_assignment -name VHDL_FILE ../opa_ldst.vhd
-set_global_assignment -name VHDL_FILE ../opa_commit.vhd
 set_global_assignment -name VHDL_FILE ../opa_pkg.vhd
-set_global_assignment -name VHDL_FILE ../opa_l1d.vhd
-set_global_assignment -name VHDL_FILE ../opa_slow.vhd
-set_global_assignment -name VHDL_FILE ../opa_decode.vhd
-set_global_assignment -name VHDL_FILE ../opa_core_tb.vhd
+set_global_assignment -name VHDL_FILE ../opa_isa_base_pkg.vhd
+set_global_assignment -name VHDL_FILE ../opa_functions_pkg.vhd
+set_global_assignment -name VHDL_FILE ../opa_components_pkg.vhd
+set_global_assignment -name VHDL_FILE ../opa_isa_pkg.vhd
+set_global_assignment -name VHDL_FILE ../opa_dpram_altera.vhd
 set_global_assignment -name VHDL_FILE ../opa_lcell_altera.vhd
-set_global_assignment -name VHDL_FILE ../opa_syn_tb.vhd
 set_global_assignment -name VHDL_FILE ../opa_prim_ternary.vhd
-set_global_assignment -name VHDL_FILE ../opa_dbus.vhd
-
-
-
-set_global_assignment -name LAST_QUARTUS_VERSION 15.0.2
-set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
-set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
-set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
-set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
-set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name VHDL_FILE ../opa_prim_mul.vhd
+set_global_assignment -name VHDL_FILE ../opa_prefixsum.vhd
+set_global_assignment -name VHDL_FILE ../opa_predict.vhd
+set_global_assignment -name VHDL_FILE ../opa_icache.vhd
+set_global_assignment -name VHDL_FILE ../opa_decode.vhd
+set_global_assignment -name VHDL_FILE ../opa_rename.vhd
+set_global_assignment -name VHDL_FILE ../opa_issue.vhd
+set_global_assignment -name VHDL_FILE ../opa_regfile.vhd
+set_global_assignment -name VHDL_FILE ../opa_fast.vhd
+set_global_assignment -name VHDL_FILE ../opa_slow.vhd
+set_global_assignment -name VHDL_FILE ../opa.vhd
+set_global_assignment -name VHDL_FILE ../opa_syn_tb.vhd
+set_global_assignment -name SDC_FILE opa_syn_tb.sdc
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
-set_global_assignment -name FLOW_ENABLE_RTL_VIEWER OFF
 set_global_assignment -name OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
 set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING ON
-set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION OFF
-set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
-set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
-set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
