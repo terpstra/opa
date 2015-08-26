@@ -116,6 +116,7 @@ architecture rtl of opa_decode is
   
   signal s_jump_taken : std_logic_vector(c_decoders-1 downto 0);
   signal s_pcn_taken  : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal r_pcn_taken  : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal s_jal_pc     : std_logic_vector(c_adr_wide-1 downto c_op_align);
 
   signal s_idx_base : unsigned(c_dec_wide-1 downto 0);
@@ -129,6 +130,7 @@ architecture rtl of opa_decode is
   
   signal s_stb      : std_logic;
   signal s_stall    : std_logic;
+  signal s_pcn_reg  : std_logic;
   signal s_progress : std_logic;
   signal s_accept   : std_logic;
   signal s_ops_sub  : unsigned(c_dec_wide-1 downto 0);
@@ -210,6 +212,7 @@ begin
   -- Flow control from fetch and to rename
   s_stall    <= '1' when r_fill >  2*c_decoders else '0';
   s_stb      <= '1' when r_fill >=   c_decoders else '0';
+  s_pcn_reg  <= '1' when r_fill =    c_decoders else '0';
   s_progress <= s_stb and not rename_stall_i;
   s_accept   <= icache_stb_i and not r_fault and not s_stall;
   
@@ -218,12 +221,8 @@ begin
   ops : for i in 0 to c_decoders*3-1 generate
     s_idx(i) <= s_idx_base + to_unsigned(i mod c_decoders, c_dec_wide);
     s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(to_integer(s_idx(i)));
+    s_pc (i) <= r_pc (i) when i < r_fill else s_pc_in(to_integer(s_idx(i)));
     s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_wide-1 downto c_op_align);
-    s_pc (i) <= r_pc (i)    when i < r_fill else 
-                s_pcn_taken when i >= r_fill+c_decoders-s_ops_sub else
-                s_pc_in(to_integer(s_idx(i)));
-    -- the hideous s_pcn_taken case might be too slow.
-    -- an alternative is to only s_stb when >= c_decoders+1
   end generate;
   
   s_ops_sub <= unsigned(f_opa_1hot_dec(f_opa_reverse(s_jump_taken))) + s_pc_off;
@@ -265,7 +264,7 @@ begin
         r_ops(c_decoders*2-1 downto 0) <= s_ops(c_decoders*3-1 downto c_decoders);
         r_pcf(c_decoders*2-1 downto 0) <= s_pcf(c_decoders*3-1 downto c_decoders);
         r_pc (c_decoders*2-1 downto 0) <= s_pc (c_decoders*3-1 downto c_decoders);
-        r_pc (c_decoders*3-1 downto c_decoders*2) <= (others => s_pcn_taken);
+        r_pcn_taken <= s_pcn_taken;
         if r_aux = c_num_aux-1 then
           r_aux <= (others => '0');
         else
@@ -314,7 +313,7 @@ begin
     end generate;
   end generate;
   pcn : for b in c_op_align to c_adr_wide-1 generate
-    regfile_pcn_o(b) <= r_pc(c_decoders)(b);
+    regfile_pcn_o(b) <= r_pcn_taken(b) when s_pcn_reg='1' else r_pc(c_decoders)(b);
   end generate;
   
 end rtl;
