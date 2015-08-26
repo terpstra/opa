@@ -140,7 +140,6 @@ begin
       port map(
         clk_i    => clk_i,
         rst_n_i  => rst_n_i,
-        r_en_i   => slow_stb_i(slow),
         r_addr_i => s_adr_line(slow),
         r_data_o => s_cache(slow),
         w_en_i   => '0',

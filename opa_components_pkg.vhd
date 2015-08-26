@@ -19,7 +19,6 @@ package opa_components_pkg is
     port(
       clk_i    : in  std_logic;
       rst_n_i  : in  std_logic;
-      r_en_i   : in  std_logic;
       r_addr_i : in  std_logic_vector(f_opa_log2(g_size)-1 downto 0);
       r_data_o : out std_logic_vector(g_width-1 downto 0);
       w_en_i   : in  std_logic;

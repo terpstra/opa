@@ -341,7 +341,6 @@ begin
       port map(
         clk_i    => clk_i,
         rst_n_i  => rst_n_i,
-        r_en_i   => issue_rstb_i(u),
         r_addr_i => s_aux_addr(u),
         r_data_o => s_aux_rdata(u),
         w_en_i   => decode_stb_i,
@@ -422,7 +421,6 @@ begin
         port map(
           clk_i    => clk_i,
           rst_n_i  => rst_n_i,
-          r_en_i   => issue_rstb_i(r),
           r_addr_i => s_ra_addr(r),
           r_data_o => s_ra_data(f_idx(r, w)),
           w_en_i   => r_stb(w),
@@ -438,7 +436,6 @@ begin
         port map(
           clk_i    => clk_i,
           rst_n_i  => rst_n_i,
-          r_en_i   => issue_rstb_i(r),
           r_addr_i => s_rb_addr(r),
           r_data_o => s_rb_data(f_idx(r, w)),
           w_en_i   => r_stb(w),

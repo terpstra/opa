@@ -83,7 +83,6 @@ begin
     port map(
       clk_i    => clk_i,
       rst_n_i  => rst_n_i,
-      r_en_i   => '1',
       r_addr_i => s_raddr(c_page_wide-1 downto c_fetch_wide),
       r_data_o => s_rraw,
       w_en_i   => s_wen,
