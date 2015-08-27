@@ -169,7 +169,7 @@ architecture rtl of opa_regfile is
   signal s_map_match   : t_opa_matrix(c_num_back-1 downto 0, c_executers-1 downto 0);
   signal s_map_value   : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
   signal s_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
-  signal r_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0) := (others => (others => '1'));
+  signal r_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
   
   signal s_eu_match_a  : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
   signal s_eu_match_b  : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
@@ -249,9 +249,17 @@ begin
   s_map_set   <= f_opa_product(s_map_match, c_ones);
   s_map_value <= f_opa_product(s_map_match, c_mem_indexes);
   
-  back_reg : process(clk_i) is
+  back_reg : process(clk_i, rst_n_i) is
   begin
-    if rising_edge(clk_i) then
+    if rst_n_i = '0' then
+      -- On power-up, select the last memory (which is full of zeros)
+      for i in 0 to c_num_back-1 loop
+        r_map(i,0) <= '0';
+        for b in 1 to c_mux_wide-1 loop
+          r_map(i,b) <= '1';
+        end loop;
+      end loop;
+    elsif rising_edge(clk_i) then
       for i in 0 to c_num_back-1 loop
         if s_map_set(i) = '1' then
           for b in 0 to c_mux_wide-1 loop
