@@ -21,6 +21,8 @@ entity opa_issue is
     rename_stall_o : out std_logic;
     rename_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    rename_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    rename_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
     rename_oldx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
@@ -38,6 +40,8 @@ entity opa_issue is
      
     -- Regfile needs to fetch these for EU
     regfile_rstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    regfile_geta_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    regfile_getb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide (g_config)-1 downto 0);
     regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide(g_config)-1 downto 0);
     regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
@@ -125,6 +129,8 @@ architecture rtl of opa_issue is
   signal r_wait2      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_final      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_final      : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_geta       : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_getb       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_aux        : t_opa_matrix(c_num_stat-1 downto 0, c_aux_wide -1 downto 0);
   signal r_oldx       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
@@ -149,6 +155,8 @@ architecture rtl of opa_issue is
   signal s_statb_2         : t_stat;
   
   -- Accept data from the renamer; use a skidpad to synchronize state
+  signal r_sp_geta : std_logic_vector(c_decoders-1 downto 0);
+  signal r_sp_getb : std_logic_vector(c_decoders-1 downto 0);
   signal r_sp_oldx : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_bakx : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_baka : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
@@ -265,6 +273,8 @@ begin
   -- r_bak[abx], r_aux shifted one cycle later, so s_stat has correct index
   s_schedule <= f_opa_transpose(f_opa_concat(f_opa_transpose(r_schedule_slow), f_opa_transpose(r_schedule_fast)));
   regfile_rstb_o <= f_opa_product(s_schedule, c_stat_ones);
+  regfile_geta_o <= f_opa_product(s_schedule, r_geta);
+  regfile_getb_o <= f_opa_product(s_schedule, r_getb);
   regfile_baka_o <= f_opa_product(s_schedule, r_baka);
   regfile_bakb_o <= f_opa_product(s_schedule, r_bakb);
   regfile_aux_o  <= f_opa_product(s_schedule, r_aux);
@@ -293,7 +303,7 @@ begin
   s_final <= f_shift(r_final or r_ready, r_shift); -- !!! bogus; faults go here
   s_stall <= not f_opa_and(s_final(c_decoders-1 downto 0));
   s_shift <= rename_stb_i and not s_stall;
-  rename_stall_o <= s_stall or not rst_n_i;
+  rename_stall_o <= s_stall;
     -- 2 levels with decoders <= 2
   
   -- Prepare decremented versions of the station references
@@ -354,6 +364,8 @@ begin
   begin
     if rising_edge(clk_i) then
       if s_shift = '1' then
+        r_sp_geta <= rename_geta_i;
+        r_sp_getb <= rename_getb_i;
         r_sp_oldx <= rename_oldx_i;
         r_sp_bakx <= rename_bakx_i;
         r_sp_baka <= rename_baka_i;
@@ -404,7 +416,7 @@ begin
   -- Register the stations, 0-latency with reset, with clock enable
   stations_0rc : process(rst_n_i, clk_i) is
   begin
-    if rst_n_i = '0' then
+    if rst_n_i = '0' then -- !!! reset unnecessary?:
       r_fast <= (others => '0');
       r_slow <= (others => '0');
       for b in 0 to c_back_wide-1 loop
@@ -439,6 +451,7 @@ begin
       r_wait1  <= (others => '0');
       r_wait2  <= (others => '0');
       r_final  <= (others => '1');
+      -- !!! reset unnecesssary?:
       r_schedule_fast <= (others => (others => '0'));
       r_schedule_slow <= (others => (others => '0'));
       r_schedule_fast_issue <= (others => '0');
@@ -463,6 +476,7 @@ begin
       for b in 0 to c_back_wide-1 loop
         for i in 0 to c_num_stat-1 loop
           r_oldx (i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
+          -- !!! reset unnecessary?:
           r_bakx1(i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
         end loop;
       end loop;
@@ -490,6 +504,8 @@ begin
     if rising_edge(clk_i) then
       if r_shift = '1' then -- clock enable port
         for i in 0 to c_num_stat-c_decoders-1 loop
+          r_geta(i) <= r_geta(i+c_decoders);
+          r_getb(i) <= r_getb(i+c_decoders);
           for b in 0 to c_aux_wide-1 loop
             r_aux(i,b)   <= r_aux  (i+c_decoders,b);
           end loop;
@@ -499,6 +515,8 @@ begin
           end loop;
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
+          r_geta(i) <= r_sp_geta(i-(c_num_stat-c_decoders));
+          r_getb(i) <= r_sp_getb(i-(c_num_stat-c_decoders));
           for b in 0 to c_aux_wide-1 loop
             r_aux  (i,b) <= r_sp_aux  (i-(c_num_stat-c_decoders),b);
           end loop;

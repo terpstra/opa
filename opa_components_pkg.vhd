@@ -213,6 +213,8 @@ package opa_components_pkg is
       issue_stall_i  : in  std_logic;
       issue_fast_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       issue_slow_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      issue_geta_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      issue_getb_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       issue_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
       issue_oldx_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       issue_bakx_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
@@ -236,6 +238,8 @@ package opa_components_pkg is
       rename_stall_o : out std_logic;
       rename_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
       rename_oldx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       rename_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
@@ -253,6 +257,8 @@ package opa_components_pkg is
        
       -- Regfile needs to fetch these for EU
       regfile_rstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+      regfile_geta_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+      regfile_getb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide (g_config)-1 downto 0);
       regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide(g_config)-1 downto 0);
       regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
@@ -282,6 +288,8 @@ package opa_components_pkg is
 
       -- Issue has dispatched these instructions to us
       issue_rstb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+      issue_geta_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+      issue_getb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       issue_aux_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide  (g_config)-1 downto 0);
       issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide  (g_config)-1 downto 0);
       issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);

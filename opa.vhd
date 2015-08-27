@@ -99,6 +99,8 @@ architecture rtl of opa is
   signal rename_issue_stb       : std_logic;
   signal rename_issue_fast      : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_slow      : std_logic_vector(c_decoders-1 downto 0);
+  signal rename_issue_geta      : std_logic_vector(c_decoders-1 downto 0);
+  signal rename_issue_getb      : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_aux       : std_logic_vector(c_aux_wide-1 downto 0);
   signal rename_issue_oldx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_bakx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
@@ -110,6 +112,8 @@ architecture rtl of opa is
   signal issue_rename_stall     : std_logic;
   signal issue_rename_oldx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_rstb     : std_logic_vector(c_executers-1 downto 0);
+  signal issue_regfile_geta     : std_logic_vector(c_executers-1 downto 0);
+  signal issue_regfile_getb     : std_logic_vector(c_executers-1 downto 0);
   signal issue_regfile_aux      : t_opa_matrix(c_executers-1 downto 0, c_aux_wide-1 downto 0);
   signal issue_regfile_dec      : t_opa_matrix(c_executers-1 downto 0, c_dec_wide-1 downto 0);
   signal issue_regfile_baka     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
@@ -284,6 +288,8 @@ begin
       issue_stall_i  => issue_rename_stall,
       issue_fast_o   => rename_issue_fast,
       issue_slow_o   => rename_issue_slow,
+      issue_geta_o   => rename_issue_geta,
+      issue_getb_o   => rename_issue_getb,
       issue_aux_o    => rename_issue_aux,
       issue_oldx_o   => rename_issue_oldx,
       issue_bakx_o   => rename_issue_bakx,
@@ -304,6 +310,8 @@ begin
       rename_stall_o => issue_rename_stall,
       rename_fast_i  => rename_issue_fast,
       rename_slow_i  => rename_issue_slow,
+      rename_geta_i  => rename_issue_geta,
+      rename_getb_i  => rename_issue_getb,
       rename_aux_i   => rename_issue_aux,
       rename_oldx_i  => rename_issue_oldx,
       rename_bakx_i  => rename_issue_bakx,
@@ -317,6 +325,8 @@ begin
       eu_pcf_i       => eu_issue_pcf,
       eu_pcn_i       => eu_issue_pcn,
       regfile_rstb_o => issue_regfile_rstb,
+      regfile_geta_o => issue_regfile_geta,
+      regfile_getb_o => issue_regfile_getb,
       regfile_aux_o  => issue_regfile_aux,
       regfile_dec_o  => issue_regfile_dec,
       regfile_baka_o => issue_regfile_baka,
@@ -339,6 +349,8 @@ begin
       decode_pcf_i => decode_regfile_pcf,
       decode_pcn_i => decode_regfile_pcn,
       issue_rstb_i => issue_regfile_rstb,
+      issue_geta_i => issue_regfile_geta,
+      issue_getb_i => issue_regfile_getb,
       issue_aux_i  => issue_regfile_aux,
       issue_dec_i  => issue_regfile_dec,
       issue_baka_i => issue_regfile_baka,

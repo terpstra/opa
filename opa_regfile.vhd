@@ -27,6 +27,8 @@ entity opa_regfile is
 
     -- Issue has dispatched these instructions to us
     issue_rstb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    issue_geta_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    issue_getb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     issue_aux_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide  (g_config)-1 downto 0);
     issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide  (g_config)-1 downto 0);
     issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
@@ -266,10 +268,11 @@ begin
   s_eu_match_b  <= f_opa_match(issue_bakb_i, issue_bakx_i) and f_opa_dup_row(c_executers, issue_wstb_i);
   s_reg_match_a <= f_opa_match(issue_baka_i, r_bakx)       and f_opa_dup_row(c_executers, r_stb);
   s_reg_match_b <= f_opa_match(issue_bakb_i, r_bakx)       and f_opa_dup_row(c_executers, r_stb);
-  s_value_a     <= f_opa_product(s_eu_match_a, c_eu_indexes) or f_opa_product(s_reg_match_a, c_reg_indexes);
-  s_value_b     <= f_opa_product(s_eu_match_b, c_eu_indexes) or f_opa_product(s_reg_match_b, c_reg_indexes);
-  s_bypass_a    <= f_opa_product(s_eu_match_a, c_ones) or f_opa_product(s_reg_match_a, c_ones);
-  s_bypass_b    <= f_opa_product(s_eu_match_b, c_ones) or f_opa_product(s_reg_match_b, c_ones);
+  -- invert logic of values to result in (others => '1') when no match (ie: pick immediates)
+  s_value_a     <= not (f_opa_product(s_eu_match_a, not c_eu_indexes) or f_opa_product(s_reg_match_a, not c_reg_indexes));
+  s_value_b     <= not (f_opa_product(s_eu_match_b, not c_eu_indexes) or f_opa_product(s_reg_match_b, not c_reg_indexes));
+  s_bypass_a    <= f_opa_product(s_eu_match_a, c_ones) or f_opa_product(s_reg_match_a, c_ones) or not issue_geta_i;
+  s_bypass_b    <= f_opa_product(s_eu_match_b, c_ones) or f_opa_product(s_reg_match_b, c_ones) or not issue_getb_i;
   s_regfile_a   <= f_opa_compose(r_map, issue_baka_i);
   s_regfile_b   <= f_opa_compose(r_map, issue_bakb_i);
   
