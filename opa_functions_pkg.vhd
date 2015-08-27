@@ -87,6 +87,8 @@ package opa_functions_pkg is
   
   -- General information every instruction must provide
   type t_opa_op is record
+    -- A bad instruction
+    bad   : std_logic;
     -- Information for the fetch stage
     jump  : std_logic_vector(1 downto 0); -- static prediction
     dest  : std_logic_vector(1 downto 0);
@@ -104,6 +106,21 @@ package opa_functions_pkg is
     imm   : std_logic_vector(c_imm_wide-1 downto 0);
     arg   : std_logic_vector(c_arg_wide-1 downto 0);
   end record t_opa_op;
+  
+  constant c_opa_op_bad : t_opa_op := (
+    bad   => '1',
+    jump  => "--",
+    dest  => "--",
+    push  => '-',
+    geta  => '-',
+    getb  => '-',
+    setx  => '-',
+    archa => (others => '-'),
+    archb => (others => '-'),
+    archx => (others => '-'),
+    fast  => '-',
+    imm   => (others => '-'),
+    arg   => (others => '-'));
   
   -- Fast execute units operate in one of four modes
   --   lut   (00): result[i]=table(a[i]b[i])        fault=(b+imm)!=pcn          target=b  + imm
