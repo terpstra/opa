@@ -170,6 +170,7 @@ begin
     s_mux(i,0) <= s_ops_in(i).dest(0);
     s_mux(i,1) <= s_ops_in(i).dest(1);
     bits : for b in 0 to c_imm_wide-1 generate
+      -- !!! use a simpler immediate format; only jump kinds
       s_imm(i,b) <= s_ops_in(i).imm(b);
     end generate;
   end generate;
@@ -220,17 +221,20 @@ begin
   s_idx_base <= s_pc_off - r_fill(s_idx_base'range);
   ops : for i in 0 to c_decoders*3-1 generate
     s_idx(i) <= s_idx_base + to_unsigned(i mod c_decoders, c_dec_wide);
+    -- !!! avoid addition by constant via mux permutation
     s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(to_integer(s_idx(i)));
     s_pc (i) <= r_pc (i) when i < r_fill else s_pc_in(to_integer(s_idx(i)));
     s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_wide-1 downto c_op_align);
   end generate;
   
+  -- !!! include (r_fill - s_ops_sub) into one step
   s_ops_sub <= unsigned(f_opa_1hot_dec(f_opa_reverse(s_jump_taken))) + s_pc_off;
   fill : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
       r_fault <= '0';
       r_fill  <= (others => '0');
+      r_aux   <= (others => '0');
     elsif rising_edge(clk_i) then
       -- On a fault, we ignore the next valid icache strobe
       if (icache_stb_i and not s_stall) = '1' then
@@ -242,6 +246,11 @@ begin
       end if;
       
       if s_progress = '1' then
+        if r_aux = c_num_aux-1 then
+          r_aux <= (others => '0');
+        else
+          r_aux <= r_aux+1;
+        end if;
         if s_accept = '1' then
           r_fill <= r_fill - s_ops_sub; -- r_fill - c_decoders + (c_decoders - s_ops_sub)
         else
@@ -265,16 +274,10 @@ begin
         r_pcf(c_decoders*2-1 downto 0) <= s_pcf(c_decoders*3-1 downto c_decoders);
         r_pc (c_decoders*2-1 downto 0) <= s_pc (c_decoders*3-1 downto c_decoders);
         r_pcn_taken <= s_pcn_taken;
-        if r_aux = c_num_aux-1 then
-          r_aux <= (others => '0');
-        else
-          r_aux <= r_aux+1;
-        end if;
       else
         r_ops <= s_ops;
         r_pcf <= s_pcf;
         r_pc  <= s_pc;
-        r_aux <= r_aux;
       end if;
     end if;
   end process;
