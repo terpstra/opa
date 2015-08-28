@@ -76,6 +76,7 @@ begin
   -- !!! figure out a way get a read address stall in dpram
   s_raddr <= predict_pc_i when s_stall='0' else r_pc1;
   
+  -- !!! increase number of ways
   cache : opa_dpram
     generic map(
       g_width  => s_rtag'length + s_rdata'length,
@@ -158,6 +159,7 @@ begin
   end process;
   
   -- !!! think about what to do on i_err_i
+  -- probably easiest is to fill cache with instructions which generate a fault
   
   i_cyc_o <= r_icyc;
   i_stb_o <= r_istb;

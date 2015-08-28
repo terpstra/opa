@@ -231,6 +231,7 @@ begin
     -- 1 level using extend lut mode (two 5 input functions, sharing 4 input, muxed)
 
   -- Which stations have ready operands?
+  -- !!! use a sparse version of s_ready_pad to save half the muxes
   s_ready_pad <= c_pad_high1 & r_ready;
   s_readya <= f_opa_compose(s_ready_pad, r_stata);
   s_readyb <= f_opa_compose(s_ready_pad, r_statb);

@@ -279,6 +279,7 @@ begin
         r_pcf <= s_pcf;
         r_pc  <= s_pc;
       end if;
+      -- !!! on fault, clear setx,geta,getb, set fast (sync clear)
     end if;
   end process;
   
