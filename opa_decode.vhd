@@ -107,6 +107,7 @@ architecture rtl of opa_decode is
   
   signal s_mux           : t_opa_matrix(c_decoders-1 downto 0, 1 downto 0);
   signal s_imm           : t_opa_matrix(c_decoders-1 downto 0, c_imm_wide-1 downto 0);
+  signal s_static_jumps  : std_logic_vector(c_decoders-1 downto 0);
   signal s_static_jump   : std_logic_vector(c_decoders-1 downto 0);
   signal s_static_mux    : std_logic_vector(1 downto 0);
   signal s_static_imm    : std_logic_vector(c_imm_wide-1 downto 0);
@@ -176,7 +177,8 @@ begin
   end generate;
   
   -- What is our prediction?
-  s_static_jump <= f_opa_pick_small(s_often_jump and not s_mask_skip);
+  s_static_jumps<= s_often_jump and not s_mask_skip; -- need to assign valid range before picking
+  s_static_jump <= f_opa_pick_small(s_static_jumps);
   s_static_mux  <= f_opa_product(f_opa_transpose(s_mux), s_static_jump);
   s_static_imm  <= f_opa_product(f_opa_transpose(s_imm), s_static_jump);
   
