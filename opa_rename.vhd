@@ -76,19 +76,30 @@ architecture rtl of opa_rename is
   
   constant c_UR_triangle : t_opa_matrix := f_triangle(c_decoders, true);
   constant c_LL_triangle : t_opa_matrix := f_triangle(c_decoders, false);
+  
+  constant c_pre_stat_labels : t_opa_matrix := f_opa_labels(c_decoders, c_stat_wide, c_num_stat);
+  constant c_dec_stat_labels : t_opa_matrix := f_opa_labels(c_decoders, c_stat_wide, c_num_stat-c_decoders);
+-- !!! make highest index all 1s
   constant c_stat_labels : t_opa_matrix := f_opa_labels(c_decoders, c_stat_wide, c_num_stat);
 
-  signal r_map         : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
+  signal r_map_bak     : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
+  signal r_map_stat    : t_opa_matrix(c_num_arch-1 downto 0, c_stat_wide-1 downto 0);
   signal s_map_writers : t_opa_matrix(c_num_arch-1 downto 0, c_decoders-1  downto 0);
   signal s_map_mux     : std_logic_vector(c_num_arch-1 downto 0);
   signal s_map_source  : t_opa_matrix(c_num_arch-1 downto 0, c_decoders-1  downto 0);
-  signal s_map_value   : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
-  signal s_map         : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
+  signal s_map_dec_stat: t_opa_matrix(c_num_arch-1 downto 0, c_stat_wide-1 downto 0);
+  signal s_map_new_bak : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
+  signal s_map_new_stat: t_opa_matrix(c_num_arch-1 downto 0, c_stat_wide-1 downto 0);
+  signal s_map_mux_bak : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
+  signal s_map_mux_stat: t_opa_matrix(c_num_arch-1 downto 0, c_stat_wide-1 downto 0);
+  
+  signal s_not_get_a   : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0) := (others => (others => '0'));
+  signal s_not_get_b   : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0) := (others => (others => '0'));
   
   signal s_old_baka    : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_old_bakb    : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal s_not_get_a   : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0) := (others => (others => '0'));
-  signal s_not_get_b   : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0) := (others => (others => '0'));
+  signal s_old_stata   : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
+  signal s_old_statb   : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
   signal s_match_a     : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0);
   signal s_match_b     : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0);
   signal s_mux_a       : std_logic_vector(c_decoders-1 downto 0);
@@ -97,6 +108,8 @@ architecture rtl of opa_rename is
   signal s_source_b    : t_opa_matrix(c_decoders-1 downto 0, c_decoders-1  downto 0);
   signal s_new_baka    : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_new_bakb    : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal s_new_stata   : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
+  signal s_new_statb   : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
   signal s_baka        : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_bakb        : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal s_stata       : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
@@ -114,28 +127,35 @@ begin
   s_map_writers <= f_opa_match_index(c_num_arch, decode_archx_i) and f_opa_dup_row(c_num_arch, decode_setx_i);
   s_map_mux     <= f_opa_product(s_map_writers, c_decode_ones);
   s_map_source  <= f_opa_pick_big(s_map_writers);
-  s_map_value   <= f_opa_product(s_map_source, issue_oldx_i);
+  s_map_dec_stat<= f_opa_decrement(r_map_stat, c_decoders);
+  s_map_new_bak <= f_opa_product(s_map_source, issue_oldx_i);
+  s_map_new_stat<= f_opa_product(s_map_source, c_dec_stat_labels);
   
   arch : for i in 0 to c_num_arch-1 generate
-    bits : for b in 0 to c_back_wide-1 generate
-      s_map(i,b) <= s_map_value(i,b) when s_map_mux(i)='1' else r_map(i,b);
+    bak : for b in 0 to c_back_wide-1 generate
+      s_map_mux_bak(i,b)  <= s_map_new_bak(i,b)  when s_map_mux(i)='1' else r_map_bak(i,b);
+    end generate;
+    stat : for b in 0 to c_stat_wide-1 generate
+      s_map_mux_stat(i,b) <= s_map_new_stat(i,b) when s_map_mux(i)='1' else s_map_dec_stat(i,b);
     end generate;
   end generate;
   
   s_progress <= decode_stb_i and not issue_stall_i;
   main : process(rst_n_i, clk_i) is
-    variable value : std_logic_vector(r_map'range(2));
+    variable value : std_logic_vector(r_map_bak'range(2));
   begin
     if rst_n_i = '0' then
-      for i in r_map'range(1) loop
-        value := std_logic_vector(to_unsigned(i, r_map'length(2)));
-        for j in r_map'range(2) loop
-          r_map(i,j) <= value(j);
+      for i in r_map_bak'range(1) loop
+        value := std_logic_vector(to_unsigned(i, r_map_bak'length(2)));
+        for j in r_map_bak'range(2) loop
+          r_map_bak(i,j) <= value(j);
         end loop;
       end loop;
+      r_map_stat <= (others => (others => '1'));
     elsif rising_edge(clk_i) then
       if s_progress = '1' then -- clock enable
-        r_map <= s_map;
+        r_map_bak  <= s_map_mux_bak;
+        r_map_stat <= s_map_mux_stat;
       end if;
     end if;
   end process;
@@ -147,8 +167,10 @@ begin
   end generate;
   
   -- Rename the inputs, watching out for same-cycle dependencies
-  s_old_baka <= f_opa_compose(r_map, decode_archa_i);
-  s_old_bakb <= f_opa_compose(r_map, decode_archb_i);
+  s_old_baka <= f_opa_compose(r_map_bak, decode_archa_i);
+  s_old_bakb <= f_opa_compose(r_map_bak, decode_archb_i);
+  s_old_stata<= f_opa_compose(r_map_stat,decode_archa_i);
+  s_old_statb<= f_opa_compose(r_map_stat,decode_archb_i);
   s_match_a  <= (f_opa_match(decode_archa_i, decode_archx_i) and f_opa_dup_row(c_decoders, decode_setx_i) and c_UR_triangle) or s_not_get_a;
   s_match_b  <= (f_opa_match(decode_archb_i, decode_archx_i) and f_opa_dup_row(c_decoders, decode_setx_i) and c_UR_triangle) or s_not_get_b;
   s_mux_a    <= f_opa_product(s_match_a, c_decode_ones);
@@ -157,22 +179,23 @@ begin
   s_source_b <= f_opa_pick_big(s_match_b);
   s_new_baka <= f_opa_product(s_source_a, issue_oldx_i);
   s_new_bakb <= f_opa_product(s_source_b, issue_oldx_i);
-  
-  -- Decode station dependencies between them (between rest are done with CAM in issue)
-  s_stata    <= f_opa_product(s_source_a, c_stat_labels); -- 0 on no conflict
-  s_statb    <= f_opa_product(s_source_b, c_stat_labels);
+  s_new_stata<= f_opa_product(s_source_a, c_stat_labels);
+  s_new_statb<= f_opa_product(s_source_b, c_stat_labels);
   
   -- Pick between old arch register or cross-dependency
-  -- !!! decode !get bak to something big => r_map in regfile picks immediate
-  rows : for i in s_baka'range(1) generate
-    cols : for j in s_baka'range(2) generate
+  mux : for i in 0 to c_decoders-1 generate
+    bak : for j in 0 to c_back_wide-1 generate
       s_baka(i,j) <= s_old_baka(i,j) when s_mux_a(i) = '0' else s_new_baka(i,j);
       s_bakb(i,j) <= s_old_bakb(i,j) when s_mux_b(i) = '0' else s_new_bakb(i,j);
+    end generate;
+    stat : for j in 0 to c_stat_wide-1 generate
+      s_stata(i,j)<= s_old_stata(i,j)when s_mux_a(i) = '0' else s_new_stata(i,j);
+      s_statb(i,j)<= s_old_statb(i,j)when s_mux_b(i) = '0' else s_new_statb(i,j);
     end generate;
   end generate;
   
   -- Calculate which backing registers are released upon commit
-  s_old_bakx   <= f_opa_compose(r_map, decode_archx_i);
+  s_old_bakx   <= f_opa_compose(r_map_bak, decode_archx_i);
   s_overwrites <= f_opa_match(decode_archx_i, decode_archx_i) and c_LL_triangle;
   s_useless    <= f_opa_product(s_overwrites, decode_setx_i) or not decode_setx_i;
   

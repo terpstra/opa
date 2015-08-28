@@ -114,7 +114,6 @@ architecture rtl of opa_issue is
   signal r_slow       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_issued     : std_logic_vector(c_num_stat-1 downto 0);
   signal r_issued     : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_bakx0      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   -- These have 0 latency indexes, but 1 latency content
   signal s_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
   signal r_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
@@ -133,11 +132,10 @@ architecture rtl of opa_issue is
   signal r_getb       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_aux        : t_opa_matrix(c_num_stat-1 downto 0, c_aux_wide -1 downto 0);
   signal r_oldx       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
-  signal r_bakx1      : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
+  signal r_bakx       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_baka       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
-  type t_stat is array(c_num_stat-1 downto 0) of unsigned(c_stat_wide-1 downto 0);
   signal s_fast_need_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal s_slow_need_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_raw       : std_logic_vector(c_num_stat-1 downto 0);
@@ -149,10 +147,6 @@ architecture rtl of opa_issue is
   signal s_pending_slow    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_fast      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_slow      : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_stata_1         : t_stat;
-  signal s_statb_1         : t_stat;
-  signal s_stata_2         : t_stat;
-  signal s_statb_2         : t_stat;
   
   -- Accept data from the renamer; use a skidpad to synchronize state
   signal r_sp_geta : std_logic_vector(c_decoders-1 downto 0);
@@ -162,11 +156,6 @@ architecture rtl of opa_issue is
   signal r_sp_baka : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_bakb : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_aux  : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
-  
-  signal s_new_stata  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
-  signal s_new_statb  : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
-  signal s_matchn_a   : t_opa_matrix(c_decoders-1 downto 0, c_num_stat -1 downto 0);
-  signal s_matchn_b   : t_opa_matrix(c_decoders-1 downto 0, c_num_stat -1 downto 0);
   
   -- Scheduled writeback
   signal r_rf_wstb_fast1 : std_logic_vector(c_num_fast-1 downto 0);
@@ -200,17 +189,6 @@ architecture rtl of opa_issue is
     return result;
   end f_decoder_labels;
   constant c_decoder_labels : t_opa_matrix := f_decoder_labels(c_decoders);
-  
-  function f_decrement(x : unsigned(c_stat_wide-1 downto 0)) return unsigned is
-    constant cu_num_stat : unsigned(x'range) := to_unsigned(c_num_stat+c_decoders-1, x'length);
-    constant cu_decoders : unsigned(x'range) := to_unsigned(c_decoders,              x'length);
-  begin
-    if x = cu_num_stat or x < cu_decoders then
-      return cu_num_stat;
-    else
-      return x - c_decoders;
-    end if;
-  end f_decrement;
   
   function f_shift(x : std_logic_vector; s : std_logic) return std_logic_vector is
     alias y : std_logic_vector(x'high downto x'low) is x;
@@ -288,8 +266,8 @@ begin
     if rising_edge(clk_i) then
       r_rf_wstb_fast1 <= f_opa_product(r_schedule_fast, c_stat_ones);
       r_rf_wstb_slow1 <= f_opa_product(r_schedule_slow, c_stat_ones);
-      r_rf_bakx_fast1 <= f_opa_product(r_schedule_fast, r_bakx1);
-      r_rf_bakx_slow1 <= f_opa_product(r_schedule_slow, r_bakx1);
+      r_rf_bakx_fast1 <= f_opa_product(r_schedule_fast, r_bakx);
+      r_rf_bakx_slow1 <= f_opa_product(r_schedule_slow, r_bakx);
       r_rf_wstb_slow2 <= r_rf_wstb_slow1;
       r_rf_bakx_slow2 <= r_rf_bakx_slow1;
       r_rf_wstb_slow3 <= r_rf_wstb_slow2;
@@ -308,29 +286,8 @@ begin
     -- 2 levels with decoders <= 2
   
   -- Prepare decremented versions of the station references
-  statrefs : for i in 0 to c_num_stat-1 generate
-    -- Need to remap the signals to get the effect we want
-    bits : for b in 0 to c_stat_wide-1 generate
-      s_stata_1(i)(b) <= r_stata(i, b);
-      s_statb_1(i)(b) <= r_statb(i, b);
-      s_stata(i, b) <= s_stata_2(i)(b);
-      s_statb(i, b) <= s_statb_2(i)(b);
-    end generate;
-    s_stata_2(i) <= f_decrement(s_stata_1(i)) when r_shift='1' else s_stata_1(i);
-    s_statb_2(i) <= f_decrement(s_statb_1(i)) when r_shift='1' else s_statb_1(i);
-      -- 1 level with stations <= 32 (5 stat + 1 shift)
-  end generate;
-  
-  -- !!! roll this into renamer cycle using an arch map
-  -- Compare to the bakx in stations to find new station's 1hot dependency
-  s_matchn_a  <= f_opa_match(rename_baka_i, r_bakx0);
-  s_matchn_b  <= f_opa_match(rename_bakb_i, r_bakx0);
-    -- 2 levels
-  
-  -- Decode to what the new station depends on
-  s_new_stata <= f_opa_1hot_dec(s_matchn_a) or rename_stata_i;
-  s_new_statb <= f_opa_1hot_dec(s_matchn_b) or rename_statb_i;
-    -- 3 levels with <= 30 stations (5x3:1 decode of [(3=3) and (3=3)])
+  s_stata <= f_opa_decrement(r_stata, c_decoders) when r_shift='1' else r_stata;
+  s_statb <= f_opa_decrement(r_statb, c_decoders) when r_shift='1' else r_statb;
   
   -- Feed back unused registers to the renamer
   oldx : process(clk_i, rst_n_i) is
@@ -376,11 +333,16 @@ begin
     end if;
   end process;
   
-  -- Register the stations 0-latency without reset, with load enable
-  stations_0l : process(clk_i) is
+  -- Register the stations 0-latency with reset, with load enable
+  stations_0rl : process(rst_n_i, clk_i) is
   begin
-    if rising_edge(clk_i) then
+    if rst_n_i = '0' then
+      r_issued <= (others => '1');
+      r_stata  <= (others => (others => '1'));
+      r_stata  <= (others => (others => '1'));
+    elsif rising_edge(clk_i) then
       if s_shift = '1' then -- load enable
+        r_issued <= c_decoder_zeros & s_issued(c_num_stat-1 downto c_decoders);
         -- These two are sneaky; they are half lagged. Content lags thanks to s_stat[ab].
         for i in 0 to c_num_stat-c_decoders-1 loop
           for b in 0 to c_stat_wide-1 loop
@@ -390,26 +352,14 @@ begin
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
           for b in 0 to c_stat_wide-1 loop
-            r_stata(i,b) <= s_new_stata(i-(c_num_stat-c_decoders),b);
-            r_statb(i,b) <= s_new_statb(i-(c_num_stat-c_decoders),b);
+            r_stata(i,b) <= rename_stata_i(i-(c_num_stat-c_decoders),b);
+            r_statb(i,b) <= rename_statb_i(i-(c_num_stat-c_decoders),b);
           end loop;
         end loop;
       else
+        r_issued <= s_issued;
         r_stata  <= s_stata;
         r_statb  <= s_statb;
-      end if;
-    end if;
-  end process;
-  
-  stations_0rl : process(rst_n_i, clk_i) is
-  begin
-    if rst_n_i = '0' then
-      r_issued <= (others => '1');
-    elsif rising_edge(clk_i) then
-      if s_shift = '1' then -- load enable
-        r_issued <= c_decoder_zeros & s_issued(c_num_stat-1 downto c_decoders);
-      else
-        r_issued <= s_issued;
       end if;
     end if;
   end process;
@@ -417,28 +367,13 @@ begin
   -- Register the stations, 0-latency with reset, with clock enable
   stations_0rc : process(rst_n_i, clk_i) is
   begin
-    if rst_n_i = '0' then -- !!! reset unnecessary?:
+    if rst_n_i = '0' then
       r_fast <= (others => '0');
       r_slow <= (others => '0');
-      for b in 0 to c_back_wide-1 loop
-        for i in 0 to c_num_stat-1 loop
-          r_bakx0(i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
-        end loop;
-      end loop;
     elsif rising_edge(clk_i) then
       if s_shift = '1' then
         r_fast <= rename_fast_i  & r_fast(c_num_stat-1 downto c_decoders);
         r_slow <= rename_slow_i  & r_slow(c_num_stat-1 downto c_decoders);
-        for i in 0 to c_num_stat-c_decoders-1 loop
-          for b in 0 to c_back_wide-1 loop
-            r_bakx0(i,b) <= r_bakx0(i+c_decoders,b);
-          end loop;
-        end loop;
-        for i in c_num_stat-c_decoders to c_num_stat-1 loop
-          for b in 0 to c_back_wide-1 loop
-            r_bakx0(i,b) <= rename_bakx_i(i-(c_num_stat-c_decoders),b);
-          end loop;
-        end loop;
       end if;
     end if;
   end process;
@@ -452,17 +387,19 @@ begin
       r_wait1  <= (others => '0');
       r_wait2  <= (others => '0');
       r_final  <= (others => '1');
-      -- !!! reset unnecesssary?:
-      r_schedule_fast <= (others => (others => '0'));
-      r_schedule_slow <= (others => (others => '0'));
-      r_schedule_fast_issue <= (others => '0');
-      r_schedule_slow_issue <= (others => '0');
     elsif rising_edge(clk_i) then
       r_shift  <= s_shift;
       r_ready  <= s_ready;
       r_wait1  <= s_wait1;
       r_wait2  <= s_wait2;
       r_final  <= s_final;
+    end if;
+  end process;
+  
+  -- Registers the stations, 1-latency without reset
+  stations_1 : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
       r_schedule_fast <= s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast);
       r_schedule_slow <= s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow);
       r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
@@ -476,23 +413,19 @@ begin
     if rst_n_i = '0' then
       for b in 0 to c_back_wide-1 loop
         for i in 0 to c_num_stat-1 loop
-          r_oldx (i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
-          -- !!! reset unnecessary?:
-          r_bakx1(i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
+          r_oldx(i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
         end loop;
       end loop;
     elsif rising_edge(clk_i) then
       if r_shift = '1' then -- clock enable port
         for i in 0 to c_num_stat-c_decoders-1 loop
           for b in 0 to c_back_wide-1 loop
-            r_oldx (i,b) <= r_oldx (i+c_decoders,b);
-            r_bakx1(i,b) <= r_bakx1(i+c_decoders,b);
+            r_oldx(i,b) <= r_oldx(i+c_decoders,b);
           end loop;
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
           for b in 0 to c_back_wide-1 loop
-            r_oldx (i,b) <= r_sp_oldx(i-(c_num_stat-c_decoders),b);
-            r_bakx1(i,b) <= r_sp_bakx(i-(c_num_stat-c_decoders),b);
+            r_oldx(i,b) <= r_sp_oldx(i-(c_num_stat-c_decoders),b);
           end loop;
         end loop;
       end if;
@@ -508,22 +441,24 @@ begin
           r_geta(i) <= r_geta(i+c_decoders);
           r_getb(i) <= r_getb(i+c_decoders);
           for b in 0 to c_aux_wide-1 loop
-            r_aux(i,b)   <= r_aux  (i+c_decoders,b);
+            r_aux (i,b) <= r_aux (i+c_decoders,b);
           end loop;
           for b in 0 to c_back_wide-1 loop
-            r_baka(i,b)  <= r_baka (i+c_decoders,b);
-            r_bakb(i,b)  <= r_bakb (i+c_decoders,b);
+            r_baka(i,b) <= r_baka(i+c_decoders,b);
+            r_bakb(i,b) <= r_bakb(i+c_decoders,b);
+            r_bakx(i,b) <= r_bakx(i+c_decoders,b);
           end loop;
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
           r_geta(i) <= r_sp_geta(i-(c_num_stat-c_decoders));
           r_getb(i) <= r_sp_getb(i-(c_num_stat-c_decoders));
           for b in 0 to c_aux_wide-1 loop
-            r_aux  (i,b) <= r_sp_aux  (i-(c_num_stat-c_decoders),b);
+            r_aux (i,b) <= r_sp_aux (i-(c_num_stat-c_decoders),b);
           end loop;
           for b in 0 to c_back_wide-1 loop
-            r_baka (i,b) <= r_sp_baka (i-(c_num_stat-c_decoders),b);
-            r_bakb (i,b) <= r_sp_bakb (i-(c_num_stat-c_decoders),b);
+            r_baka(i,b) <= r_sp_baka(i-(c_num_stat-c_decoders),b);
+            r_bakb(i,b) <= r_sp_bakb(i-(c_num_stat-c_decoders),b);
+            r_bakx(i,b) <= r_sp_bakx(i-(c_num_stat-c_decoders),b);
           end loop;
         end loop;
       end if;
