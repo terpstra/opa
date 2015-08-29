@@ -74,13 +74,22 @@ architecture rtl of opa_rename is
     return result;
   end f_triangle;
   
+  function f_fill_top_row(x : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'range(2));
+  begin
+    result := x;
+    for i in x'range(2) loop
+      result(x'high(1), i) := '1';
+    end loop;
+    return result;
+  end f_fill_top_row;
+  
   constant c_UR_triangle : t_opa_matrix := f_triangle(c_decoders, true);
   constant c_LL_triangle : t_opa_matrix := f_triangle(c_decoders, false);
   
   constant c_pre_stat_labels : t_opa_matrix := f_opa_labels(c_decoders, c_stat_wide, c_num_stat);
   constant c_dec_stat_labels : t_opa_matrix := f_opa_labels(c_decoders, c_stat_wide, c_num_stat-c_decoders);
--- !!! make highest index all 1s
-  constant c_stat_labels : t_opa_matrix := f_opa_labels(c_decoders, c_stat_wide, c_num_stat);
+  constant c_stat_labels     : t_opa_matrix := f_fill_top_row(c_pre_stat_labels);
 
   signal r_map_bak     : t_opa_matrix(c_num_arch-1 downto 0, c_back_wide-1 downto 0);
   signal r_map_stat    : t_opa_matrix(c_num_arch-1 downto 0, c_stat_wide-1 downto 0);

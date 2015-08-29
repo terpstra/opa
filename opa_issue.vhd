@@ -140,7 +140,7 @@ architecture rtl of opa_issue is
   signal s_slow_need_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_raw       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_shift     : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_ready_pad       : std_logic_vector(c_num_stat+c_decoders-1 downto 0);
+  signal s_ready_pad       : std_logic_vector(2**c_stat_wide-1 downto 0) := (others => '0');
   signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyb          : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_fast    : std_logic_vector(c_num_stat-1 downto 0);
@@ -210,7 +210,8 @@ begin
 
   -- Which stations have ready operands?
   -- !!! use a sparse version of s_ready_pad to save half the muxes
-  s_ready_pad <= c_pad_high1 & r_ready;
+  s_ready_pad(s_ready_pad'high) <= '1';
+  s_ready_pad(r_ready'range) <= r_ready;
   s_readya <= f_opa_compose(s_ready_pad, r_stata);
   s_readyb <= f_opa_compose(s_ready_pad, r_statb);
      -- 2.5 levels with <= 32 stations
