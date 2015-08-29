@@ -1,8 +1,6 @@
 	.section .boot, "ax", @progbits
 	.global _start
 _start:
-	li tp,0
-	li gp,0
 	lui sp, %hi(_fstack)
 	lui a0, %hi(_fbss)
 	lui a1, %hi(_ebss)
