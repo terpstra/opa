@@ -280,6 +280,7 @@ begin
         r_ops <= s_ops;
         r_pcf <= s_pcf;
         r_pc  <= s_pc;
+        r_pcn_taken <= s_pcn_taken;
       end if;
       -- !!! on fault, clear setx,geta,getb, set fast (sync clear)
     end if;
