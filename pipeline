@@ -3,7 +3,7 @@ pipeline
 	2 - icache	=> r_data		| flow control by r_ops fill
 	3 - decode	=> r_ops		v
 	4 - rename	=> r_stata (in issue)	^
-	5 - issue	=> r_schedule		|
+	5 - issue	=> r_schedule0		|
 	6 - regfile	=> r_mux_idx		| flow control by s_shift
 	7 - bypass	=> r_reg[ab]		|
 	8 - execute	=> r_fault & fast=>reg	v

@@ -94,11 +94,15 @@ architecture rtl of opa_issue is
   -- to the regfile stage. Anything used to feed r_schedule is shifted early.
   
   -- These have 1 latency indexes
-  signal r_schedule_fast : t_opa_matrix(c_num_fast-1  downto 0, c_num_stat-1 downto 0);
-  signal r_schedule_slow : t_opa_matrix(c_num_slow-1  downto 0, c_num_stat-1 downto 0);
   signal s_schedule_fast : t_opa_matrix(c_num_fast-1  downto 0, c_num_stat-1 downto 0);
   signal s_schedule_slow : t_opa_matrix(c_num_slow-1  downto 0, c_num_stat-1 downto 0);
-  signal s_schedule      : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  signal r_schedule0     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  signal r_schedule1     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  signal r_schedule2     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  signal r_schedule3     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  signal s_schedule_wb   : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  signal r_commit        : std_logic_vector(c_executers-1 downto 0);
+  signal s_commit        : std_logic_vector(c_num_stat-1 downto 0);
   
   signal s_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal r_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
@@ -157,16 +161,6 @@ architecture rtl of opa_issue is
   signal r_sp_bakb : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_aux  : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
   
-  -- Scheduled writeback
-  signal r_rf_wstb_fast1 : std_logic_vector(c_num_fast-1 downto 0);
-  signal r_rf_wstb_slow1 : std_logic_vector(c_num_slow-1 downto 0);
-  signal r_rf_wstb_slow2 : std_logic_vector(c_num_slow-1 downto 0);
-  signal r_rf_wstb_slow3 : std_logic_vector(c_num_slow-1 downto 0);
-  signal r_rf_bakx_fast1 : t_opa_matrix(c_num_fast-1 downto 0, c_back_wide-1 downto 0);
-  signal r_rf_bakx_slow1 : t_opa_matrix(c_num_slow-1 downto 0, c_back_wide-1 downto 0);
-  signal r_rf_bakx_slow2 : t_opa_matrix(c_num_slow-1 downto 0, c_back_wide-1 downto 0);
-  signal r_rf_bakx_slow3 : t_opa_matrix(c_num_slow-1 downto 0, c_back_wide-1 downto 0);
-  
   function f_pad(x : std_logic) return std_logic_vector is
     variable result : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
   begin
@@ -196,6 +190,20 @@ architecture rtl of opa_issue is
   begin
     if s = '1' then 
       result := c_decoder_zeros & y(y'high downto y'low+c_decoders);
+    end if;
+    return result;
+  end f_shift;
+  
+  function f_shift(x : t_opa_matrix; s : std_logic) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'range(2)) := x;
+  begin
+    if s = '1' then
+      result := (others => (others => '0'));
+      for i in x'range(1) loop
+        for j in x'high(2)-c_decoders downto x'low(2) loop
+          result(i,j) := x(i,j+c_decoders);
+        end loop;
+      end loop;
     end if;
     return result;
   end f_shift;
@@ -251,38 +259,38 @@ begin
   
   -- Which registers does each EU need to use?
   -- r_bak[abx], r_aux shifted one cycle later, so s_stat has correct index
-  s_schedule <= f_opa_transpose(f_opa_concat(f_opa_transpose(r_schedule_slow), f_opa_transpose(r_schedule_fast)));
-  regfile_rstb_o <= f_opa_product(s_schedule, c_stat_ones);
-  regfile_geta_o <= f_opa_product(s_schedule, r_geta);
-  regfile_getb_o <= f_opa_product(s_schedule, r_getb);
-  regfile_baka_o <= f_opa_product(s_schedule, r_baka);
-  regfile_bakb_o <= f_opa_product(s_schedule, r_bakb);
-  regfile_aux_o  <= f_opa_product(s_schedule, r_aux);
-  regfile_dec_o  <= f_opa_product(s_schedule, c_decoder_labels);
+  regfile_rstb_o <= f_opa_product(r_schedule0, c_stat_ones);
+  regfile_geta_o <= f_opa_product(r_schedule0, r_geta);
+  regfile_getb_o <= f_opa_product(r_schedule0, r_getb);
+  regfile_baka_o <= f_opa_product(r_schedule0, r_baka);
+  regfile_bakb_o <= f_opa_product(r_schedule0, r_bakb);
+  regfile_aux_o  <= f_opa_product(r_schedule0, r_aux);
+  regfile_dec_o  <= f_opa_product(r_schedule0, c_decoder_labels);
     -- 2 levels with stations <= 18
+  
+  wb_stat : for j in 0 to c_num_stat-1 generate
+    fast : for i in 0 to c_num_fast-1 generate
+      s_schedule_wb(i,j) <= r_schedule0(i,j);
+    end generate;
+    slow : for i in c_num_fast to c_executers-1 generate
+      s_schedule_wb(i,j) <= r_schedule2(i,j);
+    end generate;
+  end generate;
   
   -- Report writeback to the regfile
   writeback : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_rf_wstb_fast1 <= f_opa_product(r_schedule_fast, c_stat_ones);
-      r_rf_wstb_slow1 <= f_opa_product(r_schedule_slow, c_stat_ones);
-      r_rf_bakx_fast1 <= f_opa_product(r_schedule_fast, r_bakx);
-      r_rf_bakx_slow1 <= f_opa_product(r_schedule_slow, r_bakx);
-      r_rf_wstb_slow2 <= r_rf_wstb_slow1;
-      r_rf_bakx_slow2 <= r_rf_bakx_slow1;
-      r_rf_wstb_slow3 <= r_rf_wstb_slow2;
-      r_rf_bakx_slow3 <= r_rf_bakx_slow2;
+      regfile_wstb_o <= f_opa_product(s_schedule_wb, c_stat_ones);
+      regfile_bakx_o <= f_opa_product(s_schedule_wb, r_bakx);
     end if;
   end process;
   
-  regfile_wstb_o <= r_rf_wstb_slow3 & r_rf_wstb_fast1;
-  regfile_bakx_o <= f_opa_transpose(f_opa_concat(f_opa_transpose(r_rf_bakx_slow3), f_opa_transpose(r_rf_bakx_fast1)));
-  
   -- Determine if the execution window should be shifted
-  s_final <= f_shift(r_final or r_ready, r_shift); -- !!! bogus; faults go here
-  s_stall <= not f_opa_and(s_final(c_decoders-1 downto 0));
-  s_shift <= rename_stb_i and not s_stall;
+  s_commit <= f_opa_product(f_opa_transpose(r_schedule3), r_commit);
+  s_final  <= f_shift(r_final or s_commit, r_shift);
+  s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
+  s_shift  <= rename_stb_i and not s_stall;
   rename_stall_o <= s_stall;
     -- 2 levels with decoders <= 2
   
@@ -401,10 +409,15 @@ begin
   stations_1 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_schedule_fast <= s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast);
-      r_schedule_slow <= s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow);
+      r_schedule0 <= f_opa_transpose(f_opa_concat(
+        f_opa_transpose(s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow)), 
+        f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
+      r_schedule1 <= f_shift(r_schedule0, r_shift);
+      r_schedule2 <= f_shift(r_schedule1, r_shift);
+      r_schedule3 <= f_shift(r_schedule2, r_shift);
       r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
       r_schedule_slow_issue <= s_schedule_slow_issue and s_pending_slow;
+      r_commit <= not eu_fault_i;
     end if;
   end process;
   
