@@ -5,11 +5,12 @@ roll-out:
 	implement write port
 	implement load-alias detection CAM [0]
 	implement write alias wake-up [1]
-	implement branch fault detection
 	implement fetcher
 	implement noop converter (fault => speculative ops become copies)
+	implement short forward branch => reissue shadow as noop
 	implement TLB+L1 [3]
 	branch predictor
+	add microcode for div and sextb=(andi 0x80, muli -1, or)
 	implement FPU [5]
 
 [a] finalize ready writes preceded by entirely final operations => implies in-order writeback
