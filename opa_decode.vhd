@@ -65,7 +65,7 @@ end opa_decode;
 architecture rtl of opa_decode is
 
   constant c_decoders : natural := f_opa_decoders(g_config);
-  constant c_num_aux  : natural := f_opa_aux_wide(g_config);
+  constant c_num_aux  : natural := f_opa_num_aux (g_config);
   constant c_adr_wide : natural := f_opa_adr_wide(g_config);
   constant c_dec_wide : natural := f_opa_dec_wide(g_config);
   constant c_aux_wide : natural := f_opa_aux_wide(g_config);
