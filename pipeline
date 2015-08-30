@@ -1,12 +1,22 @@
 pipeline
-	0 - fetch output        => decode
-	1 - latched in rename   => assign bak{abx}
-	2 - latched in mux      => decode stations
-	3 - shifted into r_fast => issue (wake-up+select)
-	4 - r_schedule          => select bak{abx} && decode regfile mux
-	5 - m10k reg input      => mux m10k output and bypass
-        6 - r_reg[ab] in EU     => execute	address decode
-	7 -                        execute	L1 fetch + TLB-way select + L1 matrix
-	8 -                        execute	rotate data => way-mux
+	1 - predict	=> r_pc			^
+	2 - icache	=> r_data		| flow control by r_ops fill
+	3 - decode	=> r_ops		v
+	4 - rename	=> r_stata (in issue)	^
+	5 - issue	=> r_schedule		|
+	6 - regfile	=> r_mux_idx		| flow control by s_shift
+	7 - bypass	=> r_reg[ab]		|
+	8 - execute	=> r_fault & fast=>reg	v
+	9 - execute
+	10- execute	=> slow=>reg
 
-probably a 10 stage pipeline once fetch works
+A branch first enters the schedule on cycle 4 and cannot leave until after
+cycle 8 shifts it out.  Thus, branches are in the window for 5 cycles and to
+sustain full execution bandwidth, the schedule must be at least 5*decoders
+deep.  Any dependent delay only adds to this, thus 6*decoders is the minimum.
+
+Obviously, more is better. Consider a vector product:
+	for (int i = 0; i < n; ++i) out[i] = a[i] * b[i];
+The load and multiply add up to a latency of 6. Until the store has been
+checked for segfault, that adds up to 11 cycles. This doesn't even consider
+an L1 cache miss, in which case you would need even more depth.
