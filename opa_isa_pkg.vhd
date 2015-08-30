@@ -641,6 +641,7 @@ package body opa_isa_pkg is
     variable fast  : t_opa_fast;
     variable op    : t_opa_op;
   begin
+    op := f_parse_rtype(x);
     adder.eq    := '0';
     adder.nota  := '0';
     adder.notb  := '0';
@@ -927,7 +928,6 @@ package body opa_isa_pkg is
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
   end f_decode_remu;
-  
   
   function f_decode(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     constant c_opcode : std_logic_vector(6 downto 0) := x( 6 downto  0);
