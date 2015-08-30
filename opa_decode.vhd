@@ -275,14 +275,21 @@ begin
         r_ops(c_decoders*2-1 downto 0) <= s_ops(c_decoders*3-1 downto c_decoders);
         r_pcf(c_decoders*2-1 downto 0) <= s_pcf(c_decoders*3-1 downto c_decoders);
         r_pc (c_decoders*2-1 downto 0) <= s_pc (c_decoders*3-1 downto c_decoders);
-        r_pcn_taken <= s_pcn_taken;
       else
         r_ops <= s_ops;
         r_pcf <= s_pcf;
         r_pc  <= s_pc;
-        r_pcn_taken <= s_pcn_taken;
       end if;
       -- !!! on fault, clear setx,geta,getb, set fast (sync clear)
+    end if;
+  end process;
+  
+  latch_pcn : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      if s_accept = '1' then
+        r_pcn_taken <= s_pcn_taken;
+      end if;
     end if;
   end process;
   
