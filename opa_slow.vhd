@@ -56,7 +56,7 @@ begin
   issue_pcn_o   <= (others => '0');
   
   s_slow <= f_opa_slow_from_arg(regfile_arg_i);
-  s_mul  <= f_opa_mul_from_slow(s_slow.table);
+  s_mul  <= f_opa_mul_from_slow(s_slow.raw);
   
   main : process(clk_i) is
   begin

@@ -34,14 +34,20 @@ end opa_fast;
 
 architecture rtl of opa_fast is
 
+  constant c_imm_wide : natural := f_opa_imm_wide(g_config);
+  constant c_adr_wide : natural := f_opa_adr_wide(g_config);
+  constant c_sum_wide : natural := f_opa_choose(c_imm_wide<c_adr_wide,c_imm_wide,c_adr_wide);
+
   signal s_fast  : t_opa_fast;
   signal s_adder : t_opa_adder;
+  signal s_lut    :std_logic_vector(3 downto 0);
 
+  signal r_stb  : std_logic;
   signal r_rega : std_logic_vector(regfile_rega_i'range);
   signal r_regb : std_logic_vector(regfile_regb_i'range);
   signal r_imm  : std_logic_vector(regfile_imm_i'range);
-  signal r_pc   : std_logic_vector(regfile_pc_i'range);
   signal r_pcf  : std_logic_vector(regfile_pcf_i'range);
+  signal r_pc   : std_logic_vector(regfile_pc_i'range);
   signal r_pcn  : std_logic_vector(regfile_pcn_i'range);
   
   signal r_lut  : std_logic_vector(3 downto 0);
@@ -49,6 +55,8 @@ architecture rtl of opa_fast is
   signal r_notb : std_logic;
   signal r_cin  : std_logic;
   signal r_sign : std_logic;
+  signal r_eq   : std_logic;
+  signal r_fault: std_logic;
   signal r_mode : std_logic_vector(1 downto 0);
 
   type t_logic is array(natural range <>) of unsigned(1 downto 0);
@@ -57,21 +65,35 @@ architecture rtl of opa_fast is
   signal s_logic      : std_logic_vector(r_rega'range);
   signal s_nota       : std_logic_vector(r_rega'range);
   signal s_notb       : std_logic_vector(r_rega'range);
+  signal s_eq         : std_logic_vector(r_rega'range);
   signal s_widea      : std_logic_vector(r_rega'left+2 downto 0);
   signal s_wideb      : std_logic_vector(r_rega'left+2 downto 0);
   signal s_widex      : std_logic_vector(r_rega'left+2 downto 0);
   signal s_sum_low    : std_logic_vector(r_rega'range);
   signal s_comparison : std_logic_vector(r_rega'range);
+  signal s_pc_next_pad: std_logic_vector(r_rega'range) := (others => '0');
+  
+  signal s_pc_imm     : unsigned(regfile_pcn_i'range);
+  signal s_pc_next    : std_logic_vector(regfile_pcn_i'range);
+  signal s_pc_jump    : std_logic_vector(regfile_pcn_i'range);
+  signal s_pc_sum     : std_logic_vector(regfile_pcn_i'range);
+  signal s_is_next    : std_logic;
+  signal s_is_jump    : std_logic;
+  signal s_is_sum     : std_logic;
+  signal s_br_fault   : std_logic;
+  signal s_br_target  : std_logic_vector(regfile_pcn_i'range);
 
   attribute dont_merge : boolean;
   attribute maxfan     : natural;
   
   -- Do not merge these registers; they are used in different places!
-  attribute dont_merge of r_imm  : signal is true;
   attribute dont_merge of r_lut  : signal is true;
+  attribute dont_merge of r_eq   : signal is true;
   attribute dont_merge of r_nota : signal is true;
   attribute dont_merge of r_notb : signal is true;
   attribute dont_merge of r_cin  : signal is true;
+  attribute dont_merge of r_sign : signal is true;
+  attribute dont_merge of r_fault: signal is true;
   attribute dont_merge of r_mode : signal is true;
   
   -- These are fanned out to 64 bits; make it easier to fit
@@ -79,31 +101,30 @@ architecture rtl of opa_fast is
   -- attribute maxfan of r_mode : signal is 8;
 begin
 
-  issue_fault_o <= '0';
-  issue_pc_o    <= r_pc;
-  issue_pcf_o   <= r_pcf;
-  issue_pcn_o   <= r_pcn;
-  
   s_fast  <= f_opa_fast_from_arg(regfile_arg_i);
-  s_adder <= f_opa_adder_from_fast(s_fast.table);
+  s_adder <= f_opa_adder_from_fast(s_fast.raw);
+  s_lut   <= f_opa_lut_from_fast(s_fast.raw);
   
   -- Register our inputs
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
+      r_stb  <= regfile_stb_i;
       r_rega <= regfile_rega_i;
       r_regb <= regfile_regb_i;
       r_imm  <= regfile_imm_i;
-      r_pc   <= regfile_pc_i;
       r_pcf  <= regfile_pcf_i;
+      r_pc   <= regfile_pc_i;
       r_pcn  <= regfile_pcn_i;
       
       r_mode <= s_fast.mode;
-      r_lut  <= s_fast.table;
+      r_lut  <= s_lut;
+      r_eq   <= s_adder.eq;
       r_nota <= s_adder.nota;
       r_notb <= s_adder.notb;
       r_cin  <= s_adder.cin;
       r_sign <= s_adder.sign;
+      r_fault<= s_adder.fault;
     end if;
   end process;
   
@@ -117,17 +138,23 @@ begin
   -- Result is an adder function
   s_nota <= (others => r_nota);
   s_notb <= (others => r_notb);
+  s_eq   <= (others => r_eq);
   s_widea(r_rega'left+2) <= '0';
   s_wideb(r_rega'left+2) <= '0';
-  s_widea(r_rega'left+1 downto 1) <= r_rega xor s_nota;
-  s_wideb(r_rega'left+1 downto 1) <= r_regb xor s_notb;
+  s_widea(r_rega'left+1 downto 1) <= s_nota xor r_rega xor (r_regb and s_eq);
+  s_wideb(r_rega'left+1 downto 1) <= s_notb xor (r_regb and not s_eq);
   s_widea(0) <= '1';
   s_wideb(0) <= r_cin;
   s_widex <= std_logic_vector(unsigned(s_widea) + unsigned(s_wideb));
-  
   s_sum_low <= s_widex(r_rega'left+1 downto 1);
+  
+  -- Result is a comparison
   s_comparison(0) <= s_widex(r_rega'left+2) xor ((r_rega(31) xor r_regb(31)) and r_sign);
   s_comparison(r_rega'left downto 1) <= (others => '0');
+  
+  -- Result is a jump return address
+  s_pc_next_pad(s_pc_next'high-1 downto s_pc_next'low) <= std_logic_vector(s_pc_next(s_pc_next'high-1 downto s_pc_next'low));
+  s_pc_next_pad(r_rega'high downto s_pc_next'high) <= (others => s_pc_next(s_pc_next'high));
   
   -- Send result to regfile
   with r_mode select
@@ -135,8 +162,34 @@ begin
     s_logic         when c_opa_fast_lut,
     s_sum_low       when c_opa_fast_addl,
     s_comparison    when c_opa_fast_addh,
+    s_pc_next_pad   when c_opa_fast_jump,
     (others => '-') when others;
   
-  -- !!! test pcn
+  -- Pack immediate into sum format
+  s_pc_imm(c_sum_wide-2 downto r_pc'low)  <= unsigned(r_imm(c_sum_wide-2 downto r_pc'low));
+  s_pc_imm(r_pc'high downto c_sum_wide-1) <= (others => r_imm(c_sum_wide-1));
+  
+  s_pc_next <= std_logic_vector(unsigned(r_pc) + 1);
+  s_pc_jump <= std_logic_vector(unsigned(r_pc) + s_pc_imm);
+  s_pc_sum  <= s_sum_low(s_pc_sum'range);
+  
+  s_is_next <= f_opa_bit(s_pc_next = r_pcn);
+  s_is_jump <= f_opa_bit(s_pc_jump = r_pcn);
+  s_is_sum  <= f_opa_bit(s_pc_sum  = r_pcn);
+  
+  s_br_fault <=
+    not s_is_sum              when r_mode = c_opa_fast_jump else
+    not s_is_jump and r_fault when s_comparison(0) = '1'    else
+    not s_is_next and r_fault;
+    
+  s_br_target <= 
+    s_pc_sum  when r_mode = c_opa_fast_jump else
+    s_pc_jump when s_comparison(0) = '1'    else 
+    s_pc_next;
+  
+  issue_fault_o <= r_stb and s_br_fault;
+  issue_pcf_o   <= r_pcf;
+  issue_pc_o    <= std_logic_vector(r_pc);
+  issue_pcn_o   <= s_br_target;
   
 end rtl;

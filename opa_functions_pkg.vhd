@@ -74,7 +74,7 @@ package opa_functions_pkg is
   function f_opa_reverse(x : std_logic_vector) return std_logic_vector;
   
   -- Define the arguments needed for operations in our execution units
-  constant c_arg_wide : natural := 7;
+  constant c_arg_wide : natural := 8;
   
   constant c_opa_jump_never  : std_logic_vector(1 downto 0) := "00";
   constant c_opa_jump_seldom : std_logic_vector(1 downto 0) := "01";
@@ -124,34 +124,30 @@ package opa_functions_pkg is
     arg   => (others => '-'));
   
   -- Fast execute units operate in one of four modes
-  --   lut   (00): result[i]=table(a[i]b[i])        fault=(b+imm)!=pcn          target=b  + imm
-  -- !!! the above won't work for both jal and jalr. must still check jal as no comparison in decode.
-  --   addlu (01): result=(nota^a)+(notb^b)+cin     fault=taken!=(a=b)xor(nota) target=PC +(imm|0)
-  --   addhs (01): result=(nota^a)+(notb^b)+cin>>31 fault=taken!=result         target=PC +(imm|0)
-  --   addhu (01): result=(nota^a)+(notb^b)+cin>>32 fault=taken!=result         target=PC +(imm|0)
   -- An example of instructions each mode can handle:
-  --   lut:   XORI, ORI,  ANDI,  XOR, OR, AND, JAL, JALR, LUI
-  --   addlu: BEQ,  BNE,  AUIPC, ADDI, ADD, SUB
-  --   addhs: BLT,  BGE,  SLTI,  SLT
-  --   addhu: BLTU, BGEU, SLTIU, SLTU
+  --   lut:   XORI, ORI,  ANDI,  XOR, OR, AND, LUI
+  --   addlu: AUIPC, ADDI, ADD, SUB
+  --   addhs: BLT,  BGE,  SLTI,  SLT, BLTU, BGEU, SLTIU, SLTU, BEQ, BNE
+  --   jump:  JAL,  JALR
   
   constant c_opa_fast_lut  : std_logic_vector(1 downto 0) := "00";
   constant c_opa_fast_addl : std_logic_vector(1 downto 0) := "01";
   constant c_opa_fast_addh : std_logic_vector(1 downto 0) := "10";
-  -- fourth option is reserved. maybe shifter, equality, or sign-extension.
+  constant c_opa_fast_jump : std_logic_vector(1 downto 0) := "11";
+  -- LM32 needs to fit sign extension in here somehow
   
   type t_opa_fast is record
     mode  : std_logic_vector(1 downto 0);
-    table : std_logic_vector(3 downto 0);
-    fault : std_logic; -- when fault mux is high, restart cpu at target
+    raw   : std_logic_vector(5 downto 0);
   end record t_opa_fast;
   
-  -- A convenience type for creating t_opa_fast's table
   type t_opa_adder is record 
-    nota   : std_logic;
-    notb   : std_logic;
-    cin    : std_logic;
-    sign   : std_logic;
+    eq    : std_logic;
+    nota  : std_logic;
+    notb  : std_logic;
+    cin   : std_logic;
+    sign  : std_logic;
+    fault : std_logic;
   end record t_opa_adder;
   
   -- Slow execute units operate in one of four modes
@@ -172,7 +168,7 @@ package opa_functions_pkg is
   
   type t_opa_slow is record
     mode  : std_logic_vector(1 downto 0);
-    table : std_logic_vector(3 downto 0);
+    raw   : std_logic_vector(5 downto 0);
   end record t_opa_slow;
   
   type t_opa_mul is record
@@ -204,13 +200,15 @@ package opa_functions_pkg is
   function f_opa_slow_from_arg(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_slow;
   
   function f_opa_fast_from_adder(x : t_opa_adder) return std_logic_vector;
+  function f_opa_fast_from_lut  (x : std_logic_vector(3 downto 0)) return std_logic_vector;
   function f_opa_slow_from_mul  (x : t_opa_mul)   return std_logic_vector;
   function f_opa_slow_from_shift(x : t_opa_shift) return std_logic_vector;
   function f_opa_slow_from_ldst (x : t_opa_ldst)  return std_logic_vector;
-  function f_opa_adder_from_fast(x : std_logic_vector(3 downto 0)) return t_opa_adder;
-  function f_opa_mul_from_slow  (x : std_logic_vector(3 downto 0)) return t_opa_mul;
-  function f_opa_shift_from_slow(x : std_logic_vector(3 downto 0)) return t_opa_shift;
-  function f_opa_ldst_from_slow (x : std_logic_vector(3 downto 0)) return t_opa_ldst;
+  function f_opa_adder_from_fast(x : std_logic_vector(5 downto 0)) return t_opa_adder;
+  function f_opa_lut_from_fast  (x : std_logic_vector(5 downto 0)) return std_logic_vector;
+  function f_opa_mul_from_slow  (x : std_logic_vector(5 downto 0)) return t_opa_mul;
+  function f_opa_shift_from_slow(x : std_logic_vector(5 downto 0)) return t_opa_shift;
+  function f_opa_ldst_from_slow (x : std_logic_vector(5 downto 0)) return t_opa_ldst;
 
 end package;
 
@@ -679,8 +677,7 @@ package body opa_functions_pkg is
     variable result : std_logic_vector(c_arg_wide-1 downto 0) := (others => '-');
   begin
     result(1 downto 0) := x.mode;
-    result(5 downto 2) := x.table;
-    result(6) := x.fault;
+    result(7 downto 2) := x.raw;
     return result;
   end f_opa_arg_from_fast;
   
@@ -688,39 +685,48 @@ package body opa_functions_pkg is
     variable result : std_logic_vector(c_arg_wide-1 downto 0) := (others => '-');
   begin
     result(1 downto 0) := x.mode;
-    result(5 downto 2) := x.table;
+    result(7 downto 2) := x.raw;
     return result;
   end f_opa_arg_from_slow;
   
   function f_opa_fast_from_arg(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_fast is
     variable result : t_opa_fast;
   begin
-    result.mode  := x(1 downto 0);
-    result.table := x(5 downto 2);
-    result.fault := x(6);
+    result.mode := x(1 downto 0);
+    result.raw  := x(7 downto 2);
     return result;
   end f_opa_fast_from_arg;
   
   function f_opa_slow_from_arg(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_slow is
     variable result : t_opa_slow;
   begin
-    result.mode  := x(1 downto 0);
-    result.table := x(5 downto 2);
+    result.mode := x(1 downto 0);
+    result.raw  := x(7 downto 2);
     return result;
   end f_opa_slow_from_arg;
   
   function f_opa_fast_from_adder(x : t_opa_adder) return std_logic_vector is
-    variable result : std_logic_vector(3 downto 0) := (others => '-');
+    variable result : std_logic_vector(5 downto 0) := (others => '-');
   begin
-    result(0) := x.nota;
-    result(1) := x.notb;
-    result(2) := x.cin;
-    result(3) := x.sign;
+    result(0) := x.eq;
+    result(1) := x.nota;
+    result(2) := x.notb;
+    result(3) := x.cin;
+    result(4) := x.sign;
+    result(5) := x.fault;
     return result;
   end f_opa_fast_from_adder;
   
+  function f_opa_fast_from_lut  (x : std_logic_vector(3 downto 0)) return std_logic_vector is
+    variable result : std_logic_vector(5 downto 0) := (others => '-');
+  begin
+    result(x'range) := x;
+    result(5) := '0'; -- make fault 0 for LUT mode
+    return result;
+  end f_opa_fast_from_lut;
+  
   function f_opa_slow_from_mul  (x : t_opa_mul)   return std_logic_vector is
-    variable result : std_logic_vector(3 downto 0) := (others => '-');
+    variable result : std_logic_vector(5 downto 0) := (others => '-');
   begin
     result(0) := x.sexta;
     result(1) := x.sextb;
@@ -730,7 +736,7 @@ package body opa_functions_pkg is
   end f_opa_slow_from_mul;
   
   function f_opa_slow_from_shift(x : t_opa_shift) return std_logic_vector is
-    variable result : std_logic_vector(3 downto 0) := (others => '-');
+    variable result : std_logic_vector(5 downto 0) := (others => '-');
   begin
     result(0) := x.sext;
     result(3) := x.right;
@@ -738,24 +744,33 @@ package body opa_functions_pkg is
   end f_opa_slow_from_shift;
   
   function f_opa_slow_from_ldst (x : t_opa_ldst)  return std_logic_vector is
-    variable result : std_logic_vector(3 downto 0) := (others => '-');
+    variable result : std_logic_vector(5 downto 0) := (others => '-');
   begin
     result(0) := x.sext;
     result(3 downto 2) := x.size;
     return result;
   end f_opa_slow_from_ldst;
   
-  function f_opa_adder_from_fast(x : std_logic_vector(3 downto 0)) return t_opa_adder is
+  function f_opa_adder_from_fast(x : std_logic_vector(5 downto 0)) return t_opa_adder is
     variable result : t_opa_adder;
   begin
-    result.nota  := x(0);
-    result.notb  := x(1);
-    result.cin   := x(2);
-    result.sign  := x(3);
+    result.eq    := x(0);
+    result.nota  := x(1);
+    result.notb  := x(2);
+    result.cin   := x(3);
+    result.sign  := x(4);
+    result.fault := x(5);
     return result;
   end f_opa_adder_from_fast;
   
-  function f_opa_mul_from_slow  (x : std_logic_vector(3 downto 0)) return t_opa_mul is
+  function f_opa_lut_from_fast  (x : std_logic_vector(5 downto 0)) return std_logic_vector is
+    variable result : std_logic_vector(3 downto 0);
+  begin
+    result := x(result'range);
+    return result;
+  end f_opa_lut_from_fast;
+  
+  function f_opa_mul_from_slow  (x : std_logic_vector(5 downto 0)) return t_opa_mul is
     variable result : t_opa_mul;
   begin
     result.sexta  := x(0);
@@ -765,7 +780,7 @@ package body opa_functions_pkg is
     return result;
   end f_opa_mul_from_slow;
   
-  function f_opa_shift_from_slow(x : std_logic_vector(3 downto 0)) return t_opa_shift is
+  function f_opa_shift_from_slow(x : std_logic_vector(5 downto 0)) return t_opa_shift is
     variable result : t_opa_shift;
   begin
     result.sext  := x(0);
@@ -773,7 +788,7 @@ package body opa_functions_pkg is
     return result;
   end f_opa_shift_from_slow;
   
-  function f_opa_ldst_from_slow (x : std_logic_vector(3 downto 0)) return t_opa_ldst is
+  function f_opa_ldst_from_slow (x : std_logic_vector(5 downto 0)) return t_opa_ldst is
     variable result : t_opa_ldst;
   begin
     result.sext := x(0);

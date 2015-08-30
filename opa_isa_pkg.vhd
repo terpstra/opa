@@ -176,18 +176,23 @@ package body opa_isa_pkg is
   
   -- JAL has a special format
   function f_decode_jal  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
+    variable adder : t_opa_adder;
     variable fast  : t_opa_fast;
     variable op    : t_opa_op := c_opa_op_bad;
   begin
-    -- !!! this one needs to be somehow confirmed in EU still.
-    fast.mode   := c_opa_fast_lut;
-    fast.table  := "1100"; -- X = A !!! needs a +4
-    fast.fault  := '1';
+    adder.eq    := '0';
+    adder.nota  := '0';
+    adder.notb  := '0';
+    adder.cin   := '0';
+    adder.sign  := '-';
+    adder.fault := '0';
+    fast.mode   := c_opa_fast_jump;
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.bad      := '0';
     op.jump     := c_opa_jump_always;
     op.dest     := c_opa_jump_add_immediate;
     op.geta     := '0'; -- PC
-    op.getb     := '0';
+    op.getb     := '0'; -- imm
     op.archx    := x(11 downto  7);
     op.setx     := not f_zero(op.archx);
     op.push     := f_one(op.archx);
@@ -202,21 +207,21 @@ package body opa_isa_pkg is
     return op;
   end f_decode_jal;
   
-  -- JALR has a special format
   function f_decode_jalr (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
+    variable adder : t_opa_adder;
     variable fast  : t_opa_fast;
     variable op    : t_opa_op;
   begin
-    fast.mode   := c_opa_fast_lut;
-    fast.table  := "1100"; -- X = A !!! needs a +4
-    fast.fault  := '1';
-    op.bad      := '0';
+    op := f_parse_itype(x);
+    adder.eq    := '0';
+    adder.nota  := '0';
+    adder.notb  := '0';
+    adder.cin   := '0';
+    adder.sign  := '-';
+    adder.fault := '0';
+    fast.mode   := c_opa_fast_jump;
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.jump     := c_opa_jump_always;
-    op.geta     := '0'; -- a = PC
-    op.getb     := '1'; -- b = register
-    op.archb    := x(19 downto 15); -- Not a bug! We want the target in regb
-    op.archx    := x(11 downto  7);
-    op.setx     := not f_zero(op.archx);
     op.push     := f_one(op.archx);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
@@ -225,9 +230,6 @@ package body opa_isa_pkg is
     else
       op.dest   := c_opa_jump_unknown;
     end if;      
-    -- I-type
-    op.imm := (others => x(31));
-    op.imm(10 downto 0) := x(30 downto 20);
     return op;
   end f_decode_jalr;
   
@@ -237,8 +239,7 @@ package body opa_isa_pkg is
   begin
     op := f_parse_utype(x);
     fast.mode   := c_opa_fast_lut;
-    fast.table  := "1010"; -- X = B
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_lut("1010"); -- X = B
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -250,13 +251,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_utype(x);
+    adder.eq    := '0';
     adder.nota  := '0';
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '-';
+    adder.fault := '0';
     fast.mode   := c_opa_fast_addl;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -268,13 +270,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_sbtype(x);
-    adder.nota  := '0';
-    adder.notb  := '-'; -- We don't actually use the adder
-    adder.cin   := '-';
-    adder.sign  := '-';
-    fast.mode   := c_opa_fast_addl;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '1';
+    adder.eq    := '1';
+    adder.nota  := '1';
+    adder.notb  := '0';
+    adder.cin   := '1';
+    adder.sign  := '0';
+    adder.fault := '1';
+    fast.mode   := c_opa_fast_addh;
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -286,13 +289,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_sbtype(x);
-    adder.nota  := '1';
-    adder.notb  := '-'; -- We don't actually use the adder
-    adder.cin   := '-';
-    adder.sign  := '-';
-    fast.mode   := c_opa_fast_addl;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '1';
+    adder.eq    := '1';
+    adder.nota  := '0';
+    adder.notb  := '1';
+    adder.cin   := '0';
+    adder.sign  := '0';
+    adder.fault := '1';
+    fast.mode   := c_opa_fast_addh;
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -304,13 +308,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_sbtype(x);
+    adder.eq    := '0';
     adder.nota  := '1'; -- x=(a<b)=(b-a>0)=(b-a-1>=0)=overflow(b-a-1)=overflow(b+!a)
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '1';
+    adder.fault := '1';
     fast.mode   := c_opa_fast_addh;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '1';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -322,13 +327,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_sbtype(x);
+    adder.eq    := '0';
     adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
     adder.notb  := '1';
     adder.cin   := '1';
     adder.sign  := '1';
+    adder.fault := '1';
     fast.mode   := c_opa_fast_addh;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '1';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -340,13 +346,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_sbtype(x);
+    adder.eq    := '0';
     adder.nota  := '1'; -- x=(a<b)=(b-a>0)=(b-a-1>=0)=overflow(b-a-1)=overflow(b+!a)
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '0';
+    adder.fault := '1';
     fast.mode   := c_opa_fast_addh;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '1';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -358,13 +365,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_sbtype(x);
+    adder.eq    := '0';
     adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
     adder.notb  := '1';
     adder.cin   := '1';
     adder.sign  := '0';
+    adder.fault := '1';
     fast.mode   := c_opa_fast_addh;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '1';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -379,7 +387,7 @@ package body opa_isa_pkg is
     ldst.size   := c_opa_ldst_byte;
     ldst.sext   := '1';
     slow.mode   := c_opa_slow_load;
-    slow.table  := f_opa_slow_from_ldst(ldst);
+    slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -394,7 +402,7 @@ package body opa_isa_pkg is
     ldst.size   := c_opa_ldst_half;
     ldst.sext   := '1';
     slow.mode   := c_opa_slow_load;
-    slow.table  := f_opa_slow_from_ldst(ldst);
+    slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -409,7 +417,7 @@ package body opa_isa_pkg is
     ldst.size   := c_opa_ldst_word;
     ldst.sext   := '1';
     slow.mode   := c_opa_slow_load;
-    slow.table  := f_opa_slow_from_ldst(ldst);
+    slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -424,7 +432,7 @@ package body opa_isa_pkg is
     ldst.size   := c_opa_ldst_byte;
     ldst.sext   := '0';
     slow.mode   := c_opa_slow_load;
-    slow.table  := f_opa_slow_from_ldst(ldst);
+    slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -439,7 +447,7 @@ package body opa_isa_pkg is
     ldst.size   := c_opa_ldst_half;
     ldst.sext   := '0';
     slow.mode   := c_opa_slow_load;
-    slow.table  := f_opa_slow_from_ldst(ldst);
+    slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -454,7 +462,7 @@ package body opa_isa_pkg is
     ldst.size   := c_opa_ldst_byte;
     ldst.sext   := '-';
     slow.mode   := c_opa_slow_store;
-    slow.table  := f_opa_slow_from_ldst(ldst);
+    slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -469,7 +477,7 @@ package body opa_isa_pkg is
     ldst.size   := c_opa_ldst_half;
     ldst.sext   := '-';
     slow.mode   := c_opa_slow_store;
-    slow.table  := f_opa_slow_from_ldst(ldst);
+    slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -484,7 +492,7 @@ package body opa_isa_pkg is
     ldst.size   := c_opa_ldst_word;
     ldst.sext   := '-';
     slow.mode   := c_opa_slow_store;
-    slow.table  := f_opa_slow_from_ldst(ldst);
+    slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -496,13 +504,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
+    adder.eq    := '0';
     adder.nota  := '0';
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '-';
+    adder.fault := '0';
     fast.mode   := c_opa_fast_addl;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -514,13 +523,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
+    adder.eq    := '0';
     adder.nota  := '1'; -- x=(a<b)=(b-a>0)=(b-a-1>=0)=overflow(b-a-1)=overflow(b+!a)
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '1';
+    adder.fault := '0';
     fast.mode   := c_opa_fast_addh;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -532,13 +542,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
+    adder.eq    := '0';
     adder.nota  := '1'; -- x=(a<b)=(b-a>0)=(b-a-1>=0)=overflow(b-a-1)=overflow(b+!a)
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '0';
+    adder.fault := '0';
     fast.mode   := c_opa_fast_addh;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -550,8 +561,7 @@ package body opa_isa_pkg is
   begin
     op := f_parse_itype(x);
     fast.mode   := c_opa_fast_lut;
-    fast.table  := "0110"; -- X = A xor B
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_lut("0110"); -- X = A xor B
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -563,8 +573,7 @@ package body opa_isa_pkg is
   begin
     op := f_parse_itype(x);
     fast.mode   := c_opa_fast_lut;
-    fast.table  := "1110"; -- X = A or B
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_lut("1110"); -- X = A or B
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -576,8 +585,7 @@ package body opa_isa_pkg is
   begin
     op := f_parse_itype(x);
     fast.mode   := c_opa_fast_lut;
-    fast.table  := "1000"; -- X = A and B
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_lut("1000"); -- X = A and B
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -592,7 +600,7 @@ package body opa_isa_pkg is
     shift.right := '0';
     shift.sext  := '0';
     slow.mode   := c_opa_slow_shift;
-    slow.table  := f_opa_slow_from_shift(shift);
+    slow.raw    := f_opa_slow_from_shift(shift);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -607,7 +615,7 @@ package body opa_isa_pkg is
     shift.right := '1';
     shift.sext  := '0';
     slow.mode   := c_opa_slow_shift;
-    slow.table  := f_opa_slow_from_shift(shift);
+    slow.raw    := f_opa_slow_from_shift(shift);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -622,7 +630,7 @@ package body opa_isa_pkg is
     shift.right := '1';
     shift.sext  := '1';
     slow.mode   := c_opa_slow_shift;
-    slow.table  := f_opa_slow_from_shift(shift);
+    slow.raw    := f_opa_slow_from_shift(shift);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -633,13 +641,14 @@ package body opa_isa_pkg is
     variable fast  : t_opa_fast;
     variable op    : t_opa_op;
   begin
+    adder.eq    := '0';
     adder.nota  := '0';
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '-';
+    adder.fault := '0';
     fast.mode   := c_opa_fast_addl;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -651,13 +660,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_rtype(x);
+    adder.eq    := '0';
     adder.nota  := '0';
     adder.notb  := '1';
     adder.cin   := '1';
     adder.sign  := '-';
+    adder.fault := '0';
     fast.mode   := c_opa_fast_addl;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -669,13 +679,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_rtype(x);
+    adder.eq    := '0';
     adder.nota  := '1'; -- x=(a<b)=(b-a>0)=(b-a-1>=0)=overflow(b-a-1)=overflow(b+!a)
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '1';
+    adder.fault := '0';
     fast.mode   := c_opa_fast_addh;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -687,13 +698,14 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_rtype(x);
+    adder.eq    := '0';
     adder.nota  := '1'; -- x=(a<b)=(b-a>0)=(b-a-1>=0)=overflow(b-a-1)=overflow(b+!a)
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '0';
+    adder.fault := '0';
     fast.mode   := c_opa_fast_addh;
-    fast.table  := f_opa_fast_from_adder(adder);
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_adder(adder);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -705,8 +717,7 @@ package body opa_isa_pkg is
   begin
     op := f_parse_rtype(x);
     fast.mode   := c_opa_fast_lut;
-    fast.table  := "0110"; -- X = A xor B
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_lut("0110"); -- X = A xor B
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -718,8 +729,7 @@ package body opa_isa_pkg is
   begin
     op := f_parse_rtype(x);
     fast.mode   := c_opa_fast_lut;
-    fast.table  := "1110"; -- X = A or B
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_lut("1110"); -- X = A or B
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -731,8 +741,7 @@ package body opa_isa_pkg is
   begin
     op := f_parse_rtype(x);
     fast.mode   := c_opa_fast_lut;
-    fast.table  := "1000"; -- X = A and B
-    fast.fault  := '0';
+    fast.raw    := f_opa_fast_from_lut("1000"); -- X = A and B
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
     return op;
@@ -747,7 +756,7 @@ package body opa_isa_pkg is
     shift.right := '0';
     shift.sext  := '0';
     slow.mode   := c_opa_slow_shift;
-    slow.table  := f_opa_slow_from_shift(shift);
+    slow.raw    := f_opa_slow_from_shift(shift);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -762,7 +771,7 @@ package body opa_isa_pkg is
     shift.right := '1';
     shift.sext  := '0';
     slow.mode   := c_opa_slow_shift;
-    slow.table  := f_opa_slow_from_shift(shift);
+    slow.raw    := f_opa_slow_from_shift(shift);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -777,7 +786,7 @@ package body opa_isa_pkg is
     shift.right := '1';
     shift.sext  := '1';
     slow.mode   := c_opa_slow_shift;
-    slow.table  := f_opa_slow_from_shift(shift);
+    slow.raw    := f_opa_slow_from_shift(shift);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -794,7 +803,7 @@ package body opa_isa_pkg is
     mul.high    := '0';
     mul.divide  := '0';
     slow.mode   := c_opa_slow_mul;
-    slow.table  := f_opa_slow_from_mul(mul);
+    slow.raw    := f_opa_slow_from_mul(mul);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -811,7 +820,7 @@ package body opa_isa_pkg is
     mul.high    := '1';
     mul.divide  := '0';
     slow.mode   := c_opa_slow_mul;
-    slow.table  := f_opa_slow_from_mul(mul);
+    slow.raw    := f_opa_slow_from_mul(mul);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -828,7 +837,7 @@ package body opa_isa_pkg is
     mul.high    := '1';
     mul.divide  := '0';
     slow.mode   := c_opa_slow_mul;
-    slow.table  := f_opa_slow_from_mul(mul);
+    slow.raw    := f_opa_slow_from_mul(mul);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -845,7 +854,7 @@ package body opa_isa_pkg is
     mul.high    := '1';
     mul.divide  := '0';
     slow.mode   := c_opa_slow_mul;
-    slow.table  := f_opa_slow_from_mul(mul);
+    slow.raw    := f_opa_slow_from_mul(mul);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -862,7 +871,7 @@ package body opa_isa_pkg is
     mul.high    := '0';
     mul.divide  := '1';
     slow.mode   := c_opa_slow_mul;
-    slow.table  := f_opa_slow_from_mul(mul);
+    slow.raw    := f_opa_slow_from_mul(mul);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -879,7 +888,7 @@ package body opa_isa_pkg is
     mul.high    := '0';
     mul.divide  := '1';
     slow.mode   := c_opa_slow_mul;
-    slow.table  := f_opa_slow_from_mul(mul);
+    slow.raw    := f_opa_slow_from_mul(mul);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -896,7 +905,7 @@ package body opa_isa_pkg is
     mul.high    := '1';
     mul.divide  := '1';
     slow.mode   := c_opa_slow_mul;
-    slow.table  := f_opa_slow_from_mul(mul);
+    slow.raw    := f_opa_slow_from_mul(mul);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
@@ -913,7 +922,7 @@ package body opa_isa_pkg is
     mul.high    := '1';
     mul.divide  := '1';
     slow.mode   := c_opa_slow_mul;
-    slow.table  := f_opa_slow_from_mul(mul);
+    slow.raw    := f_opa_slow_from_mul(mul);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
     return op;
