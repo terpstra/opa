@@ -106,7 +106,6 @@ architecture rtl of opa is
   signal rename_issue_geta      : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_getb      : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_aux       : std_logic_vector(c_aux_wide-1 downto 0);
-  signal rename_issue_oldx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_bakx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_baka      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal rename_issue_bakb      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
@@ -114,8 +113,9 @@ architecture rtl of opa is
   signal rename_issue_statb     : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
   
   signal issue_rename_stall     : std_logic;
-  signal issue_rename_oldx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal issue_rename_bakx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal issue_rename_fault     : std_logic;
+  signal issue_rename_mask      : std_logic_vector(c_decoders-1 downto 0);
   signal issue_rename_pc        : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal issue_rename_pcf       : std_logic_vector(c_fetch_wide-1 downto c_op_align);
   signal issue_rename_pcn       : std_logic_vector(c_adr_wide-1 downto c_op_align);
@@ -192,6 +192,8 @@ begin
     assert (g_config.adr_width <= 2**g_config.log_width)
     report "registers must be larger than virtual address space"
     severity failure;
+
+  -- !!! include our own reset extender
 
   predict : opa_predict
     generic map(
@@ -303,14 +305,14 @@ begin
       issue_geta_o   => rename_issue_geta,
       issue_getb_o   => rename_issue_getb,
       issue_aux_o    => rename_issue_aux,
-      issue_oldx_o   => rename_issue_oldx,
       issue_bakx_o   => rename_issue_bakx,
       issue_baka_o   => rename_issue_baka,
       issue_bakb_o   => rename_issue_bakb,
       issue_stata_o  => rename_issue_stata,
       issue_statb_o  => rename_issue_statb,
-      issue_oldx_i   => issue_rename_oldx,
+      issue_bakx_i   => issue_rename_bakx,
       issue_fault_i  => issue_rename_fault,
+      issue_mask_i   => issue_rename_mask,
       issue_pc_i     => issue_rename_pc,
       issue_pcf_i    => issue_rename_pcf,
       issue_pcn_i    => issue_rename_pcn,
@@ -333,18 +335,18 @@ begin
       rename_geta_i  => rename_issue_geta,
       rename_getb_i  => rename_issue_getb,
       rename_aux_i   => rename_issue_aux,
-      rename_oldx_i  => rename_issue_oldx,
       rename_bakx_i  => rename_issue_bakx,
       rename_baka_i  => rename_issue_baka,
       rename_bakb_i  => rename_issue_bakb,
       rename_stata_i => rename_issue_stata,
       rename_statb_i => rename_issue_statb,
-      rename_oldx_o  => issue_rename_oldx,
+      rename_bakx_o  => issue_rename_bakx,
       eu_fault_i     => eu_issue_fault,
       eu_pc_i        => eu_issue_pc,
       eu_pcf_i       => eu_issue_pcf,
       eu_pcn_i       => eu_issue_pcn,
       rename_fault_o => issue_rename_fault,
+      rename_mask_o  => issue_rename_mask,
       rename_pc_o    => issue_rename_pc,
       rename_pcf_o   => issue_rename_pcf,
       rename_pcn_o   => issue_rename_pcn,

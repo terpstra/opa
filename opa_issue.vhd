@@ -24,13 +24,12 @@ entity opa_issue is
     rename_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
     rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-    rename_oldx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_baka_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_bakb_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     rename_stata_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
     rename_statb_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    rename_oldx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    rename_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
     -- Exceptions from the EUs
     eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -40,6 +39,7 @@ entity opa_issue is
      
     -- Selected fault fed back up pipeline
     rename_fault_o : out std_logic;
+    rename_mask_o  : out std_logic_vector(f_opa_decoders  (g_config)-1 downto 0);
     rename_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
     rename_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
     rename_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
@@ -78,6 +78,8 @@ architecture rtl of opa_issue is
   constant c_fast_zeros    : std_logic_vector(c_num_fast -1 downto 0) := (others => '0');
   constant c_slow_ones     : std_logic_vector(c_num_slow -1 downto 0) := (others => '1');
   constant c_slow_only     : std_logic_vector(c_executers-1 downto 0) := c_slow_ones & c_fast_zeros;
+  
+  constant c_init_bak : t_opa_matrix := f_opa_labels(c_num_stat, c_back_wide, c_num_arch);
 
   -- Instructions have these flags:
   --   issued: was previously selected by arbitration and not stalled
@@ -107,10 +109,10 @@ architecture rtl of opa_issue is
   -- These have 1 latency indexes
   signal s_schedule_fast : t_opa_matrix(c_num_fast-1  downto 0, c_num_stat-1 downto 0);
   signal s_schedule_slow : t_opa_matrix(c_num_slow-1  downto 0, c_num_stat-1 downto 0);
-  signal r_schedule0     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
-  signal r_schedule1     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
-  signal r_schedule2     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
-  signal r_schedule3     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  signal r_schedule0     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
+  signal r_schedule1     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
+  signal r_schedule2     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
+  signal r_schedule3     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal s_schedule_wb   : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
   
   signal s_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
@@ -119,25 +121,24 @@ architecture rtl of opa_issue is
   signal r_schedule_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
   
   -- These have 0 latency indexes (fed directly)
-  signal r_fast       : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_slow       : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_fast       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
+  signal r_slow       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
   signal s_issued     : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_issued     : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_issued     : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
   -- These have 0 latency indexes, but 1 latency content
   signal s_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
-  signal r_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
+  signal r_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0) := (others => (others => '1'));
   signal s_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
-  signal r_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
+  signal r_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0) := (others => (others => '1'));
   -- These have 1 latency indexes (fed by skidpad)
   signal s_ready      : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_ready      : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_ready      : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
   signal s_final      : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_final      : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_final      : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
   signal r_geta       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_getb       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_aux        : t_opa_matrix(c_num_stat-1 downto 0, c_aux_wide -1 downto 0);
-  signal r_oldx       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
-  signal r_bakx       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
+  signal r_bakx       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0) := c_init_bak;
   signal r_baka       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
@@ -156,7 +157,6 @@ architecture rtl of opa_issue is
   -- Accept data from the renamer; use a skidpad to synchronize state
   signal r_sp_geta : std_logic_vector(c_decoders-1 downto 0);
   signal r_sp_getb : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sp_oldx : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_bakx : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_baka : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_bakb : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
@@ -167,19 +167,17 @@ architecture rtl of opa_issue is
   signal s_commit        : std_logic_vector(c_num_stat-1 downto 0);
   signal s_stall         : std_logic;
   signal s_shift         : std_logic;
-  signal r_shift         : std_logic;
+  signal r_shift         : std_logic := '0';
   
   -- Faults are resolved to the oldest and executed when all preceding ops are final
   signal r_fault_in      : std_logic_vector(c_executers-1 downto 0);
-  signal s_fault_pending : std_logic;
-  signal r_fault_pending : std_logic;
   signal s_all_faults    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
   signal s_fault_victor  : std_logic_vector(c_executers-1 downto 0);
-  signal r_fault_victor  : std_logic_vector(c_executers-1 downto 0);
+  signal r_fault_victor  : std_logic_vector(c_executers-1 downto 0) := (others => '0');
   signal s_fault_same    : std_logic;
-  signal r_fault_same    : std_logic;
+  signal r_fault_same    : std_logic := '0';
   signal s_fault_same_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
   signal s_fault_same_pcf: std_logic_vector(c_fetch_wide-1 downto c_op_align);
   signal s_fault_same_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
@@ -195,8 +193,12 @@ architecture rtl of opa_issue is
   signal s_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
   signal r_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
   signal s_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal s_fault_deps    : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_fault_tail    : std_logic_vector(c_decoders-1 downto 0);
+  signal s_fault_deps    : std_logic_vector(c_decoders-1 downto 0);
   signal s_fault_out     : std_logic;
+  signal r_fault_out     : std_logic := '0';
+  signal r_fault_out1    : std_logic;
+  signal r_fault_mask    : std_logic_vector(c_decoders-1 downto 0) := (others => '1');
   
   function f_pad(x : std_logic) return std_logic_vector is
     variable result : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
@@ -324,12 +326,11 @@ begin
   s_commit <= f_opa_product(f_opa_transpose(r_schedule3), r_commit);
   s_final  <= f_shift(r_final or s_commit, r_shift);
   s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
-  s_shift  <= rename_stb_i and not s_stall;
+  s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
     -- 2 levels with decoders <= 2
   
   -- Resolve faults to determine which fault wins
-  s_fault_pending <= f_opa_or(r_fault_in) or r_fault_pending;
   s_all_faults    <= f_opa_product(f_opa_transpose(r_schedule3), r_fault_in) or r_oldest_fault;
   s_oldest_fault  <= s_all_faults and std_logic_vector(0-unsigned(s_all_faults));
   s_fault_victor  <= f_opa_product(r_schedule3, s_oldest_fault);
@@ -343,26 +344,40 @@ begin
   s_fault_pcf <= f_opa_product(f_opa_transpose(r_fault_pcf1), r_fault_victor) or (r_fault_pcf and s_fault_same_pcf);
   s_fault_pcn <= f_opa_product(f_opa_transpose(r_fault_pcn1), r_fault_victor) or (r_fault_pcn and s_fault_same_pcn);
   
-  -- Fault out if all ops AFTER r_oldest_fault are r_final
-  s_fault_deps <= std_logic_vector(unsigned(r_oldest_fault) - 1);
-  s_fault_out <= f_opa_and(r_final or not s_fault_deps) and r_fault_pending;
+  -- Fault out if in last position and all prior ops are r_final
+  s_fault_tail <= f_shift(r_oldest_fault, r_shift)(c_decoders-1 downto 0);
+  s_fault_deps <= std_logic_vector(unsigned(s_fault_tail) - 1);
+  s_fault_out <= f_opa_and(s_final(c_decoders-1 downto 0) or not s_fault_deps) and f_opa_or(s_fault_tail);
   
   -- Forward the fault up the pipeline
-  rename_fault_o <= s_fault_out;
-  rename_pc_o    <= s_fault_pc;
-  rename_pcf_o   <= s_fault_pcf;
-  rename_pcn_o   <= s_fault_pcn;
+  rename_fault_o <= r_fault_out;
+  rename_mask_o  <= r_fault_mask;
+  rename_pc_o    <= r_fault_pc;
+  rename_pcf_o   <= r_fault_pcf;
+  rename_pcn_o   <= r_fault_pcn;
+  -- May only fault on a shift
   
   fault_ctl : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_fault_pending <= '0';
-      r_oldest_fault  <= (others => '0');
-      r_fault_victor  <= (others => '0');
-      r_fault_same    <= '0';
+      r_fault_in     <= (others => '0');
+      r_fault_out    <= '0';
+      r_fault_mask   <= (others => '1');
+      r_oldest_fault <= (others => '0');
+      r_fault_victor <= (others => '0');
+      r_fault_same   <= '0';
     elsif rising_edge(clk_i) then
-      r_fault_pending <= s_fault_pending;
-      r_oldest_fault  <= f_shift(s_oldest_fault, r_shift);
+      if r_fault_out = '1' then
+        r_fault_in     <= (others => '0');
+        r_fault_out    <= '0';
+        r_fault_mask   <= (others => '1');
+        r_oldest_fault <= (others => '0');
+      else
+        r_fault_in     <= eu_fault_i;
+        r_fault_out    <= s_fault_out;
+        r_fault_mask   <= s_fault_deps or s_fault_tail;
+        r_oldest_fault <= f_shift(s_oldest_fault, r_shift);
+      end if;
       r_fault_victor  <= s_fault_victor;
       r_fault_same    <= s_fault_same;
     end if;
@@ -371,7 +386,6 @@ begin
   fault_adr : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_fault_in   <= eu_fault_i;
       r_fault_pc0  <= eu_pc_i;
       r_fault_pcf0 <= eu_pcf_i;
       r_fault_pcn0 <= eu_pcn_i;
@@ -381,6 +395,7 @@ begin
       r_fault_pc   <= s_fault_pc;
       r_fault_pcf  <= s_fault_pcf;
       r_fault_pcn  <= s_fault_pcn;
+      r_fault_out1 <= r_fault_out;
     end if;
   end process;
   
@@ -388,33 +403,12 @@ begin
   s_stata <= f_opa_decrement(r_stata, c_decoders) when r_shift='1' else r_stata;
   s_statb <= f_opa_decrement(r_statb, c_decoders) when r_shift='1' else r_statb;
   
-  -- Feed back unused registers to the renamer
-  oldx : process(clk_i, rst_n_i) is
-  begin
-    if rst_n_i = '0' then
-      for b in 0 to c_back_wide-1 loop
-        for i in 0 to c_decoders-1 loop
-          rename_oldx_o(i,b) <= to_unsigned(c_num_arch+c_num_stat+i, c_back_wide)(b);
-        end loop;
-      end loop;
-    elsif rising_edge(clk_i) then
-      if s_shift = '1' then -- clock enable
-        if r_shift = '1' then -- load enable
-          for b in 0 to c_back_wide-1 loop
-            for i in 0 to c_decoders-1 loop
-              rename_oldx_o(i,b) <= r_oldx(i+c_decoders,b);
-            end loop;
-          end loop;
-        else
-          for b in 0 to c_back_wide-1 loop
-            for i in 0 to c_decoders-1 loop
-              rename_oldx_o(i,b) <= r_oldx(i,b);
-            end loop;
-          end loop;
-        end if;
-      end if;
-    end if;
-  end process;
+  -- Feed back unused registers back to the renamer
+  bakx_o : for b in 0 to c_back_wide-1 generate
+    dec : for i in 0 to c_decoders-1 generate
+      rename_bakx_o(i,b) <= r_bakx(i+c_decoders,b) when r_shift='1' else r_bakx(i,b);
+    end generate;
+  end generate;
   
   -- Register the inputs with reset, with clock enable
   skidpad : process(clk_i) is
@@ -423,7 +417,6 @@ begin
       if s_shift = '1' then
         r_sp_geta <= rename_geta_i;
         r_sp_getb <= rename_getb_i;
-        r_sp_oldx <= rename_oldx_i;
         r_sp_bakx <= rename_bakx_i;
         r_sp_baka <= rename_baka_i;
         r_sp_bakb <= rename_bakb_i;
@@ -433,15 +426,30 @@ begin
   end process;
   
   -- Register the stations 0-latency with reset, with load enable
+  stations_0rsl : process(rst_n_i, clk_i) is
+  begin
+    if rst_n_i = '0' then -- asynchronous clear
+      r_issued <= (others => '1');
+    elsif rising_edge(clk_i) then
+      if r_fault_out = '1' then -- synchronous clear
+        r_issued <= (others => '1');
+      else
+        if s_shift = '1' then -- load enable
+          r_issued <= c_decoder_zeros & s_issued(c_num_stat-1 downto c_decoders);
+        else
+          r_issued <= s_issued;
+        end if;
+      end if;
+    end if;
+  end process;
+  
   stations_0rl : process(rst_n_i, clk_i) is
   begin
-    if rst_n_i = '0' then
-      r_issued <= (others => '1');
+    if rst_n_i = '0' then -- asynchronous clear
       r_stata  <= (others => (others => '1'));
-      r_stata  <= (others => (others => '1'));
+      r_statb  <= (others => (others => '1'));
     elsif rising_edge(clk_i) then
       if s_shift = '1' then -- load enable
-        r_issued <= c_decoder_zeros & s_issued(c_num_stat-1 downto c_decoders);
         -- These two are sneaky; they are half lagged. Content lags thanks to s_stat[ab].
         for i in 0 to c_num_stat-c_decoders-1 loop
           for b in 0 to c_stat_wide-1 loop
@@ -456,7 +464,6 @@ begin
           end loop;
         end loop;
       else
-        r_issued <= s_issued;
         r_stata  <= s_stata;
         r_statb  <= s_statb;
       end if;
@@ -478,16 +485,42 @@ begin
   end process;
   
   -- Register the stations, 1-latency with reset
+  stations_1rs : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_ready     <= (others => '1');
+      r_final     <= (others => '1');
+      r_schedule0 <= (others => (others => '0'));
+      r_schedule1 <= (others => (others => '0'));
+      r_schedule2 <= (others => (others => '0'));
+      r_schedule3 <= (others => (others => '0'));
+    elsif rising_edge(clk_i) then
+      if (r_fault_out or r_fault_out1) = '1' then
+        r_ready     <= (others => '1');
+        r_final     <= (others => '1');
+        r_schedule0 <= (others => (others => '0'));
+        r_schedule1 <= (others => (others => '0'));
+        r_schedule2 <= (others => (others => '0'));
+        r_schedule3 <= (others => (others => '0'));
+      else
+        r_ready     <= s_ready;
+        r_final     <= s_final;
+        r_schedule0 <= f_opa_transpose(f_opa_concat(
+          f_opa_transpose(s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow)), 
+          f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
+        r_schedule1 <= f_shift(r_schedule0, r_shift);
+        r_schedule2 <= f_shift(r_schedule1, r_shift);
+        r_schedule3 <= f_shift(r_schedule2, r_shift);
+      end if;
+    end if;
+  end process;
+  
   stations_1r : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_shift  <= '0';
-      r_ready  <= (others => '1');
-      r_final  <= (others => '1');
+      r_shift <= '0';
     elsif rising_edge(clk_i) then
-      r_shift  <= s_shift;
-      r_ready  <= s_ready;
-      r_final  <= s_final;
+      r_shift <= s_shift;
     end if;
   end process;
   
@@ -495,12 +528,6 @@ begin
   stations_1 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_schedule0 <= f_opa_transpose(f_opa_concat(
-        f_opa_transpose(s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow)), 
-        f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
-      r_schedule1 <= f_shift(r_schedule0, r_shift);
-      r_schedule2 <= f_shift(r_schedule1, r_shift);
-      r_schedule3 <= f_shift(r_schedule2, r_shift);
       r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
       r_schedule_slow_issue <= s_schedule_slow_issue and s_pending_slow;
       r_commit <= not eu_fault_i;
@@ -511,21 +538,17 @@ begin
   stations_1rc : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      for b in 0 to c_back_wide-1 loop
-        for i in 0 to c_num_stat-1 loop
-          r_oldx(i,b) <= to_unsigned(c_num_arch+i, c_back_wide)(b);
-        end loop;
-      end loop;
+      r_bakx <= c_init_bak;
     elsif rising_edge(clk_i) then
       if r_shift = '1' then -- clock enable port
         for i in 0 to c_num_stat-c_decoders-1 loop
           for b in 0 to c_back_wide-1 loop
-            r_oldx(i,b) <= r_oldx(i+c_decoders,b);
+            r_bakx(i,b) <= r_bakx(i+c_decoders,b);
           end loop;
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
           for b in 0 to c_back_wide-1 loop
-            r_oldx(i,b) <= r_sp_oldx(i-(c_num_stat-c_decoders),b);
+            r_bakx(i,b) <= r_sp_bakx(i-(c_num_stat-c_decoders),b);
           end loop;
         end loop;
       end if;
@@ -546,7 +569,6 @@ begin
           for b in 0 to c_back_wide-1 loop
             r_baka(i,b) <= r_baka(i+c_decoders,b);
             r_bakb(i,b) <= r_bakb(i+c_decoders,b);
-            r_bakx(i,b) <= r_bakx(i+c_decoders,b);
           end loop;
         end loop;
         for i in c_num_stat-c_decoders to c_num_stat-1 loop
@@ -558,7 +580,6 @@ begin
           for b in 0 to c_back_wide-1 loop
             r_baka(i,b) <= r_sp_baka(i-(c_num_stat-c_decoders),b);
             r_bakb(i,b) <= r_sp_bakb(i-(c_num_stat-c_decoders),b);
-            r_bakx(i,b) <= r_sp_bakx(i-(c_num_stat-c_decoders),b);
           end loop;
         end loop;
       end if;

@@ -222,16 +222,16 @@ package opa_components_pkg is
       issue_geta_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       issue_getb_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       issue_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      issue_oldx_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       issue_bakx_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       issue_baka_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       issue_bakb_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       issue_stata_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
       issue_statb_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      issue_oldx_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      issue_bakx_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
       -- Feed faults back up the pipeline
       issue_fault_i  : in  std_logic;
+      issue_mask_i   : in  std_logic_vector(f_opa_decoders  (g_config)-1 downto 0);
       issue_pc_i     : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       issue_pcf_i    : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
       issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
@@ -257,13 +257,12 @@ package opa_components_pkg is
       rename_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
       rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      rename_oldx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       rename_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       rename_baka_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       rename_bakb_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       rename_stata_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
       rename_statb_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      rename_oldx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      rename_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
       -- Exceptions from the EUs
       eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -273,6 +272,7 @@ package opa_components_pkg is
       
       -- Selected fault fed back up pipeline
       rename_fault_o : out std_logic;
+      rename_mask_o  : out std_logic_vector(f_opa_decoders  (g_config)-1 downto 0);
       rename_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       rename_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
       rename_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
