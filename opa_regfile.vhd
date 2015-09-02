@@ -476,9 +476,9 @@ begin
         s_mux_b(f_idx(u,b))(f_eu(v+1)-1 downto f_eu(v)) <= (others => eu_regx_i(v,b));
       end generate;
       
-      -- Select from PC+immediate
-      s_mux_a(f_idx(u,b))(c_imm) <= s_pc_pad (u,b);
-      s_mux_b(f_idx(u,b))(c_imm) <= s_imm_pad(u,b);
+      -- Select from PC+immediate, preventing synthesis from rearranging higher muxes
+      pc  : opa_lcell port map(a_i => s_pc_pad (u,b), b_o => s_mux_a(f_idx(u,b))(c_imm));
+      imm : opa_lcell port map(a_i => s_imm_pad(u,b), b_o => s_mux_b(f_idx(u,b))(c_imm));
       
       -- Execute the mux
       eu_rega_o(u,b) <= s_mux_a(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_mux_idx_a,u))));
