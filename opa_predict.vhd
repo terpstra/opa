@@ -43,7 +43,7 @@ architecture rtl of opa_predict is
   constant c_increment : unsigned(c_adr_wide-1 downto c_op_align) := c_fetch_adr(c_adr_wide-1 downto c_op_align);
   constant c_mask      : unsigned(c_adr_wide-1 downto c_op_align) := not (c_increment - 1);
 
-  signal r_pc : unsigned(c_adr_wide-1 downto c_op_align);
+  signal r_pc : unsigned(c_adr_wide-1 downto c_op_align) := c_increment;
   signal s_pc : unsigned(c_adr_wide-1 downto c_op_align);
 
 begin

@@ -109,7 +109,7 @@ architecture rtl of opa_decode is
   signal s_hit         : std_logic_vector(c_decoders-1 downto 0);
   signal s_bad_jump    : std_logic_vector(c_decoders-1 downto 0);
   signal s_fault       : std_logic;
-  signal r_fault       : std_logic;
+  signal r_fault       : std_logic := '0';
   
   signal s_mux           : t_opa_matrix(c_decoders-1 downto 0, 1 downto 0);
   signal s_imm           : t_opa_matrix(c_decoders-1 downto 0, c_imm_wide-1 downto 0);
@@ -144,8 +144,8 @@ architecture rtl of opa_decode is
   signal s_progress : std_logic;
   signal s_accept   : std_logic;
   signal s_ops_sub  : unsigned(c_dec_wide-1 downto 0);
-  signal r_fill     : unsigned(c_dec_wide+1 downto 0);
-  signal r_aux      : unsigned(c_aux_wide-1 downto 0);
+  signal r_fill     : unsigned(c_dec_wide+1 downto 0) := (others => '0');
+  signal r_aux      : unsigned(c_aux_wide-1 downto 0) := (others => '0');
   
 begin
 

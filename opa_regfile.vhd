@@ -169,7 +169,7 @@ architecture rtl of opa_regfile is
   signal s_map_match   : t_opa_matrix(c_num_back-1 downto 0, c_executers-1 downto 0);
   signal s_map_value   : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
   signal s_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
-  signal r_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
+  signal r_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0) := (others => (0 => '0', others => '1'));
   
   signal s_eu_match_a  : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
   signal s_eu_match_b  : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
@@ -253,12 +253,7 @@ begin
   begin
     if rst_n_i = '0' then
       -- On power-up, select the last memory (which is full of zeros)
-      for i in 0 to c_num_back-1 loop
-        r_map(i,0) <= '0';
-        for b in 1 to c_mux_wide-1 loop
-          r_map(i,b) <= '1';
-        end loop;
-      end loop;
+      r_map <= (others => (0 => '0', others => '1'));
     elsif rising_edge(clk_i) then
       for i in 0 to c_num_back-1 loop
         if s_map_set(i) = '1' then

@@ -50,14 +50,14 @@ architecture rtl of opa_icache is
   constant c_fetch_adr : unsigned(c_adr_wide-1 downto 0) := to_unsigned(c_num_fetch, c_adr_wide);
   constant c_increment : unsigned(c_adr_wide-1 downto c_op_align) := c_fetch_adr(c_adr_wide-1 downto c_op_align);
   
-  signal r_hit   : std_logic;
+  signal r_hit   : std_logic := '0';
   signal s_stall : std_logic;
   signal s_dstb  : std_logic;
   signal s_repeat: std_logic;
   signal s_wen   : std_logic;
-  signal r_wen   : std_logic;
-  signal r_icyc  : std_logic;
-  signal r_istb  : std_logic;
+  signal r_wen   : std_logic := '0';
+  signal r_icyc  : std_logic := '0';
+  signal r_istb  : std_logic := '0';
   signal s_raddr : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal s_rtag  : std_logic_vector(c_adr_wide-1 downto c_page_wide);
   signal s_rdata : std_logic_vector(c_num_fetch*8-1 downto 0);
@@ -66,10 +66,10 @@ architecture rtl of opa_icache is
   signal r_wdata : std_logic_vector(c_num_fetch*8-1 downto 0);
   signal s_rraw  : std_logic_vector(c_tag_wide+c_num_fetch*8-1 downto 0);
   signal s_wraw  : std_logic_vector(c_tag_wide+c_num_fetch*8-1 downto 0);
-  signal r_pc1   : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal r_pc2   : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal r_load  : unsigned(c_load_wide-1 downto 0);
-  signal r_got   : unsigned(c_load_wide-1 downto 0);
+  signal r_pc1   : std_logic_vector(c_adr_wide-1 downto c_op_align) := std_logic_vector(c_increment);
+  signal r_pc2   : std_logic_vector(c_adr_wide-1 downto c_op_align) := (others => '0');
+  signal r_load  : unsigned(c_load_wide-1 downto 0) := (others => '0');
+  signal r_got   : unsigned(c_load_wide-1 downto 0) := (others => '0');
 
 begin
 
