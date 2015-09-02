@@ -62,11 +62,16 @@ architecture rtl of opa_issue is
   constant c_aux_wide  : natural := f_opa_aux_wide (g_config);
   constant c_dec_wide  : natural := f_opa_dec_wide (g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
+  constant c_adr_wide  : natural := f_opa_adr_wide (g_config);
+  constant c_fetch_wide: natural := f_opa_fetch_wide(g_config);
   constant c_decoders  : natural := f_opa_decoders (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   
   constant c_decoder_zeros : std_logic_vector(c_decoders -1 downto 0) := (others => '0');
   constant c_stat_ones     : std_logic_vector(c_num_stat -1 downto 0) := (others => '1');
+  constant c_fast_zeros    : std_logic_vector(c_num_fast -1 downto 0) := (others => '0');
+  constant c_slow_ones     : std_logic_vector(c_num_slow -1 downto 0) := (others => '1');
+  constant c_slow_only     : std_logic_vector(c_executers-1 downto 0) := c_slow_ones & c_fast_zeros;
 
   -- Instructions have these flags:
   --   issued: was previously selected by arbitration and not stalled
@@ -126,10 +131,6 @@ architecture rtl of opa_issue is
   -- These have 1 latency indexes (fed by skidpad)
   signal s_ready      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_ready      : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_wait1      : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_wait1      : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_wait2      : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_wait2      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_final      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_final      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_geta       : std_logic_vector(c_num_stat-1 downto 0);
@@ -250,12 +251,9 @@ begin
       total_o  => s_schedule_slow_issue);
    -- 6 levels for <= 28 num_stat
   
-  s_ready_raw <= f_shift(r_wait1 or r_ready, r_shift);
+  s_ready_raw <= f_shift(f_opa_product(f_opa_transpose(r_schedule1), c_slow_only) or r_ready, r_shift);
   ready_shift : opa_lcell_vector generic map(g_wide => c_num_stat) port map(a_i => s_ready_raw, b_o => s_ready_shift);
   s_ready  <= (s_schedule_fast_issue and s_pending_fast) or s_ready_shift;
-  
-  s_wait1   <= f_shift(r_wait2, r_shift);
-  s_wait2   <= s_schedule_slow_issue and s_pending_slow;
   
   -- Which registers does each EU need to use?
   -- r_bak[abx], r_aux shifted one cycle later, so s_stat has correct index
@@ -393,14 +391,10 @@ begin
     if rst_n_i = '0' then
       r_shift  <= '0';
       r_ready  <= (others => '1');
-      r_wait1  <= (others => '0');
-      r_wait2  <= (others => '0');
       r_final  <= (others => '1');
     elsif rising_edge(clk_i) then
       r_shift  <= s_shift;
       r_ready  <= s_ready;
-      r_wait1  <= s_wait1;
-      r_wait2  <= s_wait2;
       r_final  <= s_final;
     end if;
   end process;
