@@ -276,11 +276,10 @@ begin
   s_eu_match_b  <= f_opa_match(issue_bakb_i, issue_bakx_i) and f_opa_dup_row(c_executers, issue_wstb_i);
   s_reg_match_a <= f_opa_match(issue_baka_i, r_bakx)       and f_opa_dup_row(c_executers, r_stb);
   s_reg_match_b <= f_opa_match(issue_bakb_i, r_bakx)       and f_opa_dup_row(c_executers, r_stb);
-  -- invert logic of values to result in (others => '1') when no match (ie: pick immediates)
-  s_value_a     <= not (f_opa_product(s_eu_match_a, not c_eu_indexes) or f_opa_product(s_reg_match_a, not c_reg_indexes));
-  s_value_b     <= not (f_opa_product(s_eu_match_b, not c_eu_indexes) or f_opa_product(s_reg_match_b, not c_reg_indexes));
-  s_bypass_a    <= f_opa_product(s_eu_match_a, c_ones) or f_opa_product(s_reg_match_a, c_ones) or not issue_geta_i;
-  s_bypass_b    <= f_opa_product(s_eu_match_b, c_ones) or f_opa_product(s_reg_match_b, c_ones) or not issue_getb_i;
+  s_value_a     <= f_opa_product(s_eu_match_a, c_eu_indexes) or f_opa_product(s_reg_match_a, c_reg_indexes);
+  s_value_b     <= f_opa_product(s_eu_match_b, c_eu_indexes) or f_opa_product(s_reg_match_b, c_reg_indexes);
+  s_bypass_a    <= f_opa_product(s_eu_match_a, c_ones) or f_opa_product(s_reg_match_a, c_ones);
+  s_bypass_b    <= f_opa_product(s_eu_match_b, c_ones) or f_opa_product(s_reg_match_b, c_ones);
   s_regfile_a   <= f_opa_compose(r_map, issue_baka_i);
   s_regfile_b   <= f_opa_compose(r_map, issue_bakb_i);
   
@@ -290,11 +289,11 @@ begin
       for u in 0 to c_executers-1 loop
         if s_bypass_a(u) = '1' then
           for b in 0 to c_mux_wide-1 loop
-            r_mux_idx_a(u,b) <= s_value_a(u,b);
+            r_mux_idx_a(u,b) <= s_value_a(u,b)   or not issue_geta_i(u);
           end loop;
         else
           for b in 0 to c_mux_wide-1 loop
-            r_mux_idx_a(u,b) <= s_regfile_a(u,b);
+            r_mux_idx_a(u,b) <= s_regfile_a(u,b) or not issue_geta_i(u);
           end loop;
         end if;
       end loop;
@@ -307,11 +306,11 @@ begin
       for u in 0 to c_executers-1 loop
         if s_bypass_b(u) = '1' then
           for b in 0 to c_mux_wide-1 loop
-            r_mux_idx_b(u,b) <= s_value_b(u,b);
+            r_mux_idx_b(u,b) <= s_value_b(u,b)   or not issue_getb_i(u);
           end loop;
         else
           for b in 0 to c_mux_wide-1 loop
-            r_mux_idx_b(u,b) <= s_regfile_b(u,b);
+            r_mux_idx_b(u,b) <= s_regfile_b(u,b) or not issue_getb_i(u);
           end loop;
         end if;
       end loop;
