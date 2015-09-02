@@ -106,17 +106,11 @@ architecture rtl of opa_issue is
   signal r_schedule2     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
   signal r_schedule3     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
   signal s_schedule_wb   : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
-  signal r_commit        : std_logic_vector(c_executers-1 downto 0);
-  signal s_commit        : std_logic_vector(c_num_stat-1 downto 0);
   
   signal s_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal r_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal s_schedule_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal r_schedule_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
-  
-  signal s_stall      : std_logic;
-  signal s_shift      : std_logic;
-  signal r_shift      : std_logic;
   
   -- These have 0 latency indexes (fed directly)
   signal r_fast       : std_logic_vector(c_num_stat-1 downto 0);
@@ -161,6 +155,42 @@ architecture rtl of opa_issue is
   signal r_sp_baka : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_bakb : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_aux  : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
+  
+  -- Faults inhibit commit and shift
+  signal r_commit        : std_logic_vector(c_executers-1 downto 0);
+  signal s_commit        : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_stall         : std_logic;
+  signal s_shift         : std_logic;
+  signal r_shift         : std_logic;
+  
+  -- Faults are resolved to the oldest and executed when all preceding ops are final
+  signal r_fault_in      : std_logic_vector(c_executers-1 downto 0);
+  signal s_fault_pending : std_logic;
+  signal r_fault_pending : std_logic;
+  signal s_all_faults    : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_fault_victor  : std_logic_vector(c_executers-1 downto 0);
+  signal r_fault_victor  : std_logic_vector(c_executers-1 downto 0);
+  signal s_fault_same    : std_logic;
+  signal r_fault_same    : std_logic;
+  signal s_fault_same_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal s_fault_same_pcf: std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal s_fault_same_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal r_fault_pc0     : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1   downto c_op_align);
+  signal r_fault_pcf0    : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal r_fault_pcn0    : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1   downto c_op_align);
+  signal r_fault_pc1     : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1   downto c_op_align);
+  signal r_fault_pcf1    : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal r_fault_pcn1    : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1   downto c_op_align);
+  signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal s_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal r_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal s_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal r_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal s_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal s_fault_deps    : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_fault_out     : std_logic;
   
   function f_pad(x : std_logic) return std_logic_vector is
     variable result : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
@@ -291,6 +321,63 @@ begin
   s_shift  <= rename_stb_i and not s_stall;
   rename_stall_o <= s_stall;
     -- 2 levels with decoders <= 2
+  
+  -- Resolve faults to determine which fault wins
+  s_fault_pending <= f_opa_or(r_fault_in) or r_fault_pending;
+  s_all_faults    <= f_opa_product(f_opa_transpose(r_schedule3), r_fault_in) or r_oldest_fault;
+  s_oldest_fault  <= s_all_faults and std_logic_vector(0-unsigned(s_all_faults));
+  s_fault_victor  <= f_opa_product(r_schedule3, s_oldest_fault);
+  s_fault_same    <= f_opa_or(r_oldest_fault and s_oldest_fault);
+  
+  -- Select fault addresses
+  s_fault_same_pc  <= (others => r_fault_same);
+  s_fault_same_pcf <= (others => r_fault_same);
+  s_fault_same_pcn <= (others => r_fault_same);
+  s_fault_pc  <= f_opa_product(f_opa_transpose(r_fault_pc1),  r_fault_victor) or (r_fault_pc  and s_fault_same_pc);
+  s_fault_pcf <= f_opa_product(f_opa_transpose(r_fault_pcf1), r_fault_victor) or (r_fault_pcf and s_fault_same_pcf);
+  s_fault_pcn <= f_opa_product(f_opa_transpose(r_fault_pcn1), r_fault_victor) or (r_fault_pcn and s_fault_same_pcn);
+  
+  -- Fault out if all ops AFTER r_oldest_fault are r_final
+  s_fault_deps <= std_logic_vector(unsigned(r_oldest_fault) - 1);
+  s_fault_out <= f_opa_and(r_final or not s_fault_deps) and r_fault_pending;
+  
+  -- Operations to kill are all those AFTER r_oldest_fault (use an adder)
+  
+  -- rename_fault_o     <= s_fault;
+  -- rename_fault_pc_o  <= s_fault_pc;
+  -- rename_fault_pcf_o <= s_fault_pcf;
+  -- rename_fault_pcn_o <= s_fault_pcn;
+  
+  fault_ctl : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_fault_pending <= '0';
+      r_oldest_fault  <= (others => '0');
+      r_fault_victor  <= (others => '0');
+      r_fault_same    <= '0';
+    elsif rising_edge(clk_i) then
+      r_fault_pending <= s_fault_pending;
+      r_oldest_fault  <= f_shift(s_oldest_fault, r_shift);
+      r_fault_victor  <= s_fault_victor;
+      r_fault_same    <= s_fault_same;
+    end if;
+  end process;
+  
+  fault_adr : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      r_fault_in   <= eu_fault_i;
+      r_fault_pc0  <= eu_pc_i;
+      r_fault_pcf0 <= eu_pcf_i;
+      r_fault_pcn0 <= eu_pcn_i;
+      r_fault_pc1  <= r_fault_pc0;
+      r_fault_pcf1 <= r_fault_pcf0;
+      r_fault_pcn1 <= r_fault_pcn0;
+      r_fault_pc   <= s_fault_pc;
+      r_fault_pcf  <= s_fault_pcf;
+      r_fault_pcn  <= s_fault_pcn;
+    end if;
+  end process;
   
   -- Prepare decremented versions of the station references
   s_stata <= f_opa_decrement(r_stata, c_decoders) when r_shift='1' else r_stata;
