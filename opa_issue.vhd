@@ -38,6 +38,12 @@ entity opa_issue is
     eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
     eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
      
+    -- Selected fault fed back up pipeline
+    rename_fault_o : out std_logic;
+    rename_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    rename_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    rename_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    
     -- Regfile needs to fetch these for EU
     regfile_rstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     regfile_geta_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -341,12 +347,11 @@ begin
   s_fault_deps <= std_logic_vector(unsigned(r_oldest_fault) - 1);
   s_fault_out <= f_opa_and(r_final or not s_fault_deps) and r_fault_pending;
   
-  -- Operations to kill are all those AFTER r_oldest_fault (use an adder)
-  
-  -- rename_fault_o     <= s_fault;
-  -- rename_fault_pc_o  <= s_fault_pc;
-  -- rename_fault_pcf_o <= s_fault_pcf;
-  -- rename_fault_pcn_o <= s_fault_pcn;
+  -- Forward the fault up the pipeline
+  rename_fault_o <= s_fault_out;
+  rename_pc_o    <= s_fault_pc;
+  rename_pcf_o   <= s_fault_pcf;
+  rename_pcn_o   <= s_fault_pcn;
   
   fault_ctl : process(clk_i, rst_n_i) is
   begin

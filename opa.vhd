@@ -96,6 +96,10 @@ architecture rtl of opa is
   signal decode_regfile_pcn     : std_logic_vector(c_adr_wide-1 downto c_op_align);
   
   signal rename_decode_stall    : std_logic;
+  signal rename_decode_fault    : std_logic;
+  signal rename_decode_pc       : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal rename_decode_pcf      : std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal rename_decode_pcn      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal rename_issue_stb       : std_logic;
   signal rename_issue_fast      : std_logic_vector(c_decoders-1 downto 0);
   signal rename_issue_slow      : std_logic_vector(c_decoders-1 downto 0);
@@ -111,6 +115,10 @@ architecture rtl of opa is
   
   signal issue_rename_stall     : std_logic;
   signal issue_rename_oldx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal issue_rename_fault     : std_logic;
+  signal issue_rename_pc        : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal issue_rename_pcf       : std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal issue_rename_pcn       : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal issue_regfile_rstb     : std_logic_vector(c_executers-1 downto 0);
   signal issue_regfile_geta     : std_logic_vector(c_executers-1 downto 0);
   signal issue_regfile_getb     : std_logic_vector(c_executers-1 downto 0);
@@ -258,6 +266,10 @@ begin
       rename_archx_o   => decode_rename_archx,
       rename_archa_o   => decode_rename_archa,
       rename_archb_o   => decode_rename_archb,
+      rename_fault_i   => rename_decode_fault,
+      rename_pc_i      => rename_decode_pc,
+      rename_pcf_i     => rename_decode_pcf,
+      rename_pcn_i     => rename_decode_pcn,
       regfile_stb_o    => decode_regfile_stb,
       regfile_aux_o    => decode_regfile_aux,
       regfile_arg_o    => decode_regfile_arg,
@@ -297,7 +309,15 @@ begin
       issue_bakb_o   => rename_issue_bakb,
       issue_stata_o  => rename_issue_stata,
       issue_statb_o  => rename_issue_statb,
-      issue_oldx_i   => issue_rename_oldx);
+      issue_oldx_i   => issue_rename_oldx,
+      issue_fault_i  => issue_rename_fault,
+      issue_pc_i     => issue_rename_pc,
+      issue_pcf_i    => issue_rename_pcf,
+      issue_pcn_i    => issue_rename_pcn,
+      decode_fault_o => rename_decode_fault,
+      decode_pc_o    => rename_decode_pc,
+      decode_pcf_o   => rename_decode_pcf,
+      decode_pcn_o   => rename_decode_pcn);
   
   issue : opa_issue
     generic map(
@@ -324,6 +344,10 @@ begin
       eu_pc_i        => eu_issue_pc,
       eu_pcf_i       => eu_issue_pcf,
       eu_pcn_i       => eu_issue_pcn,
+      rename_fault_o => issue_rename_fault,
+      rename_pc_o    => issue_rename_pc,
+      rename_pcf_o   => issue_rename_pcf,
+      rename_pcn_o   => issue_rename_pcn,
       regfile_rstb_o => issue_regfile_rstb,
       regfile_geta_o => issue_regfile_geta,
       regfile_getb_o => issue_regfile_getb,

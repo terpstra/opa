@@ -43,7 +43,17 @@ entity opa_rename is
     issue_bakb_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     issue_stata_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
     issue_statb_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    issue_oldx_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
+    issue_oldx_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    
+    -- Feed faults back up the pipeline
+    issue_fault_i  : in  std_logic;
+    issue_pc_i     : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    issue_pcf_i    : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    decode_fault_o : out std_logic;
+    decode_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    decode_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    decode_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align));
 end opa_rename;
 
 architecture rtl of opa_rename is
@@ -228,5 +238,10 @@ begin
   issue_bakb_o   <= s_bakb;
   issue_stata_o  <= s_stata;
   issue_statb_o  <= s_statb;
+  
+  decode_fault_o <= issue_fault_i;
+  decode_pc_o    <= issue_pc_i;
+  decode_pcf_o   <= issue_pcf_i;
+  decode_pcn_o   <= issue_pcn_i;
   
 end rtl;

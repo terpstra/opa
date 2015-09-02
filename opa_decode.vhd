@@ -52,6 +52,12 @@ entity opa_decode is
     rename_archa_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
     rename_archb_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
 
+    -- Accept faults
+    rename_fault_i : in  std_logic;
+    rename_pc_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    rename_pcf_i   : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    rename_pcn_i   : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+      
     -- Give the regfile the information EUs will need for these operations
     regfile_stb_o    : out std_logic;
     regfile_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
@@ -114,6 +120,9 @@ architecture rtl of opa_decode is
   signal s_static_imm_pad: unsigned(c_adr_wide-1 downto c_op_align);
   signal s_static_pc     : unsigned(c_adr_wide-1 downto c_op_align);
   signal s_static_target : unsigned(c_adr_wide-1 downto c_op_align);
+  
+  signal s_rename_jump   : std_logic_vector(c_decoders-1 downto 0);
+  signal s_rename_source : std_logic_vector(c_adr_wide-1 downto c_op_align);
   
   signal s_jump_taken : std_logic_vector(c_decoders-1 downto 0);
   signal s_pcn_taken  : std_logic_vector(c_adr_wide-1 downto c_op_align);
@@ -199,12 +208,20 @@ begin
   s_jump_taken <= s_static_jump when s_fault='1' else predict_jump_i;
   s_pcn_taken  <= std_logic_vector(s_static_target) when s_fault='1' else icache_pcn_i;
   
+  -- Decode renamer's fault information
+  s_rename_source(c_adr_wide-1   downto c_fetch_wide) <= rename_pc_i(c_adr_wide-1 downto c_fetch_wide);
+  s_rename_source(c_fetch_wide-1 downto c_op_align)   <= rename_pcf_i;
+  
+  jumps : for i in 0 to c_decoders-1 generate
+    s_rename_jump(i) <= '1' when i = unsigned(rename_pc_i(c_fetch_wide-1 downto c_op_align)) else '0';
+  end generate;
+  
   -- Feed back information to fetch
-  predict_fault_o  <= s_fault and s_accept;
-  predict_return_o <= '0' when (s_pop and s_static_jump) = c_zeros else '1';
-  predict_jump_o   <= s_static_jump;
-  predict_source_o <= icache_pc_i;
-  predict_target_o <= std_logic_vector(s_static_target);
+  predict_fault_o  <= (s_fault and s_accept) or rename_fault_i;
+  predict_return_o <= '0' when rename_fault_i='1' or (s_pop and s_static_jump) = c_zeros else '1';
+  predict_jump_o   <= s_rename_jump   when rename_fault_i='1' else s_static_jump;
+  predict_source_o <= s_rename_source when rename_fault_i='1' else icache_pc_i;
+  predict_target_o <= rename_pcn_i    when rename_fault_i='1' else std_logic_vector(s_static_target);
   
   -- Do we need to push the PC?
   s_jal_pc(c_adr_wide  -1 downto c_fetch_wide) <= icache_pc_i(c_adr_wide-1 downto c_fetch_wide);
@@ -236,33 +253,47 @@ begin
     if rst_n_i = '0' then
       r_fault <= '0';
       r_fill  <= (others => '0');
-      r_aux   <= (others => '0');
     elsif rising_edge(clk_i) then
-      -- On a fault, we ignore the next valid icache strobe
-      if (icache_stb_i and not s_stall) = '1' then
-        if r_fault = '1' then
-          r_fault <= '0';
+      if rename_fault_i = '1' then
+        r_fault <= '1';
+        r_fill  <= (others => '0');
+      else
+        -- On a fault, we ignore the next valid icache strobe
+        if (icache_stb_i and not s_stall) = '1' then
+          if r_fault = '1' then
+            r_fault <= '0';
+          else
+            r_fault <= s_fault;
+          end if;
+        end if;
+        
+        if s_progress = '1' then
+          if s_accept = '1' then
+            r_fill <= r_fill - s_ops_sub; -- r_fill - c_decoders + (c_decoders - s_ops_sub)
+          else
+            r_fill <= r_fill - c_decoders;
+          end if;
         else
-          r_fault <= s_fault;
+          if s_accept = '1' then
+            r_fill <= r_fill + c_decoders - s_ops_sub;
+          else
+            r_fill <= r_fill;
+          end if;
         end if;
       end if;
-      
+    end if;
+  end process;
+  
+  aux : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_aux <= (others => '0');
+    elsif rising_edge(clk_i) then
       if s_progress = '1' then
         if r_aux = c_num_aux-1 then
           r_aux <= (others => '0');
         else
           r_aux <= r_aux+1;
-        end if;
-        if s_accept = '1' then
-          r_fill <= r_fill - s_ops_sub; -- r_fill - c_decoders + (c_decoders - s_ops_sub)
-        else
-          r_fill <= r_fill - c_decoders;
-        end if;
-      else
-        if s_accept = '1' then
-          r_fill <= r_fill + c_decoders - s_ops_sub;
-        else
-          r_fill <= r_fill;
         end if;
       end if;
     end if;
@@ -280,7 +311,6 @@ begin
         r_pcf <= s_pcf;
         r_pc  <= s_pc;
       end if;
-      -- !!! on fault, clear setx,geta,getb, set fast (sync clear)
     end if;
   end process;
   
