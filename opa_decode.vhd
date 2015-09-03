@@ -203,7 +203,7 @@ begin
   s_static_target <= 
     s_static_imm_pad               when c_opa_jump_to_immediate,
     s_static_imm_pad + s_static_pc when c_opa_jump_add_immediate,
-    (others => '-')                when others;
+    (others => '0')                when others; -- !!! only 0 for simulation (should be '-')
 
   s_jump_taken <= s_static_jump when s_fault='1' else predict_jump_i;
   s_pcn_taken  <= std_logic_vector(s_static_target) when s_fault='1' else icache_pcn_i;
@@ -323,7 +323,7 @@ begin
     end if;
   end process;
   
-  icache_stall_o <= s_stall;
+  icache_stall_o <= s_stall and not rename_fault_i;
   
   rename_stb_o <= s_stb;
   rename_aux_o <= std_logic_vector(r_aux);

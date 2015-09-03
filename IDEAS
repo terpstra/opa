@@ -5,16 +5,13 @@ roll-out:
 	implement write port
 	implement load-alias detection CAM [0]
 	implement write alias wake-up [1]
-	implement fetcher
-	implement noop converter (fault => speculative ops become copies)
-	implement short forward branch => reissue shadow as noop
 	implement TLB+L1 [3]
 	branch predictor
 	add microcode for div and sextb=(andi 0x80, muli -1, or)
+	try making non-faulting ops final once ready => IPC gain?
 	implement FPU [5]
 
 [a] finalize ready writes preceded by entirely final operations => implies in-order writeback
-    use the same procedure for faults
 
 [0] use 2*M10k as a 32-entry 18-bit CAM of load address hashes
 
