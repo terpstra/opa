@@ -180,7 +180,6 @@ begin
     s_mux(i,0) <= s_ops_in(i).dest(0);
     s_mux(i,1) <= s_ops_in(i).dest(1);
     bits : for b in 0 to c_imm_wide-1 generate
-      -- !!! use a simpler immediate format; only jump kinds
       s_imm(i,b) <= s_ops_in(i).imm(b);
     end generate;
   end generate;
