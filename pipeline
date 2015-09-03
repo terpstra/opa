@@ -20,3 +20,16 @@ Obviously, more is better. Consider a vector product:
 The load and multiply add up to a latency of 6. Until the store has been
 checked for segfault, that adds up to 11 cycles. This doesn't even consider
 an L1 cache miss, in which case you would need even more depth.
+
+
+On an L1 miss, the following pipeline is executed:
+	r_reg[ab]
+	dcache regin
+	r_miss			r_cyc/r_stb
+	r_issued
+	r_schedule0
+	r_mux_idx
+	r_reg[ab]		ack_i => dcache wen_i
+	dcache regin
+
+... so a cache miss will cost 6 cycles if dbus responds within 4 cycles

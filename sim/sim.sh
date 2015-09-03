@@ -27,6 +27,7 @@ for i in 				\
 	opa_regfile.vhd			\
 	opa_fast.vhd			\
 	opa_slow.vhd			\
+	opa_dbus.vhd			\
 	opa.vhd				\
 	demo/$arch.vhd			\
 	opa_core_tb.vhd			\

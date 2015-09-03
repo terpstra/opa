@@ -73,6 +73,6 @@ begin
   d_stall  <= '0';
   d_ack    <= d_stb;
   d_err    <= '0';
-  d_data_i <= d_data_o;
+  d_data_i <= i_data_i;
   
 end rtl;

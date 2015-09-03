@@ -143,12 +143,19 @@ architecture rtl of opa is
   signal eu_issue_pc            : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   signal eu_issue_pcf           : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
   signal eu_issue_pcn           : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
+  signal slow_dbus_stb          : std_logic_vector(c_num_slow-1 downto 0);
+  signal slow_dbus_adr          : t_opa_matrix(c_num_slow-1 downto 0, c_adr_wide-1 downto 0);
+  
+  signal dbus_slow_stb          : std_logic;
+  signal dbus_slow_adr          : std_logic_vector(c_adr_wide-1 downto 0);
+  signal dbus_slow_dat          : std_logic_vector(c_reg_wide-1 downto 0);
   
   type t_reg  is array (c_executers-1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
   type t_arg  is array (c_executers-1 downto 0) of std_logic_vector(c_arg_wide -1 downto 0);
   type t_imm  is array (c_executers-1 downto 0) of std_logic_vector(c_imm_wide -1 downto 0);
   type t_pc   is array (c_executers-1 downto 0) of std_logic_vector(c_adr_wide -1 downto c_op_align);
   type t_pcf  is array (c_executers-1 downto 0) of std_logic_vector(c_fetch_wide -1 downto c_op_align);
+  type t_adr  is array (c_num_slow -1 downto 0) of std_logic_vector(c_adr_wide -1 downto 0);
   
   signal s_regfile_eu_rega : t_reg;
   signal s_regfile_eu_regb : t_reg;
@@ -161,6 +168,7 @@ architecture rtl of opa is
   signal s_eu_issue_pc     : t_pc;
   signal s_eu_issue_pcf    : t_pcf;
   signal s_eu_issue_pcn    : t_pc;
+  signal s_slow_dbus_adr   : t_adr;
   
 begin
 
@@ -418,6 +426,12 @@ begin
     end generate;
   end generate;
   
+  slows : for u in 0 to c_num_slow-1 generate
+    adr : for b in 0 to c_adr_wide-1 generate
+      slow_dbus_adr(u,b) <= s_slow_dbus_adr(u)(b);
+    end generate;
+  end generate;
+  
   fastx : for i in 0 to c_num_fast-1 generate
     fast : opa_fast
       generic map(
@@ -458,12 +472,38 @@ begin
         regfile_pcf_i  => s_regfile_eu_pcf (f_opa_slow_index(g_config, i)),
         regfile_pcn_i  => s_regfile_eu_pcn (f_opa_slow_index(g_config, i)),
         regfile_regx_o => s_eu_regfile_regx(f_opa_slow_index(g_config, i)),
+        dbus_stb_i     => dbus_slow_stb,
+        dbus_adr_i     => dbus_slow_adr,
+        dbus_dat_i     => dbus_slow_dat,
+        dbus_stb_o     => slow_dbus_stb(i),
+        dbus_adr_o     => s_slow_dbus_adr(i),
         issue_fault_o  => eu_issue_fault   (f_opa_slow_index(g_config, i)),
         issue_pc_o     => s_eu_issue_pc    (f_opa_slow_index(g_config, i)),
         issue_pcf_o    => s_eu_issue_pcf   (f_opa_slow_index(g_config, i)),
         issue_pcn_o    => s_eu_issue_pcn   (f_opa_slow_index(g_config, i)));
   end generate;
   
-  d_data_o(31) <= s_eu_regfile_regx(0)(31);
+  dbus : opa_dbus
+    generic map(
+      g_config => g_config,
+      g_target => g_target)
+    port map(
+      clk_i      => clk_i,
+      rst_n_i    => rst_n_i,
+      d_cyc_o    => d_cyc_o,
+      d_stb_o    => d_stb_o,
+      d_we_o     => d_we_o,
+      d_stall_i  => d_stall_i,
+      d_ack_i    => d_ack_i,
+      d_err_i    => d_err_i,
+      d_addr_o   => d_addr_o,
+      d_sel_o    => d_sel_o,
+      d_data_o   => d_data_o,
+      d_data_i   => d_data_i,
+      slow_stb_o => dbus_slow_stb,
+      slow_adr_o => dbus_slow_adr,
+      slow_dat_o => dbus_slow_dat,
+      slow_stb_i => slow_dbus_stb,
+      slow_adr_i => slow_dbus_adr);
   
 end rtl;
