@@ -32,21 +32,6 @@ package opa_components_pkg is
       a_i : in  std_logic;
       b_o : out std_logic);
   end component;
-  component opa_lcell_vector is
-    generic(
-      g_wide : natural);
-    port(
-      a_i : in  std_logic_vector(g_wide-1 downto 0);
-      b_o : out std_logic_vector(g_wide-1 downto 0));
-  end component;
-  component opa_lcell_matrix is
-    generic(
-      g_rows : natural;
-      g_cols : natural);
-    port(
-      a_i : in  t_opa_matrix(g_rows-1 downto 0, g_cols-1 downto 0);
-      b_o : out t_opa_matrix(g_rows-1 downto 0, g_cols-1 downto 0));
-  end component;
   
   component opa_prim_ternary is
     generic(

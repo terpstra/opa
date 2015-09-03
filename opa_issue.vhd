@@ -144,7 +144,6 @@ architecture rtl of opa_issue is
   
   signal s_fast_need_issue : std_logic_vector(c_num_stat-1 downto 0);
   signal s_slow_need_issue : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_ready_raw       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_shift     : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_pad       : std_logic_vector(2**c_stat_wide-1 downto 0) := (others => '0');
   signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
@@ -289,8 +288,7 @@ begin
       total_o  => s_schedule_slow_issue);
    -- 6 levels for <= 28 num_stat
   
-  s_ready_raw <= f_shift(f_opa_product(f_opa_transpose(r_schedule1), c_slow_only) or r_ready, r_shift);
-  ready_shift : opa_lcell_vector generic map(g_wide => c_num_stat) port map(a_i => s_ready_raw, b_o => s_ready_shift);
+  s_ready_shift <= f_shift(f_opa_product(f_opa_transpose(r_schedule1), c_slow_only) or r_ready, r_shift);
   s_ready  <= (s_schedule_fast_issue and s_pending_fast) or s_ready_shift;
   
   -- Which registers does each EU need to use?
