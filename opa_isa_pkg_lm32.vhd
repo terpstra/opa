@@ -35,6 +35,21 @@ package body opa_isa_pkg is
     return result;
   end f_parse_rrtype;
   
+  function f_parse_sttype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
+    variable result : t_opa_op := c_opa_op_bad;
+  begin
+    result.bad   := '0';
+    result.jump  := c_opa_jump_never;
+    result.archb := x(20 downto 16);
+    result.archa := x(25 downto 21);
+    result.getb  := '1';
+    result.geta  := '1';
+    result.setx  := '0';
+    result.imm := (others => x(15));
+    result.imm(14 downto 0) := x(14 downto 0);
+    return result;
+  end f_parse_sttype;
+
   function f_parse_ritype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
   begin
@@ -981,7 +996,7 @@ package body opa_isa_pkg is
     variable slow  : t_opa_slow;
     variable op    : t_opa_op;
   begin
-    op := f_parse_sitype(x);
+    op := f_parse_sttype(x);
     ldst.size   := c_opa_ldst_byte;
     ldst.sext   := '-';
     slow.mode   := c_opa_slow_store;
@@ -996,7 +1011,7 @@ package body opa_isa_pkg is
     variable slow  : t_opa_slow;
     variable op    : t_opa_op;
   begin
-    op := f_parse_sitype(x);
+    op := f_parse_sttype(x);
     ldst.size   := c_opa_ldst_half;
     ldst.sext   := '-';
     slow.mode   := c_opa_slow_store;
@@ -1011,7 +1026,7 @@ package body opa_isa_pkg is
     variable slow  : t_opa_slow;
     variable op    : t_opa_op;
   begin
-    op := f_parse_sitype(x);
+    op := f_parse_sttype(x);
     ldst.size   := c_opa_ldst_word;
     ldst.sext   := '-';
     slow.mode   := c_opa_slow_store;
