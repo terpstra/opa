@@ -248,6 +248,7 @@ begin
   s_map_match <= f_opa_match_index(c_num_back, issue_bakx_i) and f_opa_dup_row(c_num_back, issue_wstb_i);
   s_map_set   <= f_opa_product(s_map_match, c_ones);
   s_map_value <= f_opa_product(s_map_match, c_mem_indexes);
+  -- !!! does mem_indexes really need to be full width? shrink it to half
   
   back_reg : process(clk_i, rst_n_i) is
   begin
@@ -275,6 +276,8 @@ begin
   s_value_b     <= f_opa_product(s_eu_match_b, c_eu_indexes) or f_opa_product(s_reg_match_b, c_reg_indexes);
   s_bypass_a    <= f_opa_product(s_eu_match_a, c_ones) or f_opa_product(s_reg_match_a, c_ones);
   s_bypass_b    <= f_opa_product(s_eu_match_b, c_ones) or f_opa_product(s_reg_match_b, c_ones);
+  -- !!! i might not be able to tell WHICH eu provides it from issue, but i can say if bypass0
+  --   if i record ready1, i can even report if EITHER bypass occurs; bypass1
   s_regfile_a   <= f_opa_compose(r_map, issue_baka_i);
   s_regfile_b   <= f_opa_compose(r_map, issue_bakb_i);
   
@@ -406,6 +409,8 @@ begin
   eu_pc_o  <= s_pc;
   eu_pcf_o <= s_pcf;
   eu_pcn_o <= s_pcn;
+  
+  -- !!! move s_imm to r_imm using async dpram; mux before choice?
   
   remap_rf_in : for u in 0 to c_executers-1 generate
     s_ra_addr(u) <= f_opa_select_row(issue_baka_i, u);

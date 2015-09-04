@@ -252,7 +252,6 @@ begin
   s_issued <= f_shift(r_schedule_fast_issue or r_schedule_slow_issue, r_shift) or r_issued;
   s_fast_need_issue <= not s_issued and r_fast;
   s_slow_need_issue <= not s_issued and r_slow;
-    -- 1 level using extend lut mode (two 5 input functions, sharing 4 input, muxed)
 
   -- Which stations have ready operands?
   -- !!! use a sparse version of s_ready_pad to save half the muxes
@@ -322,6 +321,8 @@ begin
   
   -- Determine if the execution window should be shifted
   s_commit <= f_opa_product(f_opa_transpose(r_schedule3), r_commit);
+  -- !!! move shift before product? can even use double shift before r_schedule3
+  -- likewise, can change r_final to be 0-latency indexing...
   s_final  <= f_shift(r_final or s_commit, r_shift);
   s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
@@ -346,6 +347,10 @@ begin
   s_fault_tail <= f_shift(r_oldest_fault, r_shift)(c_decoders-1 downto 0);
   s_fault_deps <= std_logic_vector(unsigned(s_fault_tail) - 1);
   s_fault_out <= f_opa_and(s_final(c_decoders-1 downto 0) or not s_fault_deps) and f_opa_or(s_fault_tail);
+  
+  -- !!! currently we have to wait until the op reaches the oldest position
+  -- ... this can take quite some time if the fetch is slow. if we alreday know
+  -- there is a fault, why not just advance the pipeline quickly? fill with garbage
   
   -- Forward the fault up the pipeline
   rename_fault_o <= r_fault_out;

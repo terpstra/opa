@@ -141,6 +141,7 @@ begin
   s_eq   <= (others => r_eq);
   s_widea(r_rega'left+2) <= '0';
   s_wideb(r_rega'left+2) <= '0';
+  -- !!! this is too slow: ... find a way to get it into the adder
   s_widea(r_rega'left+1 downto 1) <= s_nota xor r_rega xor (r_regb and s_eq);
   s_wideb(r_rega'left+1 downto 1) <= s_notb xor (r_regb and not s_eq);
   s_widea(0) <= '1';
