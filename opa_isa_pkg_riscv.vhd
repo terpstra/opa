@@ -185,7 +185,7 @@ package body opa_isa_pkg is
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '-';
-    adder.fault := '0';
+    adder.fault := '-';
     fast.mode   := c_opa_fast_jump;
     fast.raw    := f_opa_fast_from_adder(adder);
     op.bad      := '0';
@@ -218,7 +218,7 @@ package body opa_isa_pkg is
     adder.notb  := '0';
     adder.cin   := '0';
     adder.sign  := '-';
-    adder.fault := '0';
+    adder.fault := '-';
     fast.mode   := c_opa_fast_jump;
     fast.raw    := f_opa_fast_from_adder(adder);
     op.jump     := c_opa_jump_always;
