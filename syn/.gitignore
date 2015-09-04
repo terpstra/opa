@@ -1,6 +1,9 @@
+a5_pin_model_dump.txt
 c5_pin_model_dump.txt
 db/
 incremental_db/
+greybox_tmp/
+hc_output/
 opa_syn_tb.asm.rpt
 opa_syn_tb.done
 opa_syn_tb.fit.rpt
