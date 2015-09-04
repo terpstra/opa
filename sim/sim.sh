@@ -2,32 +2,35 @@
 
 set -e
 
-# incomplete
-#	opa_l1d.vhd
+arch="${arch:-lm32}"
+if [ "$arch" != "lm32" -a "$arch" != "riscv" ]; then
+  echo Unsupported architecture ${arch} >&2
+  exit 1
+fi
 
-for i in 			\
-	opa_pkg.vhd 		\
-	opa_isa_base_pkg.vhd	\
-	opa_functions_pkg.vhd	\
-	opa_components_pkg.vhd	\
-	opa_isa_pkg.vhd		\
-	opa_dpram.vhd		\
-	opa_lcell.vhd		\
-	opa_prim_ternary.vhd	\
-	opa_prim_mul.vhd	\
-	opa_prefixsum.vhd	\
-	opa_predict.vhd		\
-	opa_icache.vhd		\
-	opa_decode.vhd		\
-	opa_rename.vhd		\
-	opa_issue.vhd		\
-	opa_regfile.vhd		\
-	opa_fast.vhd		\
-	opa_slow.vhd		\
-	opa.vhd			\
-	demo/demo.vhd		\
-	opa_core_tb.vhd		\
-	opa_sim_tb.vhd;		\
+for i in 				\
+	opa_pkg.vhd 			\
+	opa_isa_base_pkg_$arch.vhd	\
+	opa_functions_pkg.vhd		\
+	opa_components_pkg.vhd		\
+	opa_isa_pkg_$arch.vhd		\
+	opa_dpram.vhd			\
+	opa_lcell.vhd			\
+	opa_prim_ternary.vhd		\
+	opa_prim_mul.vhd		\
+	opa_prefixsum.vhd		\
+	opa_predict.vhd			\
+	opa_icache.vhd			\
+	opa_decode.vhd			\
+	opa_rename.vhd			\
+	opa_issue.vhd			\
+	opa_regfile.vhd			\
+	opa_fast.vhd			\
+	opa_slow.vhd			\
+	opa.vhd				\
+	demo/$arch.vhd			\
+	opa_core_tb.vhd			\
+	opa_sim_tb.vhd;			\
 do echo $i; ghdl -a --std=93 --ieee=standard --syn-binding  ../$i
 done
 

@@ -1,3 +1,5 @@
-demo.elf
-demo.bin
+riscv.elf
+riscv.bin
+lm32.elf
+lm32.bin
 genramvhd

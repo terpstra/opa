@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
-use work.demo_bin_pkg.all;
+use work.demo_pkg.all;
 
 entity opa_core_tb is
   port(
@@ -43,7 +43,7 @@ begin
       i_data <= (others => '0');
     elsif rising_edge(clk_i) then
       i_ack  <= i_cyc and i_stb;
-      i_data <= demo_bin(to_integer(unsigned(i_addr(i_addr'left downto (c_config.log_width-3)))));
+      i_data <= demo(to_integer(unsigned(i_addr(i_addr'left downto (c_config.log_width-3)))));
     end if;
   end process;
   
