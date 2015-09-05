@@ -76,24 +76,16 @@ package opa_functions_pkg is
   -- Define the arguments needed for operations in our execution units
   constant c_arg_wide : natural := 8;
   
-  constant c_opa_jump_never  : std_logic_vector(1 downto 0) := "00";
-  constant c_opa_jump_seldom : std_logic_vector(1 downto 0) := "01";
-  constant c_opa_jump_often  : std_logic_vector(1 downto 0) := "10";
-  constant c_opa_jump_always : std_logic_vector(1 downto 0) := "11";
-  
-  constant c_opa_jump_to_immediate  : std_logic_vector(1 downto 0) := "00";
-  constant c_opa_jump_add_immediate : std_logic_vector(1 downto 0) := "01";
-  constant c_opa_jump_return_stack  : std_logic_vector(1 downto 0) := "10";
-  constant c_opa_jump_unknown       : std_logic_vector(1 downto 0) := "11";
-  
   -- General information every instruction must provide
   type t_opa_op is record
     -- A bad instruction
     bad   : std_logic;
-    -- Information for the fetch stage
-    jump  : std_logic_vector(1 downto 0); -- static prediction
-    dest  : std_logic_vector(1 downto 0);
-    push  : std_logic;  -- push return stack
+    -- Information for the decode stage
+    jump  : std_logic;
+    take  : std_logic; -- true => jump
+    force : std_logic; -- true => take
+    pop   : std_logic; -- pop  return stack; '-' when jump=0
+    push  : std_logic; -- push return stack; '-' when jump=0
     -- Information for the rename stage
     geta  : std_logic; -- 1=rega, 0=PC
     getb  : std_logic; -- 1=regb, 0=imm
@@ -105,13 +97,16 @@ package opa_functions_pkg is
     fast  : std_logic; -- goes to fast/slow EU
     -- Information for the execute stage
     imm   : std_logic_vector(c_imm_wide-1 downto 0);
+    immb  : std_logic_vector(c_imm_wide-1 downto 0); -- branch immediates; less cases than imm.
     arg   : std_logic_vector(c_arg_wide-1 downto 0);
   end record t_opa_op;
   
   constant c_opa_op_bad : t_opa_op := (
     bad   => '1',
-    jump  => "--",
-    dest  => "--",
+    jump  => '-',
+    take  => '-',
+    force => '-',
+    pop   => '-',
     push  => '-',
     geta  => '-',
     getb  => '-',
@@ -121,6 +116,7 @@ package opa_functions_pkg is
     archx => (others => '-'),
     fast  => '-',
     imm   => (others => '-'),
+    immb  => (others => '-'),
     arg   => (others => '-'));
   
   -- Fast execute units operate in one of four modes

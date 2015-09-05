@@ -39,7 +39,9 @@ package body opa_isa_pkg is
     variable result : t_opa_op := c_opa_op_bad;
   begin
     result.bad   := '0';
-    result.jump  := c_opa_jump_never;
+    result.jump  := '0';
+    result.take  := '0';
+    result.force := '0';
     result.archb := x(24 downto 20);
     result.archa := x(19 downto 15);
     result.archx := x(11 downto  7);
@@ -53,7 +55,9 @@ package body opa_isa_pkg is
     variable result : t_opa_op := c_opa_op_bad;
   begin
     result.bad   := '0';
-    result.jump  := c_opa_jump_never;
+    result.jump  := '0';
+    result.take  := '0';
+    result.force := '0';
     result.archa := x(19 downto 15);
     result.archx := x(11 downto  7);
     result.getb  := '0'; -- immediate
@@ -68,7 +72,9 @@ package body opa_isa_pkg is
     variable result : t_opa_op := c_opa_op_bad;
   begin
     result.bad   := '0';
-    result.jump  := c_opa_jump_never; -- never predict segfault
+    result.jump  := '0';
+    result.take  := '0';
+    result.force := '0';
     result.archb := x(24 downto 20);
     result.archa := x(19 downto 15);
     result.getb  := '1';
@@ -80,16 +86,30 @@ package body opa_isa_pkg is
     return result;
   end f_parse_stype;
   
+  function f_parse_utype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
+    variable result : t_opa_op := c_opa_op_bad;
+  begin
+    result.bad   := '0';
+    result.jump  := '0';
+    result.take  := '0';
+    result.force := '0';
+    result.archx := x(11 downto  7);
+    result.geta  := '0';
+    result.getb  := '0';
+    result.setx  := not f_zero(result.archx);
+    result.imm(31 downto 12) := x(31 downto 12);
+    result.imm(11 downto  0) := (others => '0');
+    return result;
+  end f_parse_utype;
+  
   function f_parse_sbtype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
   begin
     result.bad   := '0';
-    if x(31) = '1' then
-      result.jump := c_opa_jump_often; -- static prediction: negative = taken
-    else
-      result.jump := c_opa_jump_seldom;
-    end if;
-    result.dest  := c_opa_jump_add_immediate;
+    result.jump  := '1';
+    result.take  := x(31); -- static prediction: negative = taken
+    result.force := '0';
+    result.pop   := '0';
     result.push  := '0';
     result.archb := x(24 downto 20);
     result.archa := x(19 downto 15);
@@ -101,22 +121,9 @@ package body opa_isa_pkg is
     result.imm(10 downto 5) := x(30 downto 25);
     result.imm( 4 downto 1) := x(11 downto 8);
     result.imm(0)           := '0';
+    result.immb := result.imm;
     return result;
   end f_parse_sbtype;
-  
-  function f_parse_utype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable result : t_opa_op := c_opa_op_bad;
-  begin
-    result.bad   := '0';
-    result.jump  := c_opa_jump_never;
-    result.archx := x(11 downto  7);
-    result.geta  := '0';
-    result.getb  := '0';
-    result.setx  := not f_zero(result.archx);
-    result.imm(31 downto 12) := x(31 downto 12);
-    result.imm(11 downto  0) := (others => '0');
-    return result;
-  end f_parse_utype;
   
   -- JAL has a special format
   function f_decode_jal  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
@@ -124,6 +131,14 @@ package body opa_isa_pkg is
     variable fast  : t_opa_fast;
     variable op    : t_opa_op := c_opa_op_bad;
   begin
+    op.bad      := '0';
+    op.jump     := '1';
+    op.take     := '1';
+    op.force    := '1';
+    op.archx    := x(11 downto  7);
+    op.getb     := '0'; -- imm
+    op.geta     := '0'; -- PC
+    op.setx     := not f_zero(op.archx);
     adder.eq    := '0';
     adder.nota  := '0';
     adder.notb  := '0';
@@ -132,13 +147,7 @@ package body opa_isa_pkg is
     adder.fault := '-';
     fast.mode   := c_opa_fast_jump;
     fast.raw    := f_opa_fast_from_adder(adder);
-    op.bad      := '0';
-    op.jump     := c_opa_jump_always;
-    op.dest     := c_opa_jump_add_immediate;
-    op.geta     := '0'; -- PC
-    op.getb     := '0'; -- imm
-    op.archx    := x(11 downto  7);
-    op.setx     := not f_zero(op.archx);
+    op.pop      := '0';
     op.push     := f_one(op.archx);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
@@ -148,6 +157,7 @@ package body opa_isa_pkg is
     op.imm(11)           := x(20);
     op.imm(10 downto  1) := x(30 downto 21);
     op.imm(0) := '0';
+    op.immb := op.imm;
     return op;
   end f_decode_jal;
   
@@ -157,6 +167,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
+    op.jump     := '1'; -- override itype defaults
+    op.take     := '1';
+    op.force    := '1';
+    -- immb stays don't care as we can't make a static prediction anyway
     adder.eq    := '0';
     adder.nota  := '0';
     adder.notb  := '0';
@@ -165,15 +179,10 @@ package body opa_isa_pkg is
     adder.fault := '-';
     fast.mode   := c_opa_fast_jump;
     fast.raw    := f_opa_fast_from_adder(adder);
-    op.jump     := c_opa_jump_always;
+    op.pop      := f_zero(op.archx) and f_one(op.archa);
     op.push     := f_one(op.archx);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
-    if (f_zero(op.archx) and f_one(op.archb)) = '1' then
-      op.dest   := c_opa_jump_return_stack;
-    else
-      op.dest   := c_opa_jump_unknown;
-    end if;      
     return op;
   end f_decode_jalr;
   

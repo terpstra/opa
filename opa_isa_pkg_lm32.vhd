@@ -25,7 +25,9 @@ package body opa_isa_pkg is
     constant c_zero : std_logic_vector(10 downto 0) := (others => '0');
   begin
     result.bad   := f_opa_bit(x(10 downto 0) /= c_zero);
-    result.jump  := c_opa_jump_never;
+    result.jump  := '0';
+    result.take  := '0';
+    result.force := '0';
     result.archb := x(20 downto 16);
     result.archa := x(25 downto 21);
     result.archx := x(15 downto 11);
@@ -39,7 +41,9 @@ package body opa_isa_pkg is
     variable result : t_opa_op := c_opa_op_bad;
   begin
     result.bad   := '0';
-    result.jump  := c_opa_jump_never;
+    result.jump  := '0';
+    result.take  := '0';
+    result.force := '0';
     result.archb := x(20 downto 16);
     result.archa := x(25 downto 21);
     result.getb  := '1';
@@ -53,7 +57,9 @@ package body opa_isa_pkg is
   function f_parse_ritype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
   begin
-    result.jump  := c_opa_jump_never;
+    result.jump  := '0';
+    result.take  := '0';
+    result.force := '0';
     result.archa := x(25 downto 21);
     result.archx := x(20 downto 16);
     result.getb  := '0'; -- immediate
@@ -104,12 +110,10 @@ package body opa_isa_pkg is
     variable result : t_opa_op := c_opa_op_bad;
   begin
     result.bad   := '0';
-    if x(15) = '1' then
-      result.jump := c_opa_jump_often; -- static prediction: negative = taken
-    else
-      result.jump := c_opa_jump_seldom;
-    end if;
-    result.dest  := c_opa_jump_add_immediate;
+    result.jump  := '1';
+    result.take  := x(15); -- static prediction: negative = taken
+    result.force := '0';
+    result.pop   := '0';
     result.push  := '0';
     result.archb := x(20 downto 16);
     result.archa := x(25 downto 21);
@@ -119,21 +123,24 @@ package body opa_isa_pkg is
     result.imm := (others => x(15));
     result.imm(16 downto 2) := x(14 downto 0);
     result.imm( 1 downto 0) := (others => '0');
+    result.immb := result.imm;
     return result;
   end f_parse_bitype;
 
   function f_parse_jitype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
   begin
-    result.bad  := '0';
-    result.jump := c_opa_jump_always;
-    result.dest := c_opa_jump_add_immediate;
-    result.getb := '0';
-    result.geta := '0';
-    -- NOTE: caller must assign setx and push
+    result.bad   := '0';
+    result.jump  := '1';
+    result.take  := '1';
+    result.force := '1';
+    result.getb  := '0';
+    result.geta  := '0';
+    -- NOTE: caller must assign setx and push+pop
     result.imm := (others => x(25));
     result.imm(26 downto 2) := x(24 downto 0);
     result.imm( 1 downto 0) := (others => '0');
+    result.immb := result.imm;
     return result;
   end f_parse_jitype;
 
@@ -142,13 +149,15 @@ package body opa_isa_pkg is
     constant c_zero : std_logic_vector(20 downto 0) := (others => '0');
   begin
     result.bad   := f_opa_bit(x(20 downto 0) /= c_zero);
-    result.jump  := c_opa_jump_always;
-    result.dest  := c_opa_jump_unknown;
+    result.jump  := '1';
+    result.take  := '1';
+    result.force := '1';
     result.archa := x(25 downto 21);
     result.getb  := '0';
     result.geta  := '1';
-    -- NOTE: caller must assign setx and push
+    -- NOTE: caller must assign setx and push+pop
     result.imm := (others => '0'); -- necessary as it is added to PC/reg
+    -- immb can stay as don't care, because we can't statically predict anyway
     return result;
   end f_parse_jrtype;
   
@@ -160,9 +169,6 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_jrtype(x);
-    if op.archx = c_lm32_ra or op.archx = c_lm32_ba or op.archx = c_lm32_ea then
-      op.dest := c_opa_jump_return_stack;
-    end if;
     -- !!! mess around with CSRs on eret/bret
     adder.eq    := '0';
     adder.nota  := '0';
@@ -173,6 +179,7 @@ package body opa_isa_pkg is
     fast.mode   := c_opa_fast_jump;
     fast.raw    := f_opa_fast_from_adder(adder);
     op.setx     := '0';
+    op.pop      := f_opa_bit(op.archx = c_lm32_ra or op.archx = c_lm32_ba or op.archx = c_lm32_ea);
     op.push     := '0';
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
@@ -194,6 +201,7 @@ package body opa_isa_pkg is
     fast.mode   := c_opa_fast_jump;
     fast.raw    := f_opa_fast_from_adder(adder);
     op.setx     := '0';
+    op.pop      := '0';
     op.push     := '0';
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
@@ -216,6 +224,7 @@ package body opa_isa_pkg is
     fast.raw    := f_opa_fast_from_adder(adder);
     op.archx    := c_lm32_ra;
     op.setx     := '1';
+    op.pop      := '0';
     op.push     := '1';
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);
@@ -238,6 +247,7 @@ package body opa_isa_pkg is
     fast.raw    := f_opa_fast_from_adder(adder);
     op.archx    := c_lm32_ra;
     op.setx     := '1';
+    op.pop      := '0';
     op.push     := '1';
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);

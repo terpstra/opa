@@ -8,6 +8,7 @@ if [ "$arch" != "lm32" -a "$arch" != "riscv" ]; then
   exit 1
 fi
 
+echo "Building for $arch"
 for i in 				\
 	opa_pkg.vhd 			\
 	opa_isa_base_pkg_$arch.vhd	\

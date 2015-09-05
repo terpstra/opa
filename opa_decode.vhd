@@ -100,9 +100,9 @@ architecture rtl of opa_decode is
   signal s_pc_in       : t_pc_array(c_decoders-1 downto 0);
   signal s_mask_skip   : std_logic_vector(c_decoders-1 downto 0);
   signal s_mask_tail   : std_logic_vector(c_decoders-1 downto 0);
-  signal s_can_jump    : std_logic_vector(c_decoders-1 downto 0);
-  signal s_often_jump  : std_logic_vector(c_decoders-1 downto 0);
-  signal s_must_jump   : std_logic_vector(c_decoders-1 downto 0);
+  signal s_jump        : std_logic_vector(c_decoders-1 downto 0);
+  signal s_take        : std_logic_vector(c_decoders-1 downto 0);
+  signal s_force       : std_logic_vector(c_decoders-1 downto 0);
   signal s_push        : std_logic_vector(c_decoders-1 downto 0);
   signal s_pop         : std_logic_vector(c_decoders-1 downto 0);
   
@@ -111,11 +111,9 @@ architecture rtl of opa_decode is
   signal s_fault       : std_logic;
   signal r_fault       : std_logic := '0';
   
-  signal s_mux           : t_opa_matrix(c_decoders-1 downto 0, 1 downto 0);
   signal s_imm           : t_opa_matrix(c_decoders-1 downto 0, c_imm_wide-1 downto 0);
   signal s_static_jumps  : std_logic_vector(c_decoders-1 downto 0);
   signal s_static_jump   : std_logic_vector(c_decoders-1 downto 0);
-  signal s_static_mux    : std_logic_vector(1 downto 0);
   signal s_static_imm    : std_logic_vector(c_imm_wide-1 downto 0);
   signal s_static_imm_pad: unsigned(c_adr_wide-1 downto c_op_align);
   signal s_static_pc     : unsigned(c_adr_wide-1 downto c_op_align);
@@ -161,33 +159,30 @@ begin
       s_mask_tail(i)  <= s_mask_tail(i-1) or predict_jump_i(i-1); -- Ops following a taken jump
     end generate;
     
-    s_can_jump(i)   <= '1' when s_ops_in(i).jump >= c_opa_jump_seldom else '0';
-    s_often_jump(i) <= '1' when s_ops_in(i).jump >= c_opa_jump_often  else '0';
-    s_must_jump(i)  <= '1' when s_ops_in(i).jump >= c_opa_jump_always else '0';
-    s_push(i)       <= '1' when s_ops_in(i).push = '1' else '0';
-    s_pop(i)        <= '1' when s_ops_in(i).dest = c_opa_jump_return_stack else '0';
+    s_jump(i)  <= s_ops_in(i).jump;
+    s_take(i)  <= s_ops_in(i).take;
+    s_force(i) <= s_ops_in(i).force;
+    s_pop(i)   <= s_ops_in(i).pop;
+    s_push(i)  <= s_ops_in(i).push;
   end generate;
   
   -- Decide if we want to accept the fetch prediction
   s_hit <= (others => predict_hit_i);
-  s_bad_jump <= ((not s_can_jump and predict_jump_i) or
-                 (s_must_jump and not predict_jump_i) or
-                 (s_often_jump and not s_hit))
-                 and not s_mask_skip and not s_mask_tail;
+  s_bad_jump <= ((not s_jump and predict_jump_i) or
+                 (s_force and not predict_jump_i) or
+                 (s_take and not s_hit))
+                and not s_mask_skip and not s_mask_tail;
   s_fault <= '0' when s_bad_jump = c_zeros else '1';
   
   map_imm : for i in 0 to c_decoders-1 generate
-    s_mux(i,0) <= s_ops_in(i).dest(0);
-    s_mux(i,1) <= s_ops_in(i).dest(1);
     bits : for b in 0 to c_imm_wide-1 generate
-      s_imm(i,b) <= s_ops_in(i).imm(b);
+      s_imm(i,b) <= s_ops_in(i).immb(b);
     end generate;
   end generate;
   
   -- What is our prediction?
-  s_static_jumps<= s_often_jump and not s_mask_skip; -- need to assign valid range before picking
+  s_static_jumps<= s_take and not s_mask_skip; -- need to assign valid range before picking
   s_static_jump <= f_opa_pick_small(s_static_jumps);
-  s_static_mux  <= f_opa_product(f_opa_transpose(s_mux), s_static_jump);
   s_static_imm  <= f_opa_product(f_opa_transpose(s_imm), s_static_jump);
   
   s_static_pc(c_adr_wide-1 downto c_fetch_wide) <= unsigned(icache_pc_i(c_adr_wide-1 downto c_fetch_wide));
@@ -198,11 +193,7 @@ begin
     s_static_imm_pad(c_adr_wide-1 downto c_imm_wide) <= (others => s_static_imm_pad(c_imm_wide-1));
   end generate;
   
-  with s_static_mux select
-  s_static_target <= 
-    s_static_imm_pad               when c_opa_jump_to_immediate,
-    s_static_imm_pad + s_static_pc when c_opa_jump_add_immediate,
-    (others => '0')                when others; -- !!! only 0 for simulation (should be '-')
+  s_static_target <= s_static_imm_pad + s_static_pc;
 
   s_jump_taken <= s_static_jump when s_fault='1' else predict_jump_i;
   s_pcn_taken  <= std_logic_vector(s_static_target) when s_fault='1' else icache_pcn_i;
