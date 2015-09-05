@@ -165,11 +165,9 @@ package body opa_isa_pkg is
     variable adder : t_opa_adder;
     variable fast  : t_opa_fast;
     variable op    : t_opa_op;
+    variable ret   : std_logic;
   begin
     op := f_parse_itype(x);
-    op.jump     := '1'; -- override itype defaults
-    op.take     := '1';
-    op.force    := '1';
     -- immb stays don't care as we can't make a static prediction anyway
     adder.eq    := '0';
     adder.nota  := '0';
@@ -179,7 +177,11 @@ package body opa_isa_pkg is
     adder.fault := '-';
     fast.mode   := c_opa_fast_jump;
     fast.raw    := f_opa_fast_from_adder(adder);
-    op.pop      := f_zero(op.archx) and f_one(op.archa);
+    ret         := f_zero(op.archx) and f_one(op.archa); -- is this a return?
+    op.jump     := '1';
+    op.take     := ret;
+    op.force    := '0';
+    op.pop      := ret;
     op.push     := f_one(op.archx);
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);

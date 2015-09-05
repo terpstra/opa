@@ -150,8 +150,8 @@ package body opa_isa_pkg is
   begin
     result.bad   := f_opa_bit(x(20 downto 0) /= c_zero);
     result.jump  := '1';
-    result.take  := '1';
-    result.force := '1';
+    result.take  := '0'; -- no point following branch to nowhere
+    result.force := '0';
     result.archa := x(25 downto 21);
     result.getb  := '0';
     result.geta  := '1';
@@ -167,6 +167,7 @@ package body opa_isa_pkg is
     variable adder : t_opa_adder;
     variable fast  : t_opa_fast;
     variable op    : t_opa_op;
+    variable ret   : std_logic;
   begin
     op := f_parse_jrtype(x);
     -- !!! mess around with CSRs on eret/bret
@@ -178,8 +179,10 @@ package body opa_isa_pkg is
     adder.fault := '-';
     fast.mode   := c_opa_fast_jump;
     fast.raw    := f_opa_fast_from_adder(adder);
+    ret         := f_opa_bit(op.archa = c_lm32_ra or op.archa = c_lm32_ba or op.archa = c_lm32_ea);
+    op.take     := ret; -- only follow indirect branches that are returns
     op.setx     := '0';
-    op.pop      := f_opa_bit(op.archx = c_lm32_ra or op.archx = c_lm32_ba or op.archx = c_lm32_ea);
+    op.pop      := ret;
     op.push     := '0';
     op.fast     := '1';
     op.arg      := f_opa_arg_from_fast(fast);

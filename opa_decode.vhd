@@ -208,7 +208,7 @@ begin
   
   -- Feed back information to fetch
   predict_fault_o  <= (s_fault and s_accept) or rename_fault_i;
-  predict_return_o <= '0' when rename_fault_i='1' or (s_pop and s_static_jump) = c_zeros else '1';
+  predict_return_o <= '0' when rename_fault_i='1' or (s_pop and s_static_jump) = c_zeros else s_accept;
   predict_jump_o   <= s_rename_jump   when rename_fault_i='1' else s_static_jump;
   predict_source_o <= s_rename_source when rename_fault_i='1' else icache_pc_i;
   predict_target_o <= rename_pcn_i    when rename_fault_i='1' else std_logic_vector(s_static_target);
