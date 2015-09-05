@@ -9,64 +9,8 @@ use work.opa_functions_pkg.all;
 
 -- RISC-V ISA
 package opa_isa_pkg is
-
   constant c_op_wide : natural := 32;
-  
-  function f_zero(x : std_logic_vector(4 downto 0)) return std_logic;
-  function f_one (x : std_logic_vector(4 downto 0)) return std_logic;
-  function f_parse_rtype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_parse_itype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_parse_stype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_parse_sbtype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_parse_utype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  
-  function f_decode_jal  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_jalr (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_lui  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_auipc(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_beq  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_bne  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_blt  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_bge  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_bltu (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_bgeu (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_lb   (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_lh   (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_lw   (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_lbu  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_lhu  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_sb   (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_sh   (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_sw   (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_addi (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_slti (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_sltiu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_xori (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_ori  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_andi (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_slli (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_srli (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_srai (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_add  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_sub  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_sll  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_slt  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_sltu (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_xor  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_srl  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_sra  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_or   (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_and  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_mul  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_mulh (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_mulhsu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_mulhu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_div  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_divu (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_rem  (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode_remu (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  function f_decode      (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
-  
+  function f_decode(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op;
 end package;
 
 package body opa_isa_pkg is
