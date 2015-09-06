@@ -1,18 +1,20 @@
 [*]
 [*] GTKWave Analyzer v3.3.62 (w)1999-2014 BSI
-[*] Sun Sep  6 21:50:08 2015
+[*] Sun Sep  6 23:38:19 2015
 [*]
 [dumpfile] "/home/terpstra/opa/sim/testbench.ghw"
-[dumpfile_mtime] "Sun Sep  6 21:43:02 2015"
-[dumpfile_size] 7762460
+[dumpfile_mtime] "Sun Sep  6 23:37:14 2015"
+[dumpfile_size] 9512287
 [savefile] "/home/terpstra/opa/sim/wave.gtkw"
-[timestart] 0
-[size] 1359 993
-[pos] 134 27
-*-27.000000 245600000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 93990000
+[size] 1920 1134
+[pos] 0 27
+*-23.000000 125000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.opa_sim_tb.
 [treeopen] top.opa_sim_tb.opa_core.
+[treeopen] top.opa_sim_tb.opa_core.decode.
+[treeopen] top.opa_sim_tb.opa_core.decode.r_ops.
 [treeopen] top.opa_sim_tb.opa_core.decode.r_ops.[0].
 [treeopen] top.opa_sim_tb.opa_core.decode.r_ops.[1].
 [treeopen] top.opa_sim_tb.opa_core.decode.r_ops.[2].
@@ -20,9 +22,9 @@
 [treeopen] top.opa_sim_tb.opa_core.fastx[0].fast.
 [treeopen] top.opa_sim_tb.opa_core.slowx[1].slow.
 [sst_width] 289
-[signals_width] 208
+[signals_width] 380
 [sst_expanded] 1
-[sst_vpaned_height] 548
+[sst_vpaned_height] 644
 @28
 top.opa_sim_tb.opa_core.rst_n_i
 top.opa_sim_tb.opa_core.clk_i
@@ -100,16 +102,29 @@ top.opa_sim_tb.opa_core.regfile.eu_stb_o[0]
 #{top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,63:0]} top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,63] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,62] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,61] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,60] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,59] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,58] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,57] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,56] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,55] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,54] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,53] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,52] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,51] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,50] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,49] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,48] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,47] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,46] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,45] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,44] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,43] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,42] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,41] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,40] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,39] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,38] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,37] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,36] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,35] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,34] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,33] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,32] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,31] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,30] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,29] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,28] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,27] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,26] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,25] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,24] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,23] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,22] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,21] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,20] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,19] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,18] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,17] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,16] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,15] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,14] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,13] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,12] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,11] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,10] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,9] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,8] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,7] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,6] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,5] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,4] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,3] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,2] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,1] top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,0]
 @1001200
 -group_end
-@22
+@800022
 [color] 2
 #{top.opa_sim_tb.opa_core.issue.r_fault_in[4:0]} top.opa_sim_tb.opa_core.issue.r_fault_in[4] top.opa_sim_tb.opa_core.issue.r_fault_in[3] top.opa_sim_tb.opa_core.issue.r_fault_in[2] top.opa_sim_tb.opa_core.issue.r_fault_in[1] top.opa_sim_tb.opa_core.issue.r_fault_in[0]
+@28
+[color] 2
+top.opa_sim_tb.opa_core.issue.r_fault_in[4]
+[color] 2
+top.opa_sim_tb.opa_core.issue.r_fault_in[3]
+[color] 2
+top.opa_sim_tb.opa_core.issue.r_fault_in[2]
+[color] 2
+top.opa_sim_tb.opa_core.issue.r_fault_in[1]
+[color] 2
+top.opa_sim_tb.opa_core.issue.r_fault_in[0]
+@1001200
+-group_end
 @28
 [color] 1
 top.opa_sim_tb.opa_core.issue.r_fault_out
 top.opa_sim_tb.opa_core.decode.rename_stb_o
 top.opa_sim_tb.opa_core.decode.rename_stall_i
 top.opa_sim_tb.opa_core.decode.icache_stb_i
-@c00201
+@800200
 -DataBus
 @28
 top.opa_sim_tb.opa_core.d_cyc_o
@@ -124,8 +139,9 @@ top.opa_sim_tb.opa_core.d_err_i
 #{top.opa_sim_tb.d_sel[7:0]} top.opa_sim_tb.d_sel[7] top.opa_sim_tb.d_sel[6] top.opa_sim_tb.d_sel[5] top.opa_sim_tb.d_sel[4] top.opa_sim_tb.d_sel[3] top.opa_sim_tb.d_sel[2] top.opa_sim_tb.d_sel[1] top.opa_sim_tb.d_sel[0]
 @24
 #{top.opa_sim_tb.d_data_o[63:0]} top.opa_sim_tb.d_data_o[63] top.opa_sim_tb.d_data_o[62] top.opa_sim_tb.d_data_o[61] top.opa_sim_tb.d_data_o[60] top.opa_sim_tb.d_data_o[59] top.opa_sim_tb.d_data_o[58] top.opa_sim_tb.d_data_o[57] top.opa_sim_tb.d_data_o[56] top.opa_sim_tb.d_data_o[55] top.opa_sim_tb.d_data_o[54] top.opa_sim_tb.d_data_o[53] top.opa_sim_tb.d_data_o[52] top.opa_sim_tb.d_data_o[51] top.opa_sim_tb.d_data_o[50] top.opa_sim_tb.d_data_o[49] top.opa_sim_tb.d_data_o[48] top.opa_sim_tb.d_data_o[47] top.opa_sim_tb.d_data_o[46] top.opa_sim_tb.d_data_o[45] top.opa_sim_tb.d_data_o[44] top.opa_sim_tb.d_data_o[43] top.opa_sim_tb.d_data_o[42] top.opa_sim_tb.d_data_o[41] top.opa_sim_tb.d_data_o[40] top.opa_sim_tb.d_data_o[39] top.opa_sim_tb.d_data_o[38] top.opa_sim_tb.d_data_o[37] top.opa_sim_tb.d_data_o[36] top.opa_sim_tb.d_data_o[35] top.opa_sim_tb.d_data_o[34] top.opa_sim_tb.d_data_o[33] top.opa_sim_tb.d_data_o[32] top.opa_sim_tb.d_data_o[31] top.opa_sim_tb.d_data_o[30] top.opa_sim_tb.d_data_o[29] top.opa_sim_tb.d_data_o[28] top.opa_sim_tb.d_data_o[27] top.opa_sim_tb.d_data_o[26] top.opa_sim_tb.d_data_o[25] top.opa_sim_tb.d_data_o[24] top.opa_sim_tb.d_data_o[23] top.opa_sim_tb.d_data_o[22] top.opa_sim_tb.d_data_o[21] top.opa_sim_tb.d_data_o[20] top.opa_sim_tb.d_data_o[19] top.opa_sim_tb.d_data_o[18] top.opa_sim_tb.d_data_o[17] top.opa_sim_tb.d_data_o[16] top.opa_sim_tb.d_data_o[15] top.opa_sim_tb.d_data_o[14] top.opa_sim_tb.d_data_o[13] top.opa_sim_tb.d_data_o[12] top.opa_sim_tb.d_data_o[11] top.opa_sim_tb.d_data_o[10] top.opa_sim_tb.d_data_o[9] top.opa_sim_tb.d_data_o[8] top.opa_sim_tb.d_data_o[7] top.opa_sim_tb.d_data_o[6] top.opa_sim_tb.d_data_o[5] top.opa_sim_tb.d_data_o[4] top.opa_sim_tb.d_data_o[3] top.opa_sim_tb.d_data_o[2] top.opa_sim_tb.d_data_o[1] top.opa_sim_tb.d_data_o[0]
+@23
 #{top.opa_sim_tb.d_data_i[63:0]} top.opa_sim_tb.d_data_i[63] top.opa_sim_tb.d_data_i[62] top.opa_sim_tb.d_data_i[61] top.opa_sim_tb.d_data_i[60] top.opa_sim_tb.d_data_i[59] top.opa_sim_tb.d_data_i[58] top.opa_sim_tb.d_data_i[57] top.opa_sim_tb.d_data_i[56] top.opa_sim_tb.d_data_i[55] top.opa_sim_tb.d_data_i[54] top.opa_sim_tb.d_data_i[53] top.opa_sim_tb.d_data_i[52] top.opa_sim_tb.d_data_i[51] top.opa_sim_tb.d_data_i[50] top.opa_sim_tb.d_data_i[49] top.opa_sim_tb.d_data_i[48] top.opa_sim_tb.d_data_i[47] top.opa_sim_tb.d_data_i[46] top.opa_sim_tb.d_data_i[45] top.opa_sim_tb.d_data_i[44] top.opa_sim_tb.d_data_i[43] top.opa_sim_tb.d_data_i[42] top.opa_sim_tb.d_data_i[41] top.opa_sim_tb.d_data_i[40] top.opa_sim_tb.d_data_i[39] top.opa_sim_tb.d_data_i[38] top.opa_sim_tb.d_data_i[37] top.opa_sim_tb.d_data_i[36] top.opa_sim_tb.d_data_i[35] top.opa_sim_tb.d_data_i[34] top.opa_sim_tb.d_data_i[33] top.opa_sim_tb.d_data_i[32] top.opa_sim_tb.d_data_i[31] top.opa_sim_tb.d_data_i[30] top.opa_sim_tb.d_data_i[29] top.opa_sim_tb.d_data_i[28] top.opa_sim_tb.d_data_i[27] top.opa_sim_tb.d_data_i[26] top.opa_sim_tb.d_data_i[25] top.opa_sim_tb.d_data_i[24] top.opa_sim_tb.d_data_i[23] top.opa_sim_tb.d_data_i[22] top.opa_sim_tb.d_data_i[21] top.opa_sim_tb.d_data_i[20] top.opa_sim_tb.d_data_i[19] top.opa_sim_tb.d_data_i[18] top.opa_sim_tb.d_data_i[17] top.opa_sim_tb.d_data_i[16] top.opa_sim_tb.d_data_i[15] top.opa_sim_tb.d_data_i[14] top.opa_sim_tb.d_data_i[13] top.opa_sim_tb.d_data_i[12] top.opa_sim_tb.d_data_i[11] top.opa_sim_tb.d_data_i[10] top.opa_sim_tb.d_data_i[9] top.opa_sim_tb.d_data_i[8] top.opa_sim_tb.d_data_i[7] top.opa_sim_tb.d_data_i[6] top.opa_sim_tb.d_data_i[5] top.opa_sim_tb.d_data_i[4] top.opa_sim_tb.d_data_i[3] top.opa_sim_tb.d_data_i[2] top.opa_sim_tb.d_data_i[1] top.opa_sim_tb.d_data_i[0]
-@1401201
+@1000200
 -DataBus
 @c00200
 -InstructionBus
@@ -142,8 +158,10 @@ top.opa_sim_tb.opa_core.icache.i_ack_i
 -InstructionBus
 @c00200
 -Decode0
-@22
+@24
 #{top.opa_sim_tb.opa_core.decode.r_pc[0][38:2]} top.opa_sim_tb.opa_core.decode.r_pc[0][38] top.opa_sim_tb.opa_core.decode.r_pc[0][37] top.opa_sim_tb.opa_core.decode.r_pc[0][36] top.opa_sim_tb.opa_core.decode.r_pc[0][35] top.opa_sim_tb.opa_core.decode.r_pc[0][34] top.opa_sim_tb.opa_core.decode.r_pc[0][33] top.opa_sim_tb.opa_core.decode.r_pc[0][32] top.opa_sim_tb.opa_core.decode.r_pc[0][31] top.opa_sim_tb.opa_core.decode.r_pc[0][30] top.opa_sim_tb.opa_core.decode.r_pc[0][29] top.opa_sim_tb.opa_core.decode.r_pc[0][28] top.opa_sim_tb.opa_core.decode.r_pc[0][27] top.opa_sim_tb.opa_core.decode.r_pc[0][26] top.opa_sim_tb.opa_core.decode.r_pc[0][25] top.opa_sim_tb.opa_core.decode.r_pc[0][24] top.opa_sim_tb.opa_core.decode.r_pc[0][23] top.opa_sim_tb.opa_core.decode.r_pc[0][22] top.opa_sim_tb.opa_core.decode.r_pc[0][21] top.opa_sim_tb.opa_core.decode.r_pc[0][20] top.opa_sim_tb.opa_core.decode.r_pc[0][19] top.opa_sim_tb.opa_core.decode.r_pc[0][18] top.opa_sim_tb.opa_core.decode.r_pc[0][17] top.opa_sim_tb.opa_core.decode.r_pc[0][16] top.opa_sim_tb.opa_core.decode.r_pc[0][15] top.opa_sim_tb.opa_core.decode.r_pc[0][14] top.opa_sim_tb.opa_core.decode.r_pc[0][13] top.opa_sim_tb.opa_core.decode.r_pc[0][12] top.opa_sim_tb.opa_core.decode.r_pc[0][11] top.opa_sim_tb.opa_core.decode.r_pc[0][10] top.opa_sim_tb.opa_core.decode.r_pc[0][9] top.opa_sim_tb.opa_core.decode.r_pc[0][8] top.opa_sim_tb.opa_core.decode.r_pc[0][7] top.opa_sim_tb.opa_core.decode.r_pc[0][6] top.opa_sim_tb.opa_core.decode.r_pc[0][5] top.opa_sim_tb.opa_core.decode.r_pc[0][4] top.opa_sim_tb.opa_core.decode.r_pc[0][3] top.opa_sim_tb.opa_core.decode.r_pc[0][2]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[0].geta
 @c00022
 #{top.opa_sim_tb.opa_core.decode.r_ops[0].archa[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[0].archa[4] top.opa_sim_tb.opa_core.decode.r_ops[0].archa[3] top.opa_sim_tb.opa_core.decode.r_ops[0].archa[2] top.opa_sim_tb.opa_core.decode.r_ops[0].archa[1] top.opa_sim_tb.opa_core.decode.r_ops[0].archa[0]
 @28
@@ -154,8 +172,14 @@ top.opa_sim_tb.opa_core.decode.r_ops[0].archa[1]
 top.opa_sim_tb.opa_core.decode.r_ops[0].archa[0]
 @1401200
 -group_end
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[0].getb
 @22
 #{top.opa_sim_tb.opa_core.decode.r_ops[0].archb[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[0].archb[4] top.opa_sim_tb.opa_core.decode.r_ops[0].archb[3] top.opa_sim_tb.opa_core.decode.r_ops[0].archb[2] top.opa_sim_tb.opa_core.decode.r_ops[0].archb[1] top.opa_sim_tb.opa_core.decode.r_ops[0].archb[0]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[0].setx
+@22
+[color] 5
 #{top.opa_sim_tb.opa_core.decode.r_ops[0].archx[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[0].archx[4] top.opa_sim_tb.opa_core.decode.r_ops[0].archx[3] top.opa_sim_tb.opa_core.decode.r_ops[0].archx[2] top.opa_sim_tb.opa_core.decode.r_ops[0].archx[1] top.opa_sim_tb.opa_core.decode.r_ops[0].archx[0]
 @28
 top.opa_sim_tb.opa_core.decode.r_ops[0].fast
@@ -164,10 +188,20 @@ top.opa_sim_tb.opa_core.decode.r_ops[0].bad
 -Decode0
 @c00200
 -Decode1
-@22
+@24
 #{top.opa_sim_tb.opa_core.decode.r_pc[1][38:2]} top.opa_sim_tb.opa_core.decode.r_pc[1][38] top.opa_sim_tb.opa_core.decode.r_pc[1][37] top.opa_sim_tb.opa_core.decode.r_pc[1][36] top.opa_sim_tb.opa_core.decode.r_pc[1][35] top.opa_sim_tb.opa_core.decode.r_pc[1][34] top.opa_sim_tb.opa_core.decode.r_pc[1][33] top.opa_sim_tb.opa_core.decode.r_pc[1][32] top.opa_sim_tb.opa_core.decode.r_pc[1][31] top.opa_sim_tb.opa_core.decode.r_pc[1][30] top.opa_sim_tb.opa_core.decode.r_pc[1][29] top.opa_sim_tb.opa_core.decode.r_pc[1][28] top.opa_sim_tb.opa_core.decode.r_pc[1][27] top.opa_sim_tb.opa_core.decode.r_pc[1][26] top.opa_sim_tb.opa_core.decode.r_pc[1][25] top.opa_sim_tb.opa_core.decode.r_pc[1][24] top.opa_sim_tb.opa_core.decode.r_pc[1][23] top.opa_sim_tb.opa_core.decode.r_pc[1][22] top.opa_sim_tb.opa_core.decode.r_pc[1][21] top.opa_sim_tb.opa_core.decode.r_pc[1][20] top.opa_sim_tb.opa_core.decode.r_pc[1][19] top.opa_sim_tb.opa_core.decode.r_pc[1][18] top.opa_sim_tb.opa_core.decode.r_pc[1][17] top.opa_sim_tb.opa_core.decode.r_pc[1][16] top.opa_sim_tb.opa_core.decode.r_pc[1][15] top.opa_sim_tb.opa_core.decode.r_pc[1][14] top.opa_sim_tb.opa_core.decode.r_pc[1][13] top.opa_sim_tb.opa_core.decode.r_pc[1][12] top.opa_sim_tb.opa_core.decode.r_pc[1][11] top.opa_sim_tb.opa_core.decode.r_pc[1][10] top.opa_sim_tb.opa_core.decode.r_pc[1][9] top.opa_sim_tb.opa_core.decode.r_pc[1][8] top.opa_sim_tb.opa_core.decode.r_pc[1][7] top.opa_sim_tb.opa_core.decode.r_pc[1][6] top.opa_sim_tb.opa_core.decode.r_pc[1][5] top.opa_sim_tb.opa_core.decode.r_pc[1][4] top.opa_sim_tb.opa_core.decode.r_pc[1][3] top.opa_sim_tb.opa_core.decode.r_pc[1][2]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[1].geta
+@22
 #{top.opa_sim_tb.opa_core.decode.r_ops[1].archa[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[1].archa[4] top.opa_sim_tb.opa_core.decode.r_ops[1].archa[3] top.opa_sim_tb.opa_core.decode.r_ops[1].archa[2] top.opa_sim_tb.opa_core.decode.r_ops[1].archa[1] top.opa_sim_tb.opa_core.decode.r_ops[1].archa[0]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[1].getb
+@22
 #{top.opa_sim_tb.opa_core.decode.r_ops[1].archb[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[1].archb[4] top.opa_sim_tb.opa_core.decode.r_ops[1].archb[3] top.opa_sim_tb.opa_core.decode.r_ops[1].archb[2] top.opa_sim_tb.opa_core.decode.r_ops[1].archb[1] top.opa_sim_tb.opa_core.decode.r_ops[1].archb[0]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[1].setx
+@22
+[color] 5
 #{top.opa_sim_tb.opa_core.decode.r_ops[1].archx[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[1].archx[4] top.opa_sim_tb.opa_core.decode.r_ops[1].archx[3] top.opa_sim_tb.opa_core.decode.r_ops[1].archx[2] top.opa_sim_tb.opa_core.decode.r_ops[1].archx[1] top.opa_sim_tb.opa_core.decode.r_ops[1].archx[0]
 @28
 top.opa_sim_tb.opa_core.decode.r_ops[1].fast
@@ -176,10 +210,20 @@ top.opa_sim_tb.opa_core.decode.r_ops[1].bad
 -Decode1
 @c00200
 -Decode2
-@22
+@24
 #{top.opa_sim_tb.opa_core.decode.r_pc[2][38:2]} top.opa_sim_tb.opa_core.decode.r_pc[2][38] top.opa_sim_tb.opa_core.decode.r_pc[2][37] top.opa_sim_tb.opa_core.decode.r_pc[2][36] top.opa_sim_tb.opa_core.decode.r_pc[2][35] top.opa_sim_tb.opa_core.decode.r_pc[2][34] top.opa_sim_tb.opa_core.decode.r_pc[2][33] top.opa_sim_tb.opa_core.decode.r_pc[2][32] top.opa_sim_tb.opa_core.decode.r_pc[2][31] top.opa_sim_tb.opa_core.decode.r_pc[2][30] top.opa_sim_tb.opa_core.decode.r_pc[2][29] top.opa_sim_tb.opa_core.decode.r_pc[2][28] top.opa_sim_tb.opa_core.decode.r_pc[2][27] top.opa_sim_tb.opa_core.decode.r_pc[2][26] top.opa_sim_tb.opa_core.decode.r_pc[2][25] top.opa_sim_tb.opa_core.decode.r_pc[2][24] top.opa_sim_tb.opa_core.decode.r_pc[2][23] top.opa_sim_tb.opa_core.decode.r_pc[2][22] top.opa_sim_tb.opa_core.decode.r_pc[2][21] top.opa_sim_tb.opa_core.decode.r_pc[2][20] top.opa_sim_tb.opa_core.decode.r_pc[2][19] top.opa_sim_tb.opa_core.decode.r_pc[2][18] top.opa_sim_tb.opa_core.decode.r_pc[2][17] top.opa_sim_tb.opa_core.decode.r_pc[2][16] top.opa_sim_tb.opa_core.decode.r_pc[2][15] top.opa_sim_tb.opa_core.decode.r_pc[2][14] top.opa_sim_tb.opa_core.decode.r_pc[2][13] top.opa_sim_tb.opa_core.decode.r_pc[2][12] top.opa_sim_tb.opa_core.decode.r_pc[2][11] top.opa_sim_tb.opa_core.decode.r_pc[2][10] top.opa_sim_tb.opa_core.decode.r_pc[2][9] top.opa_sim_tb.opa_core.decode.r_pc[2][8] top.opa_sim_tb.opa_core.decode.r_pc[2][7] top.opa_sim_tb.opa_core.decode.r_pc[2][6] top.opa_sim_tb.opa_core.decode.r_pc[2][5] top.opa_sim_tb.opa_core.decode.r_pc[2][4] top.opa_sim_tb.opa_core.decode.r_pc[2][3] top.opa_sim_tb.opa_core.decode.r_pc[2][2]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[2].geta
+@22
 #{top.opa_sim_tb.opa_core.decode.r_ops[2].archa[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[2].archa[4] top.opa_sim_tb.opa_core.decode.r_ops[2].archa[3] top.opa_sim_tb.opa_core.decode.r_ops[2].archa[2] top.opa_sim_tb.opa_core.decode.r_ops[2].archa[1] top.opa_sim_tb.opa_core.decode.r_ops[2].archa[0]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[2].getb
+@22
 #{top.opa_sim_tb.opa_core.decode.r_ops[2].archb[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[2].archb[4] top.opa_sim_tb.opa_core.decode.r_ops[2].archb[3] top.opa_sim_tb.opa_core.decode.r_ops[2].archb[2] top.opa_sim_tb.opa_core.decode.r_ops[2].archb[1] top.opa_sim_tb.opa_core.decode.r_ops[2].archb[0]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[2].setx
+@22
+[color] 5
 #{top.opa_sim_tb.opa_core.decode.r_ops[2].archx[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[2].archx[4] top.opa_sim_tb.opa_core.decode.r_ops[2].archx[3] top.opa_sim_tb.opa_core.decode.r_ops[2].archx[2] top.opa_sim_tb.opa_core.decode.r_ops[2].archx[1] top.opa_sim_tb.opa_core.decode.r_ops[2].archx[0]
 @28
 top.opa_sim_tb.opa_core.decode.r_ops[2].fast
@@ -190,9 +234,18 @@ top.opa_sim_tb.opa_core.decode.r_ops[2].bad
 -Decode3
 @24
 #{top.opa_sim_tb.opa_core.decode.r_pc[3][38:2]} top.opa_sim_tb.opa_core.decode.r_pc[3][38] top.opa_sim_tb.opa_core.decode.r_pc[3][37] top.opa_sim_tb.opa_core.decode.r_pc[3][36] top.opa_sim_tb.opa_core.decode.r_pc[3][35] top.opa_sim_tb.opa_core.decode.r_pc[3][34] top.opa_sim_tb.opa_core.decode.r_pc[3][33] top.opa_sim_tb.opa_core.decode.r_pc[3][32] top.opa_sim_tb.opa_core.decode.r_pc[3][31] top.opa_sim_tb.opa_core.decode.r_pc[3][30] top.opa_sim_tb.opa_core.decode.r_pc[3][29] top.opa_sim_tb.opa_core.decode.r_pc[3][28] top.opa_sim_tb.opa_core.decode.r_pc[3][27] top.opa_sim_tb.opa_core.decode.r_pc[3][26] top.opa_sim_tb.opa_core.decode.r_pc[3][25] top.opa_sim_tb.opa_core.decode.r_pc[3][24] top.opa_sim_tb.opa_core.decode.r_pc[3][23] top.opa_sim_tb.opa_core.decode.r_pc[3][22] top.opa_sim_tb.opa_core.decode.r_pc[3][21] top.opa_sim_tb.opa_core.decode.r_pc[3][20] top.opa_sim_tb.opa_core.decode.r_pc[3][19] top.opa_sim_tb.opa_core.decode.r_pc[3][18] top.opa_sim_tb.opa_core.decode.r_pc[3][17] top.opa_sim_tb.opa_core.decode.r_pc[3][16] top.opa_sim_tb.opa_core.decode.r_pc[3][15] top.opa_sim_tb.opa_core.decode.r_pc[3][14] top.opa_sim_tb.opa_core.decode.r_pc[3][13] top.opa_sim_tb.opa_core.decode.r_pc[3][12] top.opa_sim_tb.opa_core.decode.r_pc[3][11] top.opa_sim_tb.opa_core.decode.r_pc[3][10] top.opa_sim_tb.opa_core.decode.r_pc[3][9] top.opa_sim_tb.opa_core.decode.r_pc[3][8] top.opa_sim_tb.opa_core.decode.r_pc[3][7] top.opa_sim_tb.opa_core.decode.r_pc[3][6] top.opa_sim_tb.opa_core.decode.r_pc[3][5] top.opa_sim_tb.opa_core.decode.r_pc[3][4] top.opa_sim_tb.opa_core.decode.r_pc[3][3] top.opa_sim_tb.opa_core.decode.r_pc[3][2]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[3].geta
 @22
 #{top.opa_sim_tb.opa_core.decode.r_ops[3].archa[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[3].archa[4] top.opa_sim_tb.opa_core.decode.r_ops[3].archa[3] top.opa_sim_tb.opa_core.decode.r_ops[3].archa[2] top.opa_sim_tb.opa_core.decode.r_ops[3].archa[1] top.opa_sim_tb.opa_core.decode.r_ops[3].archa[0]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[3].getb
+@22
 #{top.opa_sim_tb.opa_core.decode.r_ops[3].archb[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[3].archb[4] top.opa_sim_tb.opa_core.decode.r_ops[3].archb[3] top.opa_sim_tb.opa_core.decode.r_ops[3].archb[2] top.opa_sim_tb.opa_core.decode.r_ops[3].archb[1] top.opa_sim_tb.opa_core.decode.r_ops[3].archb[0]
+@28
+top.opa_sim_tb.opa_core.decode.r_ops[3].setx
+@22
+[color] 5
 #{top.opa_sim_tb.opa_core.decode.r_ops[3].archx[4:0]} top.opa_sim_tb.opa_core.decode.r_ops[3].archx[4] top.opa_sim_tb.opa_core.decode.r_ops[3].archx[3] top.opa_sim_tb.opa_core.decode.r_ops[3].archx[2] top.opa_sim_tb.opa_core.decode.r_ops[3].archx[1] top.opa_sim_tb.opa_core.decode.r_ops[3].archx[0]
 @28
 top.opa_sim_tb.opa_core.decode.r_ops[3].fast
