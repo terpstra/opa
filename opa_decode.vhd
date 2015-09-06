@@ -98,6 +98,8 @@ architecture rtl of opa_decode is
   signal s_pc_off      : unsigned(c_dec_wide-1 downto 0);
   signal s_ops_in      : t_op_array(c_decoders-1 downto 0);
   signal s_pc_in       : t_pc_array(c_decoders-1 downto 0);
+  signal s_immb_in     : t_pc_array(c_decoders-1 downto 0);
+  signal s_pred_in     : t_pc_array(c_decoders-1 downto 0);
   signal s_mask_skip   : std_logic_vector(c_decoders-1 downto 0);
   signal s_mask_tail   : std_logic_vector(c_decoders-1 downto 0);
   signal s_jump        : std_logic_vector(c_decoders-1 downto 0);
@@ -108,16 +110,13 @@ architecture rtl of opa_decode is
   
   signal s_hit         : std_logic_vector(c_decoders-1 downto 0);
   signal s_bad_jump    : std_logic_vector(c_decoders-1 downto 0);
-  signal s_fault       : std_logic;
-  signal r_fault       : std_logic := '0';
+  signal s_use_static  : std_logic;
+  signal r_use_static  : std_logic := '0';
   
-  signal s_imm           : t_opa_matrix(c_decoders-1 downto 0, c_imm_wide-1 downto 0);
   signal s_static_jumps  : std_logic_vector(c_decoders-1 downto 0);
   signal s_static_jump   : std_logic_vector(c_decoders-1 downto 0);
-  signal s_static_imm    : std_logic_vector(c_imm_wide-1 downto 0);
-  signal s_static_imm_pad: unsigned(c_adr_wide-1 downto c_op_align);
-  signal s_static_pc     : unsigned(c_adr_wide-1 downto c_op_align);
-  signal s_static_target : unsigned(c_adr_wide-1 downto c_op_align);
+  signal s_static_targets: t_opa_matrix(c_decoders-1 downto 0, c_adr_wide-1 downto c_op_align);
+  signal s_static_target : std_logic_vector(c_adr_wide-1 downto c_op_align);
   
   signal s_rename_jump   : std_logic_vector(c_decoders-1 downto 0);
   signal s_rename_source : std_logic_vector(c_adr_wide-1 downto c_op_align);
@@ -151,8 +150,13 @@ begin
   s_pc_off <= unsigned(icache_pc_i(c_fetch_wide-1 downto c_op_align));
   s_mask_tail(0) <= '0';
   decode : for i in 0 to c_decoders-1 generate
-    s_ops_in(i)     <= f_decode(icache_dat_i((f_flip(i)+1)*c_op_wide-1 downto f_flip(i)*c_op_wide));
-    s_pc_in(i)      <= icache_pc_i(c_adr_wide-1 downto c_fetch_wide) & std_logic_vector(to_unsigned(i, c_dec_wide));
+    s_ops_in(i) <= f_decode(icache_dat_i((f_flip(i)+1)*c_op_wide-1 downto f_flip(i)*c_op_wide));
+    s_pc_in(i)  <= icache_pc_i(c_adr_wide-1 downto c_fetch_wide) & std_logic_vector(to_unsigned(i, c_dec_wide));
+    
+    s_immb_in(i)(c_min_imm_pc-2 downto c_op_align) <= s_ops_in(i).immb(c_min_imm_pc-2 downto c_op_align);
+    s_immb_in(i)(c_adr_wide-1 downto c_min_imm_pc-1) <= (others => s_ops_in(i).immb(c_min_imm_pc-1));
+    
+    s_pred_in(i) <= std_logic_vector(unsigned(s_pc_in(i)) + unsigned(s_immb_in(i)));
     
     s_mask_skip(i)  <= '1' when i < s_pc_off else '0'; -- Unused ops before loaded PC
     tail : if i > 0 generate
@@ -172,31 +176,21 @@ begin
                  (s_force and not predict_jump_i) or
                  (s_take and not s_hit))
                 and not s_mask_skip and not s_mask_tail;
-  s_fault <= '0' when s_bad_jump = c_zeros else '1';
-  
-  map_imm : for i in 0 to c_decoders-1 generate
-    bits : for b in 0 to c_imm_wide-1 generate
-      s_imm(i,b) <= s_ops_in(i).immb(b);
-    end generate;
-  end generate;
+  s_use_static <= '0' when s_bad_jump = c_zeros else '1';
   
   -- What is our prediction?
   s_static_jumps<= s_take and not s_mask_skip; -- need to assign valid range before picking
   s_static_jump <= f_opa_pick_small(s_static_jumps);
-  s_static_imm  <= f_opa_product(f_opa_transpose(s_imm), s_static_jump);
   
-  s_static_pc(c_adr_wide-1 downto c_fetch_wide) <= unsigned(icache_pc_i(c_adr_wide-1 downto c_fetch_wide));
-  s_static_pc(c_fetch_wide-1 downto c_op_align) <= unsigned(f_opa_1hot_dec(s_static_jump));
-  
-  s_static_imm_pad(c_min_imm_pc-1 downto c_op_align) <= unsigned(s_static_imm(c_min_imm_pc-1 downto c_op_align));
-  pad : if c_imm_wide < c_adr_wide generate
-    s_static_imm_pad(c_adr_wide-1 downto c_imm_wide) <= (others => s_static_imm_pad(c_imm_wide-1));
+  targets : for d in 0 to c_decoders-1 generate
+    bits : for b in c_op_align to c_adr_wide-1 generate
+      s_static_targets(d,b) <= s_pred_in(d)(b);
+    end generate;
   end generate;
-  
-  s_static_target <= s_static_imm_pad + s_static_pc;
+  s_static_target <= f_opa_product(f_opa_transpose(s_static_targets), s_static_jump);
 
-  s_jump_taken <= s_static_jump when s_fault='1' else predict_jump_i;
-  s_pcn_taken  <= std_logic_vector(s_static_target) when s_fault='1' else icache_pcn_i;
+  s_jump_taken <= s_static_jump when s_use_static='1' else predict_jump_i;
+  s_pcn_taken  <= s_static_target when s_use_static='1' else icache_pcn_i;
   
   -- Decode renamer's fault information
   s_rename_source(c_adr_wide-1   downto c_fetch_wide) <= rename_pc_i(c_adr_wide-1 downto c_fetch_wide);
@@ -207,11 +201,11 @@ begin
   end generate;
   
   -- Feed back information to fetch
-  predict_fault_o  <= (s_fault and s_accept) or rename_fault_i;
+  predict_fault_o  <= (s_use_static and s_accept) or rename_fault_i;
   predict_return_o <= '0' when rename_fault_i='1' or (s_pop and s_static_jump) = c_zeros else s_accept;
   predict_jump_o   <= s_rename_jump   when rename_fault_i='1' else s_static_jump;
   predict_source_o <= s_rename_source when rename_fault_i='1' else icache_pc_i;
-  predict_target_o <= rename_pcn_i    when rename_fault_i='1' else std_logic_vector(s_static_target);
+  predict_target_o <= rename_pcn_i    when rename_fault_i='1' else s_static_target;
   
   -- Do we need to push the PC?
   s_jal_pc(c_adr_wide  -1 downto c_fetch_wide) <= icache_pc_i(c_adr_wide-1 downto c_fetch_wide);
@@ -224,7 +218,7 @@ begin
   s_stb      <= '1' when r_fill >=   c_decoders else '0';
   s_pcn_reg  <= '1' when r_fill =    c_decoders else '0';
   s_progress <= s_stb and not rename_stall_i;
-  s_accept   <= icache_stb_i and not r_fault and not s_stall;
+  s_accept   <= icache_stb_i and not r_use_static and not s_stall;
   
   -- Select the new buffer fill state
   s_idx_base <= s_pc_off - r_fill(s_idx_base'range);
@@ -236,24 +230,23 @@ begin
     s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_wide-1 downto c_op_align);
   end generate;
   
-  -- !!! include (r_fill - s_ops_sub) into one step
   s_ops_sub <= unsigned(f_opa_1hot_dec(f_opa_reverse(s_jump_taken))) + s_pc_off;
   fill : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_fault <= '0';
-      r_fill  <= (others => '0');
+      r_use_static <= '0';
+      r_fill <= (others => '0');
     elsif rising_edge(clk_i) then
       if rename_fault_i = '1' then
-        r_fault <= '1';
-        r_fill  <= (others => '0');
+        r_use_static <= '1';
+        r_fill <= (others => '0');
       else
-        -- On a fault, we ignore the next valid icache strobe
+        -- On a static predicition, we ignore the next valid icache strobe
         if (icache_stb_i and not s_stall) = '1' then
-          if r_fault = '1' then
-            r_fault <= '0';
+          if r_use_static = '1' then
+            r_use_static <= '0';
           else
-            r_fault <= s_fault;
+            r_use_static <= s_use_static;
           end if;
         end if;
         
