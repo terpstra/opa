@@ -81,7 +81,7 @@ begin
     generic map(
       g_width  => s_rtag'length + s_rdata'length,
       g_size   => c_size,
-      g_bypass => false,
+      g_equal  => OPA_UNDEF,
       g_regin  => true,
       g_regout => false)
     port map(

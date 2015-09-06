@@ -31,7 +31,6 @@ for i in 				\
 	opa_dbus.vhd			\
 	opa.vhd				\
 	demo/$arch.vhd			\
-	opa_core_tb.vhd			\
 	opa_sim_tb.vhd;			\
 do echo $i; ghdl -a --std=93 --ieee=standard --syn-binding  ../$i
 done

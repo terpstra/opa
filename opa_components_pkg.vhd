@@ -9,11 +9,12 @@ use work.opa_functions_pkg.all;
 
 package opa_components_pkg is
 
+  type t_dpram_equal is (OPA_OLD, OPA_NEW, OPA_UNDEF);
   component opa_dpram is
     generic(
       g_width  : natural;
       g_size   : natural;
-      g_bypass : boolean;
+      g_equal  : t_dpram_equal;
       g_regin  : boolean;
       g_regout : boolean);
     port(
@@ -364,7 +365,7 @@ package opa_components_pkg is
       
       dbus_stb_i     : in  std_logic;
       dbus_adr_i     : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto 0);
-      dbus_dat_i     : in  std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
+      dbus_dat_i     : in  std_logic_vector(c_dline_size*8            -1 downto 0);
       dbus_stb_o     : out std_logic;
       dbus_adr_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto 0);
       
@@ -395,16 +396,9 @@ package opa_components_pkg is
       
       slow_stb_o : out std_logic;
       slow_adr_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      slow_dat_o : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      slow_dat_o : out std_logic_vector(c_dline_size*8          -1 downto 0);
       slow_stb_i : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
       slow_adr_i : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto 0));
-  end component;
-  
-  component opa_core_tb is
-    port(
-      clk_i  : in std_logic;
-      rstn_i : in std_logic;
-      good_o : out std_logic);
   end component;
   
 end package;

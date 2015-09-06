@@ -162,6 +162,10 @@ package opa_functions_pkg is
   constant c_opa_slow_load  : std_logic_vector(1 downto 0) := "10";
   constant c_opa_slow_store : std_logic_vector(1 downto 0) := "11";
   
+  -- !!! consider trying to decode operations into distinct fields
+  -- we already put this into a dpram, so width is fairly cheap
+  -- simplifies decode logic w/o making execute more complex
+  
   type t_opa_slow is record
     mode  : std_logic_vector(1 downto 0);
     raw   : std_logic_vector(5 downto 0);

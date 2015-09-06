@@ -12,6 +12,7 @@ entity opa_dpram is
   generic(
     g_width  : natural;
     g_size   : natural;
+    g_equal  : t_dpram_equal;
     g_bypass : boolean;
     g_regin  : boolean;
     g_regout : boolean);
@@ -42,7 +43,12 @@ architecture rtl of opa_dpram is
   signal srr_data       : std_logic_vector(g_width-1 downto 0);
 begin
 
-  s_data_bypass <= w_data_i when g_bypass else (others => 'X');
+  nohw : 
+    assert (g_equal /= OPA_OLD or g_regin)
+    report "opa_dpram cannot be used in OPA_OLD mode without a registered input"
+    severity failure;
+
+  s_data_bypass <= w_data_i;
   s_data_memory <= r_memory(to_integer(unsigned(r_addr_i)));
   s_bypass      <= f_opa_bit(r_addr_i = w_addr_i) and w_en_i;
   
@@ -64,7 +70,10 @@ begin
   sr_data_memory <= r_data_memory when g_regin else s_data_memory;
   sr_bypass      <= r_bypass      when g_regin else s_bypass;
   
-  sr_data  <= sr_data_bypass when sr_bypass = '1' else sr_data_memory;
+  sr_data <= 
+    sr_data_memory when sr_bypass = '0' or g_equal = OPA_OLD else
+    sr_data_bypass when                    g_equal = OPA_NEW else
+    (others => 'X');
   
   r_data_o <= srr_data when g_regout else sr_data;
 

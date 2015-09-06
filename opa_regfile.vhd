@@ -343,7 +343,7 @@ begin
       generic map(
         g_width  => c_aux_data_wide,
         g_size   => c_num_aux,
-        g_bypass => false,
+        g_equal  => OPA_UNDEF,
         g_regin  => true,
         g_regout => false)
       port map(
@@ -425,7 +425,7 @@ begin
         generic map(
           g_width  => c_reg_wide,
           g_size   => c_num_back,
-          g_bypass => false,
+          g_equal  => OPA_UNDEF,
           g_regin  => true,
           g_regout => false)
         port map(
@@ -440,7 +440,7 @@ begin
         generic map(
           g_width  => c_reg_wide,
           g_size   => c_num_back,
-          g_bypass => false,
+          g_equal  => OPA_UNDEF,
           g_regin  => true,
           g_regout => false)
         port map(

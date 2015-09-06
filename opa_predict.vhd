@@ -60,7 +60,7 @@ begin
     generic map(
       g_width  => r_pc'length,
       g_size   => c_rs_deep,
-      g_bypass => false,
+      g_equal  => OPA_UNDEF,
       g_regin  => true,
       g_regout => false)
     port map(

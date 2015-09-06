@@ -14,7 +14,7 @@ entity opa_dpram is
   generic(
     g_width  : natural;
     g_size   : natural;
-    g_bypass : boolean;
+    g_equal  : t_dpram_equal;
     g_regin  : boolean;
     g_regout : boolean);
   port(
@@ -29,7 +29,7 @@ end opa_dpram;
 
 architecture syn of opa_dpram is
 
-  constant c_m10k      : boolean := g_regin and g_size > 32;
+  constant c_m10k      : boolean := (g_regin and g_size > 32) or (g_equal = OPA_OLD);
   constant c_mlab_cin  : string  := f_opa_choose(g_regin,  "OUTCLOCK", "UNREGISTERED");
   constant c_mlab_cout : string  := f_opa_choose(g_regout, "OUTCLOCK", "UNREGISTERED");
   constant c_m10k_cout : string  := f_opa_choose(g_regout, "CLOCK0",   "UNREGISTERED");
@@ -45,6 +45,11 @@ architecture syn of opa_dpram is
   signal s_mux_wdata  : std_logic_vector(g_width-1 downto 0);
 
 begin
+
+  nohw : 
+    assert (g_equal /= OPA_OLD or g_regin)
+    report "opa_dpram cannot be used in OPA_OLD mode without a registered input"
+    severity failure;
 
   regout : if not c_m10k generate
     ram : altdpram
@@ -95,7 +100,7 @@ begin
         outdata_reg_b                      => c_m10k_cout,
         power_up_uninitialized             => "FALSE",
         ram_block_type                     => "M10K",
-        read_during_write_mode_mixed_ports => "DONT_CARE",
+        read_during_write_mode_mixed_ports => "OLD_DATA",
         widthad_a                          => f_opa_log2(g_size),
         widthad_b                          => f_opa_log2(g_size),
         width_a                            => g_width,
@@ -108,7 +113,6 @@ begin
         data_a    => w_data_i,
         address_b => r_addr_i,
         q_b       => s_rdata);
-    
   end generate;
   
   s_wdata   <= w_data_i;
@@ -133,6 +137,6 @@ begin
     r_wdata2 when (    g_regin and     g_regout) else
     r_wdata1;
   
-  r_data_o <= s_mux_wdata when (g_bypass and s_mux_bypass = '1') else s_rdata;
+  r_data_o <= s_mux_wdata when (g_equal = OPA_NEW and s_mux_bypass = '1') else s_rdata;
 
 end syn;

@@ -10,4 +10,6 @@ package opa_isa_base_pkg is
   constant c_imm_wide    : natural := 32;
   constant c_big_endian  : boolean := false;
   constant c_page_size   : natural := 4096;
+  constant c_dline_size  : natural := 16;
+  constant c_iline_size  : natural := 16;
 end package;

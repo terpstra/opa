@@ -147,8 +147,8 @@ architecture rtl of opa is
   signal slow_dbus_adr          : t_opa_matrix(c_num_slow-1 downto 0, c_adr_wide-1 downto 0);
   
   signal dbus_slow_stb          : std_logic;
-  signal dbus_slow_adr          : std_logic_vector(c_adr_wide-1 downto 0);
-  signal dbus_slow_dat          : std_logic_vector(c_reg_wide-1 downto 0);
+  signal dbus_slow_adr          : std_logic_vector(c_adr_wide    -1 downto 0);
+  signal dbus_slow_dat          : std_logic_vector(c_dline_size*8-1 downto 0);
   
   type t_reg  is array (c_executers-1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
   type t_arg  is array (c_executers-1 downto 0) of std_logic_vector(c_arg_wide -1 downto 0);
@@ -191,6 +191,11 @@ begin
     report "num_slow must be >= 1"
     severity failure;
   
+  check_reg :
+    assert (8 <= 2**g_config.log_width)
+    report "registers must be larger than a byte"
+    severity failure;
+    
   check_imm :
     assert (c_imm_wide <= 2**g_config.log_width)
     report "registers must be larger than ISA immediates"
@@ -199,6 +204,21 @@ begin
   check_adr :
     assert (g_config.adr_width <= 2**g_config.log_width)
     report "registers must be larger than virtual address space"
+    severity failure;
+    
+  check_page :
+    assert (g_config.adr_width >= f_opa_log2(c_page_size))
+    report "virtual address space must exceed one page"
+    severity failure;
+  
+  check_dline :
+    assert (2**g_config.log_width <= c_dline_size*8)
+    report "registers can not exceed the size of an L1d line"
+    severity failure;
+
+  check_iline :
+    assert (2**g_config.log_width <= c_iline_size*8)
+    report "registers can not exceed the size of an L1i line"
     severity failure;
 
   -- !!! include our own reset extender
