@@ -222,7 +222,7 @@ begin
       r_l1_voff  <= s_l1_voff;
       r_l1_shift <= std_logic_vector(unsigned(s_l1_voff) + unsigned(s_size_sh));
       r_l1_clear <= s_l1_clear;
-      r_ldst2    <= r_ldst2;
+      r_ldst2    <= r_ldst1;
       --
       r_l1_dat  <= s_l1_zext;
     end if;
