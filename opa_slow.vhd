@@ -45,7 +45,8 @@ architecture rtl of opa_slow is
   constant c_reg_wide      : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide      : natural := f_opa_adr_wide(g_config);
   constant c_imm_wide      : natural := f_opa_imm_wide(g_config);
-  constant c_log_reg_bytes : natural := f_opa_log2(c_reg_wide)-3;
+  constant c_log_reg_wide  : natural := f_opa_log2(c_reg_wide);
+  constant c_log_reg_bytes : natural := c_log_reg_wide - 3;
   constant c_l1_line_bytes : natural := c_dline_size;
   constant c_l1_idx_low    : natural := f_opa_log2(c_l1_line_bytes);
   constant c_l1_idx_high   : natural := f_opa_log2(c_page_size);
@@ -57,6 +58,8 @@ architecture rtl of opa_slow is
   
   signal s_slow  : t_opa_slow;
   signal s_mul   : t_opa_mul;
+  signal s_shift : t_opa_shift;
+  signal r_shift : t_opa_shift;
   signal s_ldst  : t_opa_ldst;
   signal r_ldst1 : t_opa_ldst;
   signal r_ldst2 : t_opa_ldst;
@@ -73,6 +76,7 @@ architecture rtl of opa_slow is
   signal r_high3 : std_logic;
   
   signal r_rega    : std_logic_vector(c_reg_wide-1 downto 0);
+  signal r_regb    : std_logic_vector(c_reg_wide-1 downto 0);
   signal r_imm     : std_logic_vector(c_imm_wide-1 downto 0);
   signal s_virt_ad : std_logic_vector(c_reg_wide    -1 downto 0);
   signal s_l1_wtag : std_logic_vector(c_adr_wide    -1 downto c_l1_idx_high);
@@ -102,8 +106,12 @@ architecture rtl of opa_slow is
   type t_reg_mux is array(natural range <>) of std_logic_vector(c_reg_wide-1 downto 0);
   signal s_l1_mux : t_reg_mux(c_log_reg_bytes downto 0);
   
-  
   signal s_miss    : std_logic;
+  
+  signal r_sexta   : std_logic_vector(2*c_reg_wide  -1 downto 0);
+  signal r_shamt   : std_logic_vector(c_log_reg_wide   downto 0);
+  signal s_shout   : std_logic_vector(2*c_reg_wide  -1 downto 0);
+  signal r_shout   : std_logic_vector(c_reg_wide    -1 downto 0);
 
 begin
 
@@ -117,10 +125,13 @@ begin
   s_slow <= f_opa_slow_from_arg(regfile_arg_i);
   s_mul  <= f_opa_mul_from_slow(s_slow.raw);
   s_ldst <= f_opa_ldst_from_slow(s_slow.raw);
+  s_shift<= f_opa_shift_from_slow(s_slow.raw);
   
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
+      r_rega     <= regfile_rega_i;
+      r_regb     <= regfile_regb_i;
       r_stb1  <= regfile_stb_i;
       r_mode1 <= s_slow.mode;
       r_mode2 <= r_mode1;
@@ -175,6 +186,7 @@ begin
   s_l1_rtag <= not s_l1_rent(s_l1_rent'high downto s_l1_rdat'high+1);
   s_l1_rdat <= s_l1_rent(s_l1_rdat'range);
   
+  -- !!! include valid bits; at the moment a partially loaded line can satisfy a load!
   s_miss <= f_opa_bit(r_l1_vtag /= s_l1_rtag) and r_l1_stb;
   
   -- Let the dbus know is we need to load something
@@ -216,7 +228,6 @@ begin
   l1 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_rega     <= regfile_rega_i;
       r_imm      <= regfile_imm_i;
       r_ldst1    <= s_ldst;
       --
@@ -234,11 +245,39 @@ begin
   
   s_load_out <= r_l1_dat; -- !!! select the matching way
   
-  -- !!! include a shifter
+  -- Implement a shifter
+  shifter : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      r_shift <= s_shift;
+      -- sign extend the shifter
+      if r_shift.sext = '0' then
+        r_sexta <= (others => '0');
+      else
+        r_sexta <= (others => r_rega(r_rega'high));
+      end if;
+      r_sexta(r_rega'range) <= r_rega;
+      -- calculate distance
+      r_shamt <= (others => '0');
+      if r_shift.right = '1' then
+        r_shamt(c_log_reg_wide-1 downto 0) <= r_regb(c_log_reg_wide-1 downto 0);
+      else
+        if unsigned(r_regb(c_log_reg_wide-1 downto 0)) /= 0 then
+          r_shamt <= std_logic_vector(0-unsigned(r_regb(r_shamt'range)));
+        end if;
+      end if;
+      -- run the shifter
+      r_shout <= s_shout(r_shout'range);
+    end if;
+  end process;
+  s_shout <= std_logic_vector(rotate_right(unsigned(r_sexta), to_integer(unsigned(r_shamt))));
+  
+  -- pick the output
   with r_mode3 select
   regfile_regx_o <=
     s_mul_out       when c_opa_slow_mul,
     s_load_out      when c_opa_slow_load,
+    r_shout         when c_opa_slow_shift,
     (others => '-') when others;
 
 end rtl;
