@@ -1,13 +1,16 @@
 roll-out:
-	implement reads: direct + byte select + sign-extend
+	add valid flags to L1d ... 
+	finalize optimizations: regfile bypass, issue shift, and fast adder
 	implement write-to-store-buffer
 	implement store finalizer scheduler [a]
 	implement write port
 	implement load-alias detection CAM [0]
 	implement write alias wake-up [1]
-	implement TLB+L1 [3]
-	branch predictor
-	add microcode for div and sextb=(andi 0x80, muli -1, or)
+	implement TLB [3]
+	add instruction and data prefetch?
+	branch predictor - ITTAGE predictor
+	add microcode for div
+	support sext[bh] in slow? OR sextb=(andi 0x80, muli -1, or)
 	try making non-faulting ops final once ready => IPC gain?
 	implement FPU [5]
 
@@ -17,13 +20,6 @@ roll-out:
 
 [1] make issue wake-up a strobe => allows reissue with same circuit
 	... write’s final=>high concurrent to aliased load’s final+issued=>low
-
-pending:	both args are ready and !issued
-issued:		sent to EUs
-ready:		pulsed 0|2 cycles after issue => clears issue and sets ready[ab]
-final:		EU says it will not fault (=> ready)
-fault:		change of program flow    (=> !final)
-shift only when last decode are final
 
 test program: mul, mul, mul, mul, write, load, load, load, load, load, load
 => check that all loads see same value
