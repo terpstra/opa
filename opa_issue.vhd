@@ -84,29 +84,28 @@ architecture rtl of opa_issue is
   constant c_init_bak : t_opa_matrix := f_opa_labels(c_num_stat, c_back_wide, c_num_arch);
 
   -- Instructions have these flags:
-  --   issued: was previously selected by arbitration and not stalled
-  --   ready:  result is available (can issue dependants)    => issued
-  --   final:  will not generate quash|kill                  => ready
-  --   quash:  instruction needs to be reissued
-  --   kill:   must reset the PC
+  --   issued: already sent to the execution units
+  --   ready:  result will be available for dependants    => issued
+  --   final:  will not generate miss/fault               => ready
   --
-  -- Only final+!quash instructions are shifted out of the window.
+  -- Only final instructions are shifted out of the window
+  -- A non-final instruction can remove issue/ready/final from any later instruction.
   --
   -- OPA makes heavy use of speculative execution; instructions run opportunistically.
   -- Thus, it can make these kinds of mistakes:
-  --   A non-final branch can report kill                   (misprediction)
-  --   A non-final ld/st  can report kill                   (page fault)
-  --   A non-final load   can quash itself                  (cache miss)
-  --   A non-final store  can quash following load/stores   (speculative read)
+  --   A non-final branch can report fault                  (misprediction)
+  --   A non-final ld/st  can report fault                  (page fault)
+  --   A non-final load   can report reissue                (cache miss)
+  --   A non-final store  can reissue following loads       (speculative read)
   -- 
   -- To maintain program-order, enforce these rules:
   --   To issue an instruction, all operands must be ready
-  --   Stores are buffered until retired
-  --   Quash clears ready. If final, it also clears: issued/final/kill.
+  --   Non-ready dependencies clear issued+ready+final
+  --   Stores are finalized in order
   
-  -- To keep r_schedule as easy to compute as possible, half of the reservation station
-  -- is shifted early, and half is shifted late. r_schedule is late, as is anything fed
-  -- to the regfile stage. Anything used to feed r_schedule is shifted early.
+  -- To keep r_schedule0 as easy to compute as possible, half of the reservation station
+  -- is shifted early, and half is shifted late. r_schedule0 is late, as is anything fed
+  -- to the regfile stage. Anything used to feed r_schedule0 is shifted early.
   
   -- These have 1 latency indexes
   signal s_schedule_fast : t_opa_matrix(c_num_fast-1  downto 0, c_num_stat-1 downto 0);
