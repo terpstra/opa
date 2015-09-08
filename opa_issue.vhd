@@ -112,22 +112,26 @@ architecture rtl of opa_issue is
   signal s_schedule_fast : t_opa_matrix(c_num_fast-1  downto 0, c_num_stat-1 downto 0);
   signal s_schedule_slow : t_opa_matrix(c_num_slow-1  downto 0, c_num_stat-1 downto 0);
   signal r_schedule0     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
-  signal r_schedule1     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
+  signal r_schedule1s    : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal r_schedule2     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal r_schedule3     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
-  signal r_schedule4     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
+  signal r_schedule4s    : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal s_schedule_wb   : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
   
-  signal s_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_schedule_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_schedule_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_schedule_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
   
   -- These have 0 latency indexes (fed directly)
   signal r_fast       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
   signal r_slow       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
   signal s_issued     : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_new_issued : std_logic_vector(c_num_stat-1 downto 0);
   signal r_issued     : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
+  signal s_final      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_new_final  : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_final      : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
   -- These have 0 latency indexes, but 1 latency content
   signal s_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0);
   signal r_stata      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0) := (others => (others => '1'));
@@ -136,8 +140,6 @@ architecture rtl of opa_issue is
   -- These have 1 latency indexes (fed by skidpad)
   signal s_ready      : std_logic_vector(c_num_stat-1 downto 0);
   signal r_ready      : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
-  signal s_final      : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_final      : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
   signal r_geta       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_getb       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_aux        : t_opa_matrix(c_num_stat-1 downto 0, c_aux_wide -1 downto 0);
@@ -145,7 +147,7 @@ architecture rtl of opa_issue is
   signal r_baka       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
-  signal s_ready_shift     : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_was_ready       : std_logic_vector(c_num_stat-1 downto 0);
   signal s_ready_pad       : std_logic_vector(2**c_stat_wide-1 downto 0) := (others => '0');
   signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyb          : std_logic_vector(c_num_stat-1 downto 0);
@@ -153,7 +155,6 @@ architecture rtl of opa_issue is
   signal s_pending_fast    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_slow    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_reissue         : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_new_issued      : std_logic_vector(c_num_stat-1 downto 0);
   
   -- Accept data from the renamer; use a skidpad to synchronize state
   signal r_sp_geta : std_logic_vector(c_decoders-1 downto 0);
@@ -164,15 +165,14 @@ architecture rtl of opa_issue is
   signal r_sp_aux  : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
   
   -- Faults inhibit commit and shift
-  signal r_reissue       : std_logic_vector(c_executers-1 downto 0);
-  signal r_commit        : std_logic_vector(c_executers-1 downto 0);
-  signal s_commit        : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_reissue       : std_logic_vector(c_executers-1 downto 0) := (others => '0');
+  signal r_commit        : std_logic_vector(c_executers-1 downto 0) := (others => '0');
   signal s_stall         : std_logic;
   signal s_shift         : std_logic;
   signal r_shift         : std_logic := '0';
   
   -- Faults are resolved to the oldest and executed when all preceding ops are final
-  signal r_fault_in      : std_logic_vector(c_executers-1 downto 0);
+  signal r_fault_in      : std_logic_vector(c_executers-1 downto 0) := (others => '0');
   signal s_all_faults    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0);
   signal r_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
@@ -199,8 +199,8 @@ architecture rtl of opa_issue is
   signal s_fault_deps    : std_logic_vector(c_decoders-1 downto 0);
   signal s_fault_out     : std_logic;
   signal r_fault_out     : std_logic := '0';
-  signal r_fault_out1    : std_logic;
   signal r_fault_mask    : std_logic_vector(c_decoders-1 downto 0) := (others => '1');
+  signal r_wipe_pipe     : std_logic := '0'; -- lasts two cycles
   
   function f_pad(x : std_logic) return std_logic_vector is
     variable result : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
@@ -252,7 +252,7 @@ architecture rtl of opa_issue is
 begin
 
   -- Which stations are now issued?
-  s_issued <= f_shift(r_schedule_fast_issue or r_schedule_slow_issue, r_shift) or r_issued;
+  s_issued <= f_shift(r_fast_issue or r_slow_issue, r_shift) or r_issued;
 
   -- Which stations have ready operands?
   -- !!! use a sparse version of s_ready_pad to save half the muxes
@@ -267,7 +267,7 @@ begin
   s_pending_slow <= s_readyab and not s_issued and r_slow;
   
   -- We need to reissue anything the failed in EU or had a failed dependant.
-  s_reissue    <= f_shift(f_opa_product(f_opa_transpose(r_schedule4), r_reissue), r_shift);
+  s_reissue    <= f_opa_product(f_opa_transpose(r_schedule4s), r_reissue);
   s_new_issued <= s_issued and not s_reissue and s_readyab;
   
   fast : opa_prefixsum
@@ -278,7 +278,7 @@ begin
     port map(
       bits_i   => s_pending_fast,
       count_o  => s_schedule_fast,
-      total_o  => s_schedule_fast_issue);
+      total_o  => s_fast_issue);
   
   slow : opa_prefixsum
     generic map(
@@ -288,13 +288,13 @@ begin
     port map(
       bits_i   => s_pending_slow,
       count_o  => s_schedule_slow,
-      total_o  => s_schedule_slow_issue);
+      total_o  => s_slow_issue);
    -- 6 levels for <= 28 num_stat
   
-  s_ready_shift <= 
-    f_shift(f_opa_product(f_opa_transpose(r_schedule1), c_slow_only) or r_ready, r_shift) 
-    and s_readyab and not s_reissue;
-  s_ready  <= (s_schedule_fast_issue and s_pending_fast) or s_ready_shift;
+  s_was_ready <= s_readyab and not s_reissue and
+    (f_opa_product(f_opa_transpose(r_schedule1s), c_slow_only) 
+     or f_shift(r_ready, r_shift));
+  s_ready <= (s_fast_issue and s_pending_fast) or s_was_ready;
   
   -- Which registers does each EU need to use?
   -- r_bak[abx], r_aux shifted one cycle later, so s_stat has correct index
@@ -326,22 +326,20 @@ begin
   end process;
   
   -- Determine if the execution window should be shifted
-  s_commit <= f_opa_product(f_opa_transpose(r_schedule4), r_commit);
-  -- !!! move shift before product? can even use double shift before r_schedule4
-  -- likewise, can change r_final to be 0-latency indexing...
-  -- We can get away with r_ready instead of s_readyab, because all reissues
-  -- start with a load, which will stop everything older than it shifting out
-  -- for long enough that the 1-cycle propogation of 0s in r_ready is faster.
-  s_final  <= f_shift((r_final and r_ready) or s_commit, r_shift);
+  s_final  <= r_final or f_opa_product(f_opa_transpose(r_schedule4s), r_commit);
   s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
-    -- 2 levels with decoders <= 2
+    
+  -- We can get away with r_ready instead of s_readyab, because all reissues
+  -- start with a load, which will stop everything older than it shifting out
+  -- for long enough that the 1-cycle propogation of 0s in r_ready is faster.
+  s_new_final <= s_final and f_shift(r_ready, r_shift);
   
   -- Resolve faults to determine which fault wins
-  s_all_faults    <= f_opa_product(f_opa_transpose(r_schedule4), r_fault_in) or r_oldest_fault;
+  s_all_faults    <= f_opa_product(f_opa_transpose(r_schedule4s), r_fault_in) or r_oldest_fault;
   s_oldest_fault  <= s_all_faults and std_logic_vector(0-unsigned(s_all_faults));
-  s_fault_victor  <= f_opa_product(r_schedule4, s_oldest_fault);
+  s_fault_victor  <= f_opa_product(r_schedule4s, s_oldest_fault);
   s_fault_same    <= f_opa_or(r_oldest_fault and s_oldest_fault);
   
   -- Select fault addresses
@@ -353,7 +351,7 @@ begin
   s_fault_pcn <= f_opa_product(f_opa_transpose(r_fault_pcn1), r_fault_victor) or (r_fault_pcn and s_fault_same_pcn);
   
   -- Fault out if in last position and all prior ops are r_final
-  s_fault_tail <= f_shift(r_oldest_fault, r_shift)(c_decoders-1 downto 0);
+  s_fault_tail <= r_oldest_fault(c_decoders-1 downto 0);
   s_fault_deps <= std_logic_vector(unsigned(s_fault_tail) - 1);
   s_fault_out <= f_opa_and(s_final(c_decoders-1 downto 0) or not s_fault_deps) and f_opa_or(s_fault_tail);
   
@@ -378,6 +376,7 @@ begin
       r_oldest_fault <= (others => '0');
       r_fault_victor <= (others => '0');
       r_fault_same   <= '0';
+      r_wipe_pipe    <= '0';
     elsif rising_edge(clk_i) then
       if r_fault_out = '1' then
         r_fault_in     <= (others => '0');
@@ -388,7 +387,12 @@ begin
         r_fault_in     <= eu_fault_i;
         r_fault_out    <= s_fault_out;
         r_fault_mask   <= s_fault_deps or s_fault_tail;
-        r_oldest_fault <= f_shift(s_oldest_fault, r_shift);
+        r_oldest_fault <= f_shift(s_oldest_fault, s_shift);
+      end if;
+      if r_fault_out = '0' then
+        r_wipe_pipe <= '0';
+      else
+        r_wipe_pipe <= s_fault_out;
       end if;
       r_fault_victor  <= s_fault_victor;
       r_fault_same    <= s_fault_same;
@@ -407,7 +411,6 @@ begin
       r_fault_pc   <= s_fault_pc;
       r_fault_pcf  <= s_fault_pcf;
       r_fault_pcn  <= s_fault_pcn;
-      r_fault_out1 <= r_fault_out;
     end if;
   end process;
   
@@ -438,19 +441,18 @@ begin
   end process;
   
   -- Register the stations 0-latency with reset, with load enable
-  stations_0rsl : process(rst_n_i, clk_i) is
+  stations_0rs : process(rst_n_i, clk_i) is
   begin
     if rst_n_i = '0' then -- asynchronous clear
       r_issued <= (others => '1');
+      r_final  <= (others => '1');
     elsif rising_edge(clk_i) then
-      if r_fault_out = '1' then -- synchronous clear
+      if r_wipe_pipe = '1' then -- synchronous clear
         r_issued <= (others => '1');
+        r_final  <= (others => '1');
       else
-        if s_shift = '1' then -- load enable
-          r_issued <= c_decoder_zeros & s_new_issued(c_num_stat-1 downto c_decoders);
-        else
-          r_issued <= s_new_issued;
-        end if;
+        r_issued <= f_shift(s_new_issued, s_shift);
+        r_final  <= f_shift(s_new_final,  s_shift);
       end if;
     end if;
   end process;
@@ -476,8 +478,8 @@ begin
           end loop;
         end loop;
       else
-        r_stata  <= s_stata;
-        r_statb  <= s_statb;
+        r_stata <= s_stata;
+        r_statb <= s_statb;
       end if;
     end if;
   end process;
@@ -490,8 +492,8 @@ begin
       r_slow <= (others => '0');
     elsif rising_edge(clk_i) then
       if s_shift = '1' then
-        r_fast <= rename_fast_i  & r_fast(c_num_stat-1 downto c_decoders);
-        r_slow <= rename_slow_i  & r_slow(c_num_stat-1 downto c_decoders);
+        r_fast <= rename_fast_i & r_fast(c_num_stat-1 downto c_decoders);
+        r_slow <= rename_slow_i & r_slow(c_num_stat-1 downto c_decoders);
       end if;
     end if;
   end process;
@@ -500,32 +502,35 @@ begin
   stations_1rs : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_ready     <= (others => '1');
-      r_final     <= (others => '1');
-      r_schedule0 <= (others => (others => '0'));
-      r_schedule1 <= (others => (others => '0'));
-      r_schedule2 <= (others => (others => '0'));
-      r_schedule3 <= (others => (others => '0'));
-      r_schedule4 <= (others => (others => '0'));
+      r_commit  <= (others => '0');
+      r_reissue <= (others => '0');
+      r_ready      <= (others => '1');
+      r_schedule0  <= (others => (others => '0'));
+      r_schedule1s <= (others => (others => '0'));
+      r_schedule2  <= (others => (others => '0'));
+      r_schedule3  <= (others => (others => '0'));
+      r_schedule4s <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
-      if (r_fault_out or r_fault_out1) = '1' then
-        r_ready     <= (others => '1');
-        r_final     <= (others => '1');
-        r_schedule0 <= (others => (others => '0'));
-        r_schedule1 <= (others => (others => '0'));
-        r_schedule2 <= (others => (others => '0'));
-        r_schedule3 <= (others => (others => '0'));
-        r_schedule4 <= (others => (others => '0'));
+      if r_wipe_pipe = '1' then
+        r_commit  <= (others => '0');
+        r_reissue <= (others => '0');
+        r_ready      <= (others => '1');
+        r_schedule0  <= (others => (others => '0'));
+        r_schedule1s <= (others => (others => '0'));
+        r_schedule2  <= (others => (others => '0'));
+        r_schedule3  <= (others => (others => '0'));
+        r_schedule4s <= (others => (others => '0'));
       else
-        r_ready     <= s_ready;
-        r_final     <= s_final;
-        r_schedule0 <= f_opa_transpose(f_opa_concat(
+        r_commit  <= eu_commit_i;
+        r_reissue <= eu_reissue_i;
+        r_ready      <= s_ready;
+        r_schedule0  <= f_opa_transpose(f_opa_concat(
           f_opa_transpose(s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow)), 
           f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
-        r_schedule1 <= f_shift(r_schedule0, r_shift);
-        r_schedule2 <= f_shift(r_schedule1, r_shift);
-        r_schedule3 <= f_shift(r_schedule2, r_shift);
-        r_schedule4 <= f_shift(r_schedule3, r_shift);
+        r_schedule1s <= f_shift(f_shift(r_schedule0, r_shift), s_shift);
+        r_schedule2  <= r_schedule1s;
+        r_schedule3  <= f_shift(r_schedule2, r_shift);
+        r_schedule4s <= f_shift(f_shift(r_schedule3, r_shift), s_shift);
       end if;
     end if;
   end process;
@@ -543,10 +548,8 @@ begin
   stations_1 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_schedule_fast_issue <= s_schedule_fast_issue and s_pending_fast;
-      r_schedule_slow_issue <= s_schedule_slow_issue and s_pending_slow;
-      r_commit  <= eu_commit_i;
-      r_reissue <= eu_reissue_i;
+      r_fast_issue <= s_fast_issue and s_pending_fast;
+      r_slow_issue <= s_slow_issue and s_pending_slow;
     end if;
   end process;
   
