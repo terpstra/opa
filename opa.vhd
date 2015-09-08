@@ -139,6 +139,8 @@ architecture rtl of opa is
   signal regfile_eu_pcn         : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   
   signal eu_regfile_regx        : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0);
+  signal eu_issue_commit        : std_logic_vector(c_executers-1 downto 0);
+  signal eu_issue_reissue       : std_logic_vector(c_executers-1 downto 0);
   signal eu_issue_fault         : std_logic_vector(c_executers-1 downto 0);
   signal eu_issue_pc            : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   signal eu_issue_pcf           : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
@@ -369,6 +371,8 @@ begin
       rename_stata_i => rename_issue_stata,
       rename_statb_i => rename_issue_statb,
       rename_bakx_o  => issue_rename_bakx,
+      eu_commit_i    => eu_issue_commit,
+      eu_reissue_i   => eu_issue_reissue,
       eu_fault_i     => eu_issue_fault,
       eu_pc_i        => eu_issue_pc,
       eu_pcf_i       => eu_issue_pcf,
@@ -469,6 +473,8 @@ begin
         regfile_pcf_i  => s_regfile_eu_pcf (f_opa_fast_index(g_config, i)),
         regfile_pcn_i  => s_regfile_eu_pcn (f_opa_fast_index(g_config, i)),
         regfile_regx_o => s_eu_regfile_regx(f_opa_fast_index(g_config, i)),
+        issue_commit_o => eu_issue_commit  (f_opa_fast_index(g_config, i)),
+        issue_reissue_o=> eu_issue_reissue (f_opa_fast_index(g_config, i)),
         issue_fault_o  => eu_issue_fault   (f_opa_fast_index(g_config, i)),
         issue_pc_o     => s_eu_issue_pc    (f_opa_fast_index(g_config, i)),
         issue_pcf_o    => s_eu_issue_pcf   (f_opa_fast_index(g_config, i)),
@@ -497,6 +503,8 @@ begin
         dbus_dat_i     => dbus_slow_dat,
         dbus_stb_o     => slow_dbus_stb(i),
         dbus_adr_o     => s_slow_dbus_adr(i),
+        issue_commit_o => eu_issue_commit  (f_opa_slow_index(g_config, i)),
+        issue_reissue_o=> eu_issue_reissue (f_opa_slow_index(g_config, i)),
         issue_fault_o  => eu_issue_fault   (f_opa_slow_index(g_config, i)),
         issue_pc_o     => s_eu_issue_pc    (f_opa_slow_index(g_config, i)),
         issue_pcf_o    => s_eu_issue_pcf   (f_opa_slow_index(g_config, i)),

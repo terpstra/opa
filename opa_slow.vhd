@@ -32,6 +32,8 @@ entity opa_slow is
     dbus_stb_o     : out std_logic;
     dbus_adr_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto 0);
     
+    issue_commit_o : out std_logic;
+    issue_reissue_o: out std_logic;
     issue_fault_o  : out std_logic;
     issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
     issue_pcf_o    : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
@@ -105,10 +107,12 @@ architecture rtl of opa_slow is
 
 begin
 
-  issue_fault_o <= '0';
-  issue_pc_o    <= (others => '0');
-  issue_pcf_o   <= (others => '0');
-  issue_pcn_o   <= (others => '0');
+  issue_commit_o  <= not s_miss;
+  issue_reissue_o <= s_miss;
+  issue_fault_o   <= '0';
+  issue_pc_o      <= (others => '0');
+  issue_pcf_o     <= (others => '0');
+  issue_pcn_o     <= (others => '0');
   
   s_slow <= f_opa_slow_from_arg(regfile_arg_i);
   s_mul  <= f_opa_mul_from_slow(s_slow.raw);
