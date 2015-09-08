@@ -2,7 +2,7 @@
 
 set -e
 
-arch="${arch:-lm32}"
+arch="${arch:-riscv}"
 if [ "$arch" != "lm32" -a "$arch" != "riscv" ]; then
   echo Unsupported architecture ${arch} >&2
   exit 1
