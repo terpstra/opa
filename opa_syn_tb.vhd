@@ -22,7 +22,7 @@ end opa_syn_tb;
 
 architecture rtl of opa_syn_tb is
 
-  constant c_config : t_opa_config := c_opa_mid;
+  constant c_config : t_opa_config := c_opa_large;
 
   signal d_cyc    : std_logic;
   signal d_stb    : std_logic;

@@ -17,17 +17,17 @@ package opa_pkg is
     dtlb_ways  : natural; -- Data TLB ways
   end record;
   
-  -- 16-bit processor, 1-issue,  6 stations, 2 EU, 4KB dcache
+  -- 16-bit processor, 1-issue,  6 stations, 1+1 EU, 4KB dcache
   constant c_opa_tiny  : t_opa_config := ( 4, 16, 1,  6, 1, 1, false, 1, 1);
   
-  -- 32-bit processor, 2-issue,  6 stations, 2 EU, 8KB dcache
-  constant c_opa_small : t_opa_config := ( 5, 22, 2,  6, 1, 1, false, 2, 1);
+  -- 32-bit processor, 2-issue, 18 stations, 1+1 EU, 8KB dcache
+  constant c_opa_small : t_opa_config := ( 5, 22, 2, 18, 1, 1, false, 2, 1);
   
-  -- 32-bit processor, 2-issue, 14 stations, 3 EU, 16KB dcache
-  constant c_opa_mid   : t_opa_config := ( 5, 32, 2, 14, 2, 1, false, 4, 2);
+  -- 32-bit processor, 4-issue, 28 stations, 2+1 EU, 32KB dcache
+  constant c_opa_large : t_opa_config := ( 5, 32, 4, 28, 2, 1, false, 8, 4);
   
-  -- 64-bit processor, 4-issue, 28 stations, 5 EU, 32KB dcache
-  constant c_opa_large : t_opa_config := ( 6, 39, 4, 28, 3, 2, true,  8, 4);
+  -- 64-bit processor, 4-issue, 48 stations, 2+2 EU, 32KB dcache
+  constant c_opa_huge  : t_opa_config := ( 6, 39, 4, 44, 2, 2, true,  8, 4);
   
   type t_opa_target is record
     lut_width  : natural; -- How many inputs to combine at once
