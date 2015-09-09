@@ -135,6 +135,45 @@ architecture rtl of opa_regfile is
     end if;
   end f_nat2mux;
   
+  -- Inverse of f_nat2mux
+  function f_mux2nat(x : natural) return natural is
+  begin
+    if x < 4*c_num_short then
+      return x/4; -- rounded down
+    else
+      return x-c_num_short*3;
+    end if;
+  end f_mux2nat;
+  
+  -- The particular indexes for unit attachment
+  function f_eu (x : natural) return natural is begin return f_nat2mux(x+c_executers*0); end f_eu;
+  function f_reg(x : natural) return natural is begin return f_nat2mux(x+c_executers*1); end f_reg;
+  function f_mem(x : natural) return natural is begin return f_nat2mux(x+c_executers*2); end f_mem;
+  constant c_imm : natural := c_num_mux-1;
+  
+  function f_age_table return t_opa_matrix is
+    variable result : t_opa_matrix(c_num_mux-1 downto 0, c_mux_wide-1 downto 0);
+    variable row : std_logic_vector(result'range(2));
+    variable off : natural;
+  begin
+    for i in result'range(1) loop
+      -- decode the index
+      off := f_mux2nat(i);
+      -- age the index
+      if off < 2*c_executers then
+        off := off + c_executers;
+      end if;
+      -- encode the index
+      off := f_nat2mux(off);
+      row := std_logic_vector(to_unsigned(off, row'length));
+      for j in result'range(2) loop
+        result(i,j) := row(j);
+      end loop;
+    end loop;
+    return result;
+  end f_age_table;
+  
+  -- Fixed labels for 1hot selecting a particular mux stage
   function f_indexes(x : natural) return t_opa_matrix is
     variable result : t_opa_matrix(c_executers-1 downto 0, c_mux_wide-1 downto 0);
     variable row : unsigned(result'range(2));
@@ -148,39 +187,21 @@ architecture rtl of opa_regfile is
     return result;
   end f_indexes;
   
+  constant c_age_table   : t_opa_matrix := f_age_table;
   constant c_eu_indexes  : t_opa_matrix := f_indexes(c_executers*0);
   constant c_reg_indexes : t_opa_matrix := f_indexes(c_executers*1);
   constant c_mem_indexes : t_opa_matrix := f_indexes(c_executers*2);
   
-  function f_eu (x : natural) return natural is begin return f_nat2mux(x+c_executers*0); end f_eu;
-  function f_reg(x : natural) return natural is begin return f_nat2mux(x+c_executers*1); end f_reg;
-  function f_mem(x : natural) return natural is begin return f_nat2mux(x+c_executers*2); end f_mem;
-  constant c_imm : natural := c_num_mux-1;
-  
-  -- To keep the calculation as simple as possible, r_map will encode the MUX choice
-  -- to take for values not accessed via bypass. Bypass if matches last or current EU
-  -- wrote to the target address.
-   
   signal r_stb         : std_logic_vector(c_executers-1 downto 0);
   signal r_bakx        : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal r_regx        : t_opa_matrix(c_executers-1 downto 0, c_reg_wide -1 downto 0);
   
   signal s_map_set     : std_logic_vector(c_num_back-1 downto 0);
   signal s_map_match   : t_opa_matrix(c_num_back-1 downto 0, c_executers-1 downto 0);
-  signal s_map_value   : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
+  signal s_map_new     : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
+  signal s_map_aged    : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
   signal s_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
   signal r_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0) := (others => (0 => '0', others => '1'));
-  
-  signal s_eu_match_a  : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
-  signal s_eu_match_b  : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
-  signal s_reg_match_a : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
-  signal s_reg_match_b : t_opa_matrix(c_executers-1 downto 0, c_executers-1 downto 0);
-  signal s_value_a     : t_opa_matrix(c_executers-1 downto 0, c_mux_wide -1 downto 0);
-  signal s_value_b     : t_opa_matrix(c_executers-1 downto 0, c_mux_wide -1 downto 0);
-  signal s_regfile_a   : t_opa_matrix(c_executers-1 downto 0, c_mux_wide -1 downto 0);
-  signal s_regfile_b   : t_opa_matrix(c_executers-1 downto 0, c_mux_wide -1 downto 0);
-  signal s_bypass_a    : std_logic_vector(c_executers-1 downto 0);
-  signal s_bypass_b    : std_logic_vector(c_executers-1 downto 0);
   
   -- Synthesis tools bitch and moan if I use a 3D array, so use a quick-n-dirty hack function
   function f_idx(x : natural; y : natural) return natural is
@@ -244,11 +265,24 @@ begin
     end if;
   end process;
   
+  -- !!! the strobe line is a real bummer. much nicer would be if we had a 'bad' reg
+  -- we would be able to compress 6:1 reg match, 5:1 EU decode w/ aged as +1
+  -- result: 2 levels to compute s_map, in line with 2-levels for 18-stat bak[ab]
+  -- => final mux decodes within 4 levels!! (with 1 in the register!)
+  -- if i forbade write access to reg0, this would be possible
+  
   -- Calculate the new mapping from back registers to units
   s_map_match <= f_opa_match_index(c_num_back, issue_bakx_i) and f_opa_dup_row(c_num_back, issue_wstb_i);
-  s_map_set   <= f_opa_product(s_map_match, c_ones);
-  s_map_value <= f_opa_product(s_map_match, c_mem_indexes);
-  -- !!! does mem_indexes really need to be full width? shrink it to half
+  s_map_set   <= f_opa_product(s_map_match, c_ones); -- 2 levels with 3 EU and 64 bak
+  s_map_new   <= f_opa_product(s_map_match, c_eu_indexes);
+  s_map_aged  <= f_opa_compose(c_age_table, r_map); -- 1 level decode
+  
+  -- Was a register written?
+  regs : for i in s_map'range(1) generate
+    bits : for b in s_map'range(2) generate
+      s_map(i,b) <= s_map_new(i,b) when s_map_set(i)='1' else s_map_aged(i,b);
+    end generate;
+  end generate;
   
   back_reg : process(clk_i, rst_n_i) is
   begin
@@ -256,62 +290,16 @@ begin
       -- On power-up, select the last memory (which is full of zeros)
       r_map <= (others => (0 => '0', others => '1'));
     elsif rising_edge(clk_i) then
-      for i in 0 to c_num_back-1 loop
-        if s_map_set(i) = '1' then
-          for b in 0 to c_mux_wide-1 loop
-            r_map(i,b) <= s_map_value(i,b);
-          end loop;
-        end if;
-      end loop;
+      r_map <= s_map;
     end if;
   end process;
   
-  -- Detect if we will need a bypass
-  -- Note: it is impossible for a backing register to be writen in two consequetive cycles
-  s_eu_match_a  <= f_opa_match(issue_baka_i, issue_bakx_i) and f_opa_dup_row(c_executers, issue_wstb_i);
-  s_eu_match_b  <= f_opa_match(issue_bakb_i, issue_bakx_i) and f_opa_dup_row(c_executers, issue_wstb_i);
-  s_reg_match_a <= f_opa_match(issue_baka_i, r_bakx)       and f_opa_dup_row(c_executers, r_stb);
-  s_reg_match_b <= f_opa_match(issue_bakb_i, r_bakx)       and f_opa_dup_row(c_executers, r_stb);
-  s_value_a     <= f_opa_product(s_eu_match_a, c_eu_indexes) or f_opa_product(s_reg_match_a, c_reg_indexes);
-  s_value_b     <= f_opa_product(s_eu_match_b, c_eu_indexes) or f_opa_product(s_reg_match_b, c_reg_indexes);
-  s_bypass_a    <= f_opa_product(s_eu_match_a, c_ones) or f_opa_product(s_reg_match_a, c_ones);
-  s_bypass_b    <= f_opa_product(s_eu_match_b, c_ones) or f_opa_product(s_reg_match_b, c_ones);
-  -- !!! i might not be able to tell WHICH eu provides it from issue, but i can say if bypass0
-  --   if i record ready1, i can even report if EITHER bypass occurs; bypass1
-  s_regfile_a   <= f_opa_compose(r_map, issue_baka_i);
-  s_regfile_b   <= f_opa_compose(r_map, issue_bakb_i);
-  
-  mux_idx_a : process(clk_i) is
+  -- !!! try some variations; r_map, with 1-stage early issue_bakx_i
+  mux_idx : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      for u in 0 to c_executers-1 loop
-        if s_bypass_a(u) = '1' then
-          for b in 0 to c_mux_wide-1 loop
-            r_mux_idx_a(u,b) <= s_value_a(u,b)   or not issue_geta_i(u);
-          end loop;
-        else
-          for b in 0 to c_mux_wide-1 loop
-            r_mux_idx_a(u,b) <= s_regfile_a(u,b) or not issue_geta_i(u);
-          end loop;
-        end if;
-      end loop;
-    end if;
-  end process;
-  
-  mux_idx_b : process(clk_i) is
-  begin
-    if rising_edge(clk_i) then
-      for u in 0 to c_executers-1 loop
-        if s_bypass_b(u) = '1' then
-          for b in 0 to c_mux_wide-1 loop
-            r_mux_idx_b(u,b) <= s_value_b(u,b)   or not issue_getb_i(u);
-          end loop;
-        else
-          for b in 0 to c_mux_wide-1 loop
-            r_mux_idx_b(u,b) <= s_regfile_b(u,b) or not issue_getb_i(u);
-          end loop;
-        end if;
-      end loop;
+      r_mux_idx_a <= f_opa_compose(s_map, issue_baka_i) or not f_opa_dup_col(c_mux_wide, issue_geta_i);
+      r_mux_idx_b <= f_opa_compose(s_map, issue_bakb_i) or not f_opa_dup_col(c_mux_wide, issue_getb_i);
     end if;
   end process;
   
