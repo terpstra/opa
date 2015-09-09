@@ -40,6 +40,6 @@ ghdl -e --std=93 --ieee=standard --syn-binding opa_sim_tb
 
 echo run
 # !!! eliminate all warnings
-./opa_sim_tb --stop-time=500ns --wave=testbench.ghw 2>&1 | grep -v metavalue
+./opa_sim_tb --stop-time=600ns --wave=testbench.ghw 2>&1 | grep -v metavalue
 
 gtkwave testbench.ghw wave.gtkw
