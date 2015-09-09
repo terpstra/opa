@@ -192,8 +192,10 @@ architecture rtl of opa_regfile is
   constant c_reg_indexes : t_opa_matrix := f_indexes(c_executers*1);
   constant c_mem_indexes : t_opa_matrix := f_indexes(c_executers*2);
   
-  signal r_stb         : std_logic_vector(c_executers-1 downto 0);
-  signal r_bakx        : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
+  signal r_wstb0       : std_logic_vector(c_executers-1 downto 0);
+  signal r_wstb1       : std_logic_vector(c_executers-1 downto 0);
+  signal r_bakx0       : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
+  signal r_bakx1       : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal r_regx        : t_opa_matrix(c_executers-1 downto 0, c_reg_wide -1 downto 0);
   
   signal s_map_set     : std_logic_vector(c_num_back-1 downto 0);
@@ -259,8 +261,10 @@ begin
     if rising_edge(clk_i) then
       eu_stb_o <= issue_rstb_i;
       r_dec    <= issue_dec_i;
-      r_stb    <= issue_wstb_i;
-      r_bakx   <= issue_bakx_i;
+      r_wstb0  <= issue_wstb_i;
+      r_wstb1  <= r_wstb0;
+      r_bakx0  <= issue_bakx_i;
+      r_bakx1  <= r_bakx0;
       r_regx   <= eu_regx_i;
     end if;
   end process;
@@ -294,12 +298,11 @@ begin
     end if;
   end process;
   
-  -- !!! try some variations; r_map, with 1-stage early issue_bakx_i
   mux_idx : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_mux_idx_a <= f_opa_compose(s_map, issue_baka_i) or not f_opa_dup_col(c_mux_wide, issue_geta_i);
-      r_mux_idx_b <= f_opa_compose(s_map, issue_bakb_i) or not f_opa_dup_col(c_mux_wide, issue_getb_i);
+      r_mux_idx_a <= f_opa_compose(r_map, issue_baka_i) or not f_opa_dup_col(c_mux_wide, issue_geta_i);
+      r_mux_idx_b <= f_opa_compose(r_map, issue_bakb_i) or not f_opa_dup_col(c_mux_wide, issue_getb_i);
     end if;
   end process;
   
@@ -403,7 +406,7 @@ begin
   remap_rf_in : for u in 0 to c_executers-1 generate
     s_ra_addr(u) <= f_opa_select_row(issue_baka_i, u);
     s_rb_addr(u) <= f_opa_select_row(issue_bakb_i, u);
-    s_w_addr(u)  <= f_opa_select_row(r_bakx, u);
+    s_w_addr(u)  <= f_opa_select_row(r_bakx1, u);
     s_w_data(u)  <= f_opa_select_row(eu_regx_i, u);
   end generate;
 
@@ -421,7 +424,7 @@ begin
           rst_n_i  => rst_n_i,
           r_addr_i => s_ra_addr(r),
           r_data_o => s_ra_data(f_idx(r, w)),
-          w_en_i   => r_stb(w),
+          w_en_i   => r_wstb1(w),
           w_addr_i => s_w_addr(w),
           w_data_i => s_w_data(w));
       ramb : opa_dpram
@@ -436,7 +439,7 @@ begin
           rst_n_i  => rst_n_i,
           r_addr_i => s_rb_addr(r),
           r_data_o => s_rb_data(f_idx(r, w)),
-          w_en_i   => r_stb(w),
+          w_en_i   => r_wstb1(w),
           w_addr_i => s_w_addr(w),
           w_data_i => s_w_data(w));
     end generate;

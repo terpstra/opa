@@ -316,13 +316,8 @@ begin
   end generate;
   
   -- Report writeback to the regfile
-  writeback : process(clk_i) is
-  begin
-    if rising_edge(clk_i) then
-      regfile_wstb_o <= f_opa_product(s_schedule_wb, c_stat_ones);
-      regfile_bakx_o <= f_opa_product(s_schedule_wb, r_bakx);
-    end if;
-  end process;
+  regfile_wstb_o <= f_opa_product(s_schedule_wb, c_stat_ones);
+  regfile_bakx_o <= f_opa_product(s_schedule_wb, r_bakx);
   
   -- Determine if the execution window should be shifted
   s_final  <= r_final or f_opa_product(f_opa_transpose(r_schedule4s), r_commit);
