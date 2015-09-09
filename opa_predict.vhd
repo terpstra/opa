@@ -37,6 +37,7 @@ end opa_predict;
 architecture rtl of opa_predict is
 
   constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
+  constant c_decoders  : natural := f_opa_decoders(g_config);
   constant c_num_fetch : natural := f_opa_num_fetch(g_config);
   constant c_rs_wide   : natural := 5; -- can maybe bump to 8 if IPC gain is substantial
   constant c_rs_deep   : natural := 2**c_rs_wide;
@@ -52,6 +53,10 @@ architecture rtl of opa_predict is
   
   signal r_rs_idx : unsigned(c_rs_wide-1 downto 0) := (others => '1');
   signal s_rs_idx : unsigned(c_rs_wide-1 downto 0);
+  
+  signal r_loop_pc   : unsigned(c_adr_wide-1 downto c_op_align);
+  signal r_loop_jump : std_logic_vector(c_decoders-1 downto 0);
+  signal r_loop_pcn  : unsigned(c_adr_wide-1 downto c_op_align);
 
 begin
 
@@ -87,9 +92,11 @@ begin
   end process;
 
   -- World's simplest branch predictor!
-  s_pc <= (r_pc + c_increment) and c_mask when decode_fault_i ='0' else 
-          s_return                        when decode_return_i='1' else
-          unsigned(decode_target_i);
+  s_pc <= 
+    s_return                        when decode_return_i='1' else
+    unsigned(decode_target_i)       when decode_fault_i ='1' else 
+    r_loop_pcn                      when r_pc=r_loop_pc      else
+    (r_pc + c_increment) and c_mask;
   
   main : process(clk_i, rst_n_i) is
   begin
@@ -98,10 +105,20 @@ begin
       decode_jump_o <= (others => '0');
       decode_hit_o  <= '0';
     elsif rising_edge(clk_i) then
+      if decode_fault_i = '1' then
+        r_loop_pc   <= unsigned(decode_source_i);
+        r_loop_jump <= decode_jump_i;
+        r_loop_pcn  <= unsigned(decode_target_i);
+      end if;
       if icache_stall_i = '0' then
         r_pc          <= s_pc(r_pc'range);
-        decode_jump_o <= (others => '0');
-        decode_hit_o  <= '0';
+        if r_pc = r_loop_pc then
+          decode_jump_o <= r_loop_jump;
+          decode_hit_o  <= '1';
+        else
+          decode_jump_o <= (others => '0');
+          decode_hit_o  <= '0';
+        end if;
       end if;
     end if;
   end process;
