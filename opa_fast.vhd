@@ -26,8 +26,7 @@ entity opa_fast is
     regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
     regfile_regx_o : out std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
     
-    issue_commit_o : out std_logic;
-    issue_reissue_o: out std_logic;
+    issue_retry_o  : out std_logic;
     issue_fault_o  : out std_logic;
     issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
     issue_pcf_o    : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
@@ -201,8 +200,7 @@ begin
     r_pc_sum        when "10",
     (others => '-') when others;
   
-  issue_commit_o  <= not s_br_fault;
-  issue_reissue_o <= '0';
+  issue_retry_o   <= s_br_fault;
   issue_fault_o   <= s_br_fault;
   issue_pcf_o     <= r_pcf1;
   issue_pc_o      <= r_pc1;

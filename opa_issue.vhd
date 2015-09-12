@@ -32,8 +32,7 @@ entity opa_issue is
     rename_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
     -- Exceptions from the EUs
-    eu_commit_i    : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    eu_reissue_i   : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
+    eu_retry_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
     eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
@@ -124,7 +123,7 @@ architecture rtl of opa_issue is
   --     => on the following cycle issued+ready+final of the dependent instruction go to 0
   --   2. A store causes following loads to be retried (they alias)
   --     => on the cycle the store goes final=1, the loads have issued+ready+final=0
-  --   3. An instruction must be retried, because after 4 cycles it did not go final
+  --   3. An instruction must be retried, because after 4 cycles it asked for retry
   --     => on the cycle final WOULD have gone to 1, instead issued+ready go to 0
   --
   -- There is a slight wrinkle in this plan: inflight instructions (ie: issued+!final)
@@ -176,11 +175,6 @@ architecture rtl of opa_issue is
   signal r_schedule4s    : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal s_schedule_wb   : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
   
-  signal s_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_fast_issue : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_slow_issue : std_logic_vector(c_num_stat-1 downto 0);
-  
   -- These have 0 latency indexes (fed directly)
   signal r_fast       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
   signal r_slow       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
@@ -197,6 +191,7 @@ architecture rtl of opa_issue is
   signal r_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0) := (others => (others => '1'));
   -- These have 1 latency indexes (fed by skidpad)
   signal s_ready      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_new_ready  : std_logic_vector(c_num_stat-1 downto 0);
   signal r_ready      : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
   signal r_geta       : std_logic_vector(c_num_stat-1 downto 0);
   signal r_getb       : std_logic_vector(c_num_stat-1 downto 0);
@@ -205,14 +200,30 @@ architecture rtl of opa_issue is
   signal r_baka       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
-  signal s_was_ready       : std_logic_vector(c_num_stat-1 downto 0);
+  -- Calculation of what to issue
   signal s_ready_pad       : std_logic_vector(2**c_stat_wide-1 downto 0) := (others => '0');
   signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyb          : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyab         : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_fast    : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pending_slow    : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_reissue         : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_fast_issue      : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_fast_issue      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_slow_issue      : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_slow_issue      : std_logic_vector(c_num_stat-1 downto 0);
+  
+  -- The three sources of reissue
+  signal s_nodep           : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_alias           : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_retry           : std_logic_vector(c_num_stat-1 downto 0);
+  
+  signal r_retry           : std_logic_vector(c_executers-1 downto 0) := (others => '0');
+  signal s_finalize        : std_logic_vector(c_executers-1 downto 0);
+  
+  -- Flow control of the issue pipeline
+  signal s_stall         : std_logic;
+  signal s_shift         : std_logic;
+  signal r_shift         : std_logic := '0';
   
   -- Accept data from the renamer; use a skidpad to synchronize state
   signal r_sp_geta : std_logic_vector(c_decoders-1 downto 0);
@@ -221,13 +232,6 @@ architecture rtl of opa_issue is
   signal r_sp_baka : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_bakb : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
   signal r_sp_aux  : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
-  
-  -- Faults inhibit commit and shift
-  signal r_reissue       : std_logic_vector(c_executers-1 downto 0) := (others => '0');
-  signal r_commit        : std_logic_vector(c_executers-1 downto 0) := (others => '0');
-  signal s_stall         : std_logic;
-  signal s_shift         : std_logic;
-  signal r_shift         : std_logic := '0';
   
   -- Faults are resolved to the oldest and executed when all preceding ops are final
   signal r_fault_in      : std_logic_vector(c_executers-1 downto 0) := (others => '0');
@@ -259,15 +263,6 @@ architecture rtl of opa_issue is
   signal r_fault_out     : std_logic := '0';
   signal r_fault_mask    : std_logic_vector(c_decoders-1 downto 0) := (others => '1');
   signal r_wipe_pipe     : std_logic := '0'; -- lasts two cycles
-  
-  function f_pad(x : std_logic) return std_logic_vector is
-    variable result : std_logic_vector(c_decoders-1 downto 0) := (others => '0');
-  begin
-    result(result'high) := x;
-    return result;
-  end f_pad;
-  constant c_pad_high0 : std_logic_vector(c_decoders-1 downto 0) := f_pad('0');
-  constant c_pad_high1 : std_logic_vector(c_decoders-1 downto 0) := f_pad('1');
   
   function f_decoder_labels(decoders : natural) return t_opa_matrix is
     variable result : t_opa_matrix(c_num_stat-1 downto 0, c_dec_wide-1 downto 0);
@@ -309,7 +304,7 @@ architecture rtl of opa_issue is
   
 begin
 
-  -- Which stations are now issued?
+  -- Which stations are already issued?
   s_issued <= f_shift(r_fast_issue or r_slow_issue, r_shift) or r_issued;
 
   -- Which stations have ready operands?
@@ -324,10 +319,7 @@ begin
   s_pending_fast <= s_readyab and not s_issued and r_fast;
   s_pending_slow <= s_readyab and not s_issued and r_slow;
   
-  -- We need to reissue anything the failed in EU or had a failed dependant.
-  s_reissue    <= f_opa_product(f_opa_transpose(r_schedule4s), r_reissue);
-  s_new_issued <= s_issued and not s_reissue and s_readyab;
-  
+  -- Derive the schedule from the pending instructions
   fast : opa_prefixsum
     generic map(
       g_target => g_target,
@@ -337,7 +329,6 @@ begin
       bits_i   => s_pending_fast,
       count_o  => s_schedule_fast,
       total_o  => s_fast_issue);
-  
   slow : opa_prefixsum
     generic map(
       g_target => g_target,
@@ -347,14 +338,8 @@ begin
       bits_i   => s_pending_slow,
       count_o  => s_schedule_slow,
       total_o  => s_slow_issue);
-   -- 6 levels for <= 28 num_stat
   
-  s_was_ready <= s_readyab and not s_reissue and
-    (f_opa_product(f_opa_transpose(r_schedule1s), c_slow_only) 
-     or f_shift(r_ready, r_shift));
-  s_ready <= (s_fast_issue and s_pending_fast) or s_was_ready;
-  
-  -- Which registers does each EU need to use?
+  -- Report our scheduling decision to the regfile
   -- r_bak[abx], r_aux shifted one cycle later, so s_stat has correct index
   regfile_rstb_o <= f_opa_product(r_schedule0, c_stat_ones);
   regfile_geta_o <= f_opa_product(r_schedule0, r_geta);
@@ -365,7 +350,8 @@ begin
   regfile_dec_o  <= f_opa_product(r_schedule0, c_decoder_labels);
     -- 2 levels with stations <= 18
   
-  wb_stat : for j in 0 to c_num_stat-1 generate
+  -- Report our writeback schedule to the regfile
+  wb_sched : for j in 0 to c_num_stat-1 generate
     fast : for i in 0 to c_num_fast-1 generate
       s_schedule_wb(i,j) <= r_schedule0(i,j);
     end generate;
@@ -373,21 +359,47 @@ begin
       s_schedule_wb(i,j) <= r_schedule2(i,j);
     end generate;
   end generate;
-  
-  -- Report writeback to the regfile
   regfile_wstb_o <= f_opa_product(s_schedule_wb, c_stat_ones);
   regfile_bakx_o <= f_opa_product(s_schedule_wb, r_bakx);
   
+  -- All the reasons we might have to reissue instructions
+  s_nodep <= not s_readyab;
+  s_alias <= (others => '0'); -- !!! store reports loads must be reissued (registered like r_retry)
+  s_retry <= f_opa_product(f_opa_transpose(r_schedule4s), r_retry); -- EU wants to re-run
+  -- !!! above assume r_schedule4s is "clean"... no old wipes! => fix!
+  
+  -- issued must go low in all three cases
+  s_new_issued <= s_issued and not (s_nodep or s_alias or s_retry);
+  
+  -- ready must go low in all three cases, however there are three sources of readiness
+  -- 1. old readiness / instructions where r_ready=1 already
+  --    => these must be masked out by all three cases
+  -- 2. slow readiness / slow instructions issued 2 cycles ago
+  --    => s_nodep and s_alias must be considered
+  --    => s_retry is impossible => it implies simultaneous execution
+  -- 3. fast readiness / fast instructions issued just now
+  --    => s_nodep is already considered via s_pending_fast
+  --    => s_alias does not apply to fast instructions, only slow ones (loads)
+  --    => s_retry is impossible => it implies simultaneous execution
+  s_ready <= not (s_nodep or s_alias or s_retry) and
+    (f_opa_product(f_opa_transpose(r_schedule1s), c_slow_only) 
+     or f_shift(r_ready, r_shift));
+  s_new_ready <= (s_fast_issue and s_pending_fast) or s_ready;
+  
+  -- final must go low in all three cases, however not all must be considered for shifting
+  --   => s_nodep is irrevelant to shifting, because the instructions input already blocks shift
+  --   => s_retry is actually the opposite here; we only go final if its false
+  --   => s_alias must be considered to be atomic with s_retry
+  s_finalize <= not r_retry;
+  s_final <= (r_final and not s_alias) or f_opa_product(f_opa_transpose(r_schedule4s), s_finalize);
+  s_new_final <= s_final and not s_nodep;
+  
   -- Determine if the execution window should be shifted
-  s_final  <= r_final or f_opa_product(f_opa_transpose(r_schedule4s), r_commit);
   s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
   
-  -- We can get away with r_ready instead of s_readyab, because all reissues
-  -- start with a load, which will stop everything older than it shifting out
-  -- for long enough that the 1-cycle propogation of 0s in r_ready is faster.
-  s_new_final <= s_final and f_shift(r_ready, r_shift);
+  -- !!! This is all bullshit and must be fixed:
   
   -- Resolve faults to determine which fault wins
   s_all_faults    <= f_opa_product(f_opa_transpose(r_schedule4s), r_fault_in) or r_oldest_fault;
@@ -407,10 +419,6 @@ begin
   s_fault_tail <= r_oldest_fault(c_decoders-1 downto 0);
   s_fault_deps <= std_logic_vector(unsigned(s_fault_tail) - 1);
   s_fault_out <= f_opa_and(s_final(c_decoders-1 downto 0) or not s_fault_deps) and f_opa_or(s_fault_tail);
-  
-  -- !!! currently we have to wait until the op reaches the oldest position
-  -- ... this can take quite some time if the fetch is slow. if we alreday know
-  -- there is a fault, why not just advance the pipeline quickly? fill with garbage
   
   -- Forward the fault up the pipeline
   rename_fault_o <= r_fault_out;
@@ -555,8 +563,7 @@ begin
   stations_1rs : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_commit  <= (others => '0');
-      r_reissue <= (others => '0');
+      r_retry      <= (others => '0');
       r_ready      <= (others => '1');
       r_schedule0  <= (others => (others => '0'));
       r_schedule1s <= (others => (others => '0'));
@@ -565,8 +572,7 @@ begin
       r_schedule4s <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
       if r_wipe_pipe = '1' then
-        r_commit  <= (others => '0');
-        r_reissue <= (others => '0');
+        r_retry     <= (others => '0');
         r_ready      <= (others => '1');
         r_schedule0  <= (others => (others => '0'));
         r_schedule1s <= (others => (others => '0'));
@@ -574,9 +580,8 @@ begin
         r_schedule3  <= (others => (others => '0'));
         r_schedule4s <= (others => (others => '0'));
       else
-        r_commit  <= eu_commit_i;
-        r_reissue <= eu_reissue_i;
-        r_ready      <= s_ready;
+        r_retry      <= eu_retry_i;
+        r_ready      <= s_new_ready;
         r_schedule0  <= f_opa_transpose(f_opa_concat(
           f_opa_transpose(s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow)), 
           f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
