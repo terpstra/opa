@@ -159,8 +159,7 @@ architecture rtl of opa_issue is
   -- To avoid wasteful reissue, we only issue stores once all priors are issued, making
   -- it very likely that they execute only when all priors are final. Unfortunately, 
   -- without a dedicated 'ioload' instruction, we cannot likewise delay load issue.
-  --
-  
+  -- 
   -- To keep r_schedule0 as easy to compute as possible, half of the reservation station
   -- is shifted early, and half is shifted late. r_schedule0 is late, as is anything fed
   -- to the regfile stage. Anything used to feed r_schedule0 is shifted early.
@@ -219,6 +218,8 @@ architecture rtl of opa_issue is
   
   signal r_retry           : std_logic_vector(c_executers-1 downto 0) := (others => '0');
   signal s_finalize        : std_logic_vector(c_executers-1 downto 0);
+  signal r_wipe            : std_logic_vector(c_num_stat-1  downto 0) := (others => '0');
+  signal s_wipe            : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
   
   -- Flow control of the issue pipeline
   signal s_stall         : std_logic;
@@ -365,8 +366,7 @@ begin
   -- All the reasons we might have to reissue instructions
   s_nodep <= not s_readyab;
   s_alias <= (others => '0'); -- !!! store reports loads must be reissued (registered like r_retry)
-  s_retry <= f_opa_product(f_opa_transpose(r_schedule4s), r_retry); -- EU wants to re-run
-  -- !!! above assume r_schedule4s is "clean"... no old wipes! => fix!
+  s_retry <= f_opa_product(f_opa_transpose(r_schedule4s), r_retry) and not r_wipe; -- EU wants to re-run
   
   -- issued must go low in all three cases
   s_new_issued <= s_issued and not (s_nodep or s_alias or s_retry);
@@ -382,7 +382,7 @@ begin
   --    => s_alias does not apply to fast instructions, only slow ones (loads)
   --    => s_retry is impossible => it implies simultaneous execution
   s_ready <= not (s_nodep or s_alias or s_retry) and
-    (f_opa_product(f_opa_transpose(r_schedule1s), c_slow_only) 
+    ((f_opa_product(f_opa_transpose(r_schedule1s), c_slow_only) and not r_wipe)
      or f_shift(r_ready, r_shift));
   s_new_ready <= (s_fast_issue and s_pending_fast) or s_ready;
   
@@ -391,7 +391,7 @@ begin
   --   => s_retry is actually the opposite here; we only go final if its false
   --   => s_alias must be considered to be atomic with s_retry
   s_finalize <= not r_retry;
-  s_final <= (r_final and not s_alias) or f_opa_product(f_opa_transpose(r_schedule4s), s_finalize);
+  s_final <= (r_final and not s_alias) or (f_opa_product(f_opa_transpose(r_schedule4s), s_finalize) and not r_wipe);
   s_new_final <= s_final and not s_nodep;
   
   -- Determine if the execution window should be shifted
@@ -560,11 +560,13 @@ begin
   end process;
   
   -- Register the stations, 1-latency with reset
+  s_wipe <= f_opa_dup_row(c_executers, r_wipe);
   stations_1rs : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
       r_retry      <= (others => '0');
       r_ready      <= (others => '1');
+      r_wipe       <= (others => '0');
       r_schedule0  <= (others => (others => '0'));
       r_schedule1s <= (others => (others => '0'));
       r_schedule2  <= (others => (others => '0'));
@@ -572,8 +574,9 @@ begin
       r_schedule4s <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
       if r_wipe_pipe = '1' then
-        r_retry     <= (others => '0');
+        r_retry      <= (others => '0');
         r_ready      <= (others => '1');
+        r_wipe       <= (others => '0');
         r_schedule0  <= (others => (others => '0'));
         r_schedule1s <= (others => (others => '0'));
         r_schedule2  <= (others => (others => '0'));
@@ -582,13 +585,14 @@ begin
       else
         r_retry      <= eu_retry_i;
         r_ready      <= s_new_ready;
+        r_wipe       <= f_shift(s_nodep or s_alias or s_retry, s_shift);
         r_schedule0  <= f_opa_transpose(f_opa_concat(
           f_opa_transpose(s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow)), 
           f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
-        r_schedule1s <= f_shift(f_shift(r_schedule0, r_shift), s_shift);
-        r_schedule2  <= r_schedule1s;
-        r_schedule3  <= f_shift(r_schedule2, r_shift);
-        r_schedule4s <= f_shift(f_shift(r_schedule3, r_shift), s_shift);
+        r_schedule1s <= f_shift(f_shift(r_schedule0, r_shift) and not s_wipe, s_shift);
+        r_schedule2  <= r_schedule1s and not s_wipe;
+        r_schedule3  <= f_shift(r_schedule2, r_shift) and not s_wipe;
+        r_schedule4s <= f_shift(f_shift(r_schedule3, r_shift) and not s_wipe, s_shift);
       end if;
     end if;
   end process;
