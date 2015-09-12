@@ -251,6 +251,7 @@ package opa_components_pkg is
       rename_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
       -- Exceptions from the EUs
+      eu_oldest_o    : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       eu_retry_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
@@ -340,6 +341,7 @@ package opa_components_pkg is
       regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       regfile_regx_o : out std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
       
+      issue_oldest_i : in  std_logic;
       issue_retry_o  : out std_logic;
       issue_fault_o  : out std_logic;
       issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
@@ -371,6 +373,7 @@ package opa_components_pkg is
       dbus_stb_o     : out std_logic;
       dbus_adr_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto 0);
       
+      issue_oldest_i : in  std_logic;
       issue_retry_o  : out std_logic;
       issue_fault_o  : out std_logic;
       issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);

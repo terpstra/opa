@@ -32,6 +32,7 @@ entity opa_issue is
     rename_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
     -- Exceptions from the EUs
+    eu_oldest_o    : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_retry_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
@@ -170,7 +171,7 @@ architecture rtl of opa_issue is
   signal r_schedule0     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal r_schedule1s    : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal r_schedule2     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
-  signal r_schedule3     : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
+  signal r_schedule3s    : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal r_schedule4s    : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0) := (others => (others => '0'));
   signal s_schedule_wb   : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
   
@@ -220,6 +221,12 @@ architecture rtl of opa_issue is
   signal s_finalize        : std_logic_vector(c_executers-1 downto 0);
   signal r_wipe            : std_logic_vector(c_num_stat-1  downto 0) := (others => '0');
   signal s_wipe            : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  
+  -- Determine if side effects are allowed
+  signal s_complete        : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_pred_complete   : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_am_oldest       : std_logic_vector(c_executers-1 downto 0);
+  signal s_am_oldest_trim  : std_logic_vector(c_executers-1 downto 0) := (others => '0');
   
   -- Flow control of the issue pipeline
   signal s_stall         : std_logic;
@@ -386,18 +393,28 @@ begin
      or f_shift(r_ready, r_shift));
   s_new_ready <= (s_fast_issue and s_pending_fast) or s_ready;
   
-  -- final must go low in all three cases, however not all must be considered for shifting
-  --   => s_nodep is irrevelant to shifting, because the instructions input already blocks shift
+  -- final must go low in all three cases, however not all must be considered for completeness/shift
+  --   => s_nodep is irrevelant to completeness, because the (older) input already blocks complete
   --   => s_retry is actually the opposite here; we only go final if its false
-  --   => s_alias must be considered to be atomic with s_retry
+  --   => s_alias must be considered, in order for store final=1 to be atomic with load final=0
   s_finalize <= not r_retry;
   s_final <= (r_final and not s_alias) or (f_opa_product(f_opa_transpose(r_schedule4s), s_finalize) and not r_wipe);
+  s_complete <= s_final and not std_logic_vector(unsigned(s_final) + 1);
   s_new_final <= s_final and not s_nodep;
   
   -- Determine if the execution window should be shifted
   s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
+  
+  -- Let EUs know if they are the oldest incomplete operation
+  -- ie: they can cause side effects
+  s_pred_complete <= s_complete(s_complete'high-1 downto s_complete'low) & '1';
+  s_am_oldest <= f_opa_product(r_schedule3s, s_pred_complete);
+  -- Only the 0th fast and slow EUs can actually be oldest; help the synthesis tool optimize
+  s_am_oldest_trim(f_opa_fast_index(g_config,0)) <= s_am_oldest(f_opa_fast_index(g_config,0));
+  s_am_oldest_trim(f_opa_slow_index(g_config,0)) <= s_am_oldest(f_opa_slow_index(g_config,0));
+  eu_oldest_o <= s_am_oldest_trim;
   
   -- !!! This is all bullshit and must be fixed:
   
@@ -570,7 +587,7 @@ begin
       r_schedule0  <= (others => (others => '0'));
       r_schedule1s <= (others => (others => '0'));
       r_schedule2  <= (others => (others => '0'));
-      r_schedule3  <= (others => (others => '0'));
+      r_schedule3s <= (others => (others => '0'));
       r_schedule4s <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
       if r_wipe_pipe = '1' then
@@ -580,7 +597,7 @@ begin
         r_schedule0  <= (others => (others => '0'));
         r_schedule1s <= (others => (others => '0'));
         r_schedule2  <= (others => (others => '0'));
-        r_schedule3  <= (others => (others => '0'));
+        r_schedule3s <= (others => (others => '0'));
         r_schedule4s <= (others => (others => '0'));
       else
         r_retry      <= eu_retry_i;
@@ -591,8 +608,8 @@ begin
           f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
         r_schedule1s <= f_shift(f_shift(r_schedule0, r_shift) and not s_wipe, s_shift);
         r_schedule2  <= r_schedule1s and not s_wipe;
-        r_schedule3  <= f_shift(r_schedule2, r_shift) and not s_wipe;
-        r_schedule4s <= f_shift(f_shift(r_schedule3, r_shift) and not s_wipe, s_shift);
+        r_schedule3s <= f_shift(f_shift(r_schedule2, r_shift) and not s_wipe, s_shift);
+        r_schedule4s <= f_shift(r_schedule3s and not s_wipe, s_shift);
       end if;
     end if;
   end process;

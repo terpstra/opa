@@ -114,6 +114,7 @@ architecture rtl of opa is
   
   signal issue_rename_stall     : std_logic;
   signal issue_rename_bakx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal issue_eu_oldest        : std_logic_vector(c_executers-1 downto 0);
   signal issue_rename_fault     : std_logic;
   signal issue_rename_mask      : std_logic_vector(c_decoders-1 downto 0);
   signal issue_rename_pc        : std_logic_vector(c_adr_wide-1 downto c_op_align);
@@ -370,6 +371,7 @@ begin
       rename_stata_i => rename_issue_stata,
       rename_statb_i => rename_issue_statb,
       rename_bakx_o  => issue_rename_bakx,
+      eu_oldest_o    => issue_eu_oldest,
       eu_retry_i     => eu_issue_retry,
       eu_fault_i     => eu_issue_fault,
       eu_pc_i        => eu_issue_pc,
@@ -471,6 +473,7 @@ begin
         regfile_pcf_i  => s_regfile_eu_pcf (f_opa_fast_index(g_config, i)),
         regfile_pcn_i  => s_regfile_eu_pcn (f_opa_fast_index(g_config, i)),
         regfile_regx_o => s_eu_regfile_regx(f_opa_fast_index(g_config, i)),
+        issue_oldest_i => issue_eu_oldest  (f_opa_fast_index(g_config, i)),
         issue_retry_o  => eu_issue_retry   (f_opa_fast_index(g_config, i)),
         issue_fault_o  => eu_issue_fault   (f_opa_fast_index(g_config, i)),
         issue_pc_o     => s_eu_issue_pc    (f_opa_fast_index(g_config, i)),
@@ -500,6 +503,7 @@ begin
         dbus_dat_i     => dbus_slow_dat,
         dbus_stb_o     => slow_dbus_stb(i),
         dbus_adr_o     => s_slow_dbus_adr(i),
+        issue_oldest_i => issue_eu_oldest  (f_opa_slow_index(g_config, i)),
         issue_retry_o  => eu_issue_retry   (f_opa_slow_index(g_config, i)),
         issue_fault_o  => eu_issue_fault   (f_opa_slow_index(g_config, i)),
         issue_pc_o     => s_eu_issue_pc    (f_opa_slow_index(g_config, i)),

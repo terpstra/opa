@@ -32,6 +32,7 @@ entity opa_slow is
     dbus_stb_o     : out std_logic;
     dbus_adr_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto 0);
     
+    issue_oldest_i : in  std_logic;
     issue_retry_o  : out std_logic;
     issue_fault_o  : out std_logic;
     issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
