@@ -74,6 +74,8 @@ architecture rtl of opa_issue is
   constant c_fetch_wide: natural := f_opa_fetch_wide(g_config);
   constant c_decoders  : natural := f_opa_decoders (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
+  constant c_fast0     : natural := f_opa_fast_index(g_config, 0);
+  constant c_slow0     : natural := f_opa_slow_index(g_config, 0);
   
   constant c_decoder_zeros : std_logic_vector(c_decoders -1 downto 0) := (others => '0');
   constant c_stat_ones     : std_logic_vector(c_num_stat -1 downto 0) := (others => '1');
@@ -243,34 +245,15 @@ architecture rtl of opa_issue is
   
   -- Faults are resolved to the oldest and executed when all preceding ops are final
   signal r_fault_in      : std_logic_vector(c_executers-1 downto 0) := (others => '0');
-  signal s_all_faults    : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_oldest_fault  : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
-  signal s_fault_victor  : std_logic_vector(c_executers-1 downto 0);
-  signal r_fault_victor  : std_logic_vector(c_executers-1 downto 0) := (others => '0');
-  signal s_fault_same    : std_logic;
-  signal r_fault_same    : std_logic := '0';
-  signal s_fault_same_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal s_fault_same_pcf: std_logic_vector(c_fetch_wide-1 downto c_op_align);
-  signal s_fault_same_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_pc0     : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1   downto c_op_align);
-  signal r_fault_pcf0    : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
-  signal r_fault_pcn0    : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1   downto c_op_align);
-  signal r_fault_pc1     : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1   downto c_op_align);
-  signal r_fault_pcf1    : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
-  signal r_fault_pcn1    : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1   downto c_op_align);
-  signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal s_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
-  signal s_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
-  signal r_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal s_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal s_fault_tail    : std_logic_vector(c_decoders-1 downto 0);
-  signal s_fault_deps    : std_logic_vector(c_decoders-1 downto 0);
+  signal s_fault_pending : std_logic;
+  signal r_fault_pending : std_logic := '0';
   signal s_fault_out     : std_logic;
-  signal r_fault_out     : std_logic := '0';
-  signal r_fault_mask    : std_logic_vector(c_decoders-1 downto 0) := (others => '1');
-  signal r_wipe_pipe     : std_logic := '0'; -- lasts two cycles
+  signal r_fault_out     : std_logic := '0'; -- lasts one cycle
+  signal r_fault_pipe    : std_logic := '0'; -- lasts two cycles
+  signal r_fault_mask    : std_logic_vector(c_decoders  -1 downto 0);
+  signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal r_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal r_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
   
   function f_decoder_labels(decoders : natural) return t_opa_matrix is
     variable result : t_opa_matrix(c_num_stat-1 downto 0, c_dec_wide-1 downto 0);
@@ -412,30 +395,9 @@ begin
   s_pred_complete <= s_complete(s_complete'high-1 downto s_complete'low) & '1';
   s_am_oldest <= f_opa_product(r_schedule3s, s_pred_complete);
   -- Only the 0th fast and slow EUs can actually be oldest; help the synthesis tool optimize
-  s_am_oldest_trim(f_opa_fast_index(g_config,0)) <= s_am_oldest(f_opa_fast_index(g_config,0));
-  s_am_oldest_trim(f_opa_slow_index(g_config,0)) <= s_am_oldest(f_opa_slow_index(g_config,0));
+  s_am_oldest_trim(c_fast0) <= s_am_oldest(c_fast0);
+  s_am_oldest_trim(c_slow0) <= s_am_oldest(c_slow0);
   eu_oldest_o <= s_am_oldest_trim;
-  
-  -- !!! This is all bullshit and must be fixed:
-  
-  -- Resolve faults to determine which fault wins
-  s_all_faults    <= f_opa_product(f_opa_transpose(r_schedule4s), r_fault_in) or r_oldest_fault;
-  s_oldest_fault  <= s_all_faults and std_logic_vector(0-unsigned(s_all_faults));
-  s_fault_victor  <= f_opa_product(r_schedule4s, s_oldest_fault);
-  s_fault_same    <= f_opa_or(r_oldest_fault and s_oldest_fault);
-  
-  -- Select fault addresses
-  s_fault_same_pc  <= (others => r_fault_same);
-  s_fault_same_pcf <= (others => r_fault_same);
-  s_fault_same_pcn <= (others => r_fault_same);
-  s_fault_pc  <= f_opa_product(f_opa_transpose(r_fault_pc1),  r_fault_victor) or (r_fault_pc  and s_fault_same_pc);
-  s_fault_pcf <= f_opa_product(f_opa_transpose(r_fault_pcf1), r_fault_victor) or (r_fault_pcf and s_fault_same_pcf);
-  s_fault_pcn <= f_opa_product(f_opa_transpose(r_fault_pcn1), r_fault_victor) or (r_fault_pcn and s_fault_same_pcn);
-  
-  -- Fault out if in last position and all prior ops are r_final
-  s_fault_tail <= r_oldest_fault(c_decoders-1 downto 0);
-  s_fault_deps <= std_logic_vector(unsigned(s_fault_tail) - 1);
-  s_fault_out <= f_opa_and(s_final(c_decoders-1 downto 0) or not s_fault_deps) and f_opa_or(s_fault_tail);
   
   -- Forward the fault up the pipeline
   rename_fault_o <= r_fault_out;
@@ -443,52 +405,52 @@ begin
   rename_pc_o    <= r_fault_pc;
   rename_pcf_o   <= r_fault_pcf;
   rename_pcn_o   <= r_fault_pcn;
-  -- May only fault on a shift
+  -- faults always come with an s_shift
+  
+  -- We can use r_final instead of s_final/s_stall because a fault only happens if it was last
+  s_fault_pending <= r_fault_in(c_fast0) or r_fault_in(c_slow0);
+  s_fault_out     <= (s_fault_pending or r_fault_pending) and 
+                     not f_opa_and(r_final(c_decoders-1 downto 0));
   
   fault_ctl : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_fault_in     <= (others => '0');
-      r_fault_out    <= '0';
-      r_fault_mask   <= (others => '1');
-      r_oldest_fault <= (others => '0');
-      r_fault_victor <= (others => '0');
-      r_fault_same   <= '0';
-      r_wipe_pipe    <= '0';
+      r_fault_in      <= (others => '0');
+      r_fault_pending <= '0';
+      r_fault_out     <= '0';
+      r_fault_pipe    <= '0';
     elsif rising_edge(clk_i) then
       if r_fault_out = '1' then
-        r_fault_in     <= (others => '0');
-        r_fault_out    <= '0';
-        r_fault_mask   <= (others => '1');
-        r_oldest_fault <= (others => '0');
+        r_fault_in      <= (others => '0');
+        r_fault_pending <= '0';
+        r_fault_out     <= '0';
       else
-        r_fault_in     <= eu_fault_i;
-        r_fault_out    <= s_fault_out;
-        r_fault_mask   <= s_fault_deps or s_fault_tail;
-        r_oldest_fault <= f_shift(s_oldest_fault, s_shift);
+        r_fault_in      <= eu_fault_i;
+        r_fault_pending <= r_fault_pending or s_fault_pending;
+        r_fault_out     <= s_fault_out;
       end if;
-      if r_fault_out = '0' then
-        r_wipe_pipe <= '0';
-      else
-        r_wipe_pipe <= s_fault_out;
-      end if;
-      r_fault_victor  <= s_fault_victor;
-      r_fault_same    <= s_fault_same;
+      r_fault_pipe <= r_fault_out or s_fault_out;
     end if;
   end process;
   
   fault_adr : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_fault_pc0  <= eu_pc_i;
-      r_fault_pcf0 <= eu_pcf_i;
-      r_fault_pcn0 <= eu_pcn_i;
-      r_fault_pc1  <= r_fault_pc0;
-      r_fault_pcf1 <= r_fault_pcf0;
-      r_fault_pcn1 <= r_fault_pcn0;
-      r_fault_pc   <= s_fault_pc;
-      r_fault_pcf  <= s_fault_pcf;
-      r_fault_pcn  <= s_fault_pcn;
+      if s_fault_out = '1' then
+        r_fault_mask <= s_complete(c_decoders-1 downto 0);
+      else
+        r_fault_mask <= (others => '1');
+      end if;
+      if eu_fault_i(c_fast0) = '1' then
+        r_fault_pc   <= f_opa_select_row(eu_pc_i,  c_fast0);
+        r_fault_pcf  <= f_opa_select_row(eu_pcf_i, c_fast0);
+        r_fault_pcn  <= f_opa_select_row(eu_pcn_i, c_fast0);
+      end if;
+      if eu_fault_i(c_slow0) = '1' then
+        r_fault_pc   <= f_opa_select_row(eu_pc_i,  c_slow0);
+        r_fault_pcf  <= f_opa_select_row(eu_pcf_i, c_slow0);
+        r_fault_pcn  <= f_opa_select_row(eu_pcn_i, c_slow0);
+      end if;
     end if;
   end process;
   
@@ -525,7 +487,7 @@ begin
       r_issued <= (others => '1');
       r_final  <= (others => '1');
     elsif rising_edge(clk_i) then
-      if r_wipe_pipe = '1' then -- synchronous clear
+      if r_fault_pipe = '1' then -- synchronous clear
         r_issued <= (others => '1');
         r_final  <= (others => '1');
       else
@@ -590,7 +552,7 @@ begin
       r_schedule3s <= (others => (others => '0'));
       r_schedule4s <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
-      if r_wipe_pipe = '1' then
+      if r_fault_pipe = '1' then
         r_retry      <= (others => '0');
         r_ready      <= (others => '1');
         r_wipe       <= (others => '0');
