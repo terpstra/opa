@@ -83,25 +83,84 @@ architecture rtl of opa_issue is
   
   constant c_init_bak : t_opa_matrix := f_opa_labels(c_num_stat, c_back_wide, c_num_arch);
 
-  -- Instructions have these flags:
-  --   issued: already sent to the execution units
-  --   ready:  result will be available for dependants    => issued
-  --   final:  will not generate miss/fault               => ready
-  --
-  -- Only final instructions are shifted out of the window
-  -- A non-final instruction can remove issue/ready/final from any later instruction.
-  --
   -- OPA makes heavy use of speculative execution; instructions run opportunistically.
-  -- Thus, it can make these kinds of mistakes:
-  --   A non-final branch can report fault                  (misprediction)
-  --   A non-final ld/st  can report fault                  (page fault)
-  --   A non-final load   can report reissue                (cache miss)
-  --   A non-final store  can reissue following loads       (speculative read)
-  -- 
-  -- To maintain program-order, enforce these rules:
-  --   To issue an instruction, all operands must be ready
-  --   Non-ready dependencies clear issued+ready+final
-  --   Stores are finalized in order
+  -- It can make these kinds of mistakes, detected during execution:
+  --   A. A branch/jump detects the next instruction is wrong   (misprediction)
+  --   B. A load needed data not yet in the cache               (cache miss)
+  --   C. A load/store accessed unmapped memory                 (page fault)
+  --   D. A load did not see the result of an older store       (RaW hazard)
+  --
+  -- The OPA processor execution stage only has these public effects:
+  --   1. A store to L1/memory
+  --   2. A load from uncacheable memory
+  --   3. Reporting a mispredicted branch/jump
+  -- ... none of these effects can be reversed in OPA, so they are not speculated.
+  --
+  -- To ensure in-order execution, instructions with public effects are only
+  -- executed when they are the oldest remaining instruction. This has the consequence
+  -- of limiting OPA to one store / bus operation at a time. In the future, it might
+  -- be possible to support multiple concurrent stores to L1 cache if the stores are
+  -- all the oldest remaining instructions, but this requires more write ports on L1
+  -- and I chose not to implement this in order to keep L1 reasonably cost effective.
+  --
+  -- Instructions in the window (c_num_stat) have these flags:
+  --   issued:   already sent to the execution units
+  --   ready:    result is available for dependants
+  --   final:    no mistakes detected during execution
+  --   complete: instruction and all priors are final
+  --
+  -- An instruction may only be issued if both its inputs are ready.
+  -- Slow instructions transition ready to high 2 cycles after issued goes high.
+  -- Fast instructions transition issued and ready to high at the same time.
+  -- Both types transition final to high 4 cycles after issued goes high.
+  --
+  -- The oldest instruction is at index 0. Newer instructions have larger indexes.
+  -- Only complete instructions are shifted out of the window, updating the commit map.
+  -- As mentioned above, only the oldest incomplete instruction may cause public effects.
+  --
+  -- Incomplete instructions can have their issue+ready+final flags removed.
+  -- This can happen in three ways:
+  --   1. One of the inputs of the instruction was retried (ready went to 0)
+  --     => on the following cycle issued+ready+final of the dependent instruction go to 0
+  --   2. A store causes following loads to be retried (they alias)
+  --     => on the cycle the store goes final=1, the loads have issued+ready+final=0
+  --   3. An instruction must be retried, because after 4 cycles it did not go final
+  --     => on the cycle final WOULD have gone to 1, instead issued+ready go to 0
+  --
+  -- There is a slight wrinkle in this plan: inflight instructions (ie: issued+!final)
+  -- When these have issued reset to 0, the running execution must not set ready/final.
+  -- Consider the three causes of a retry:
+  --   1. If an input went unready, this is the easiest case.
+  --      The input precedes our instruction, so we won't be shifted out till after it.
+  --      It will be at least 4 cycles before that happens.
+  --      However, we must still ensure that our instruction does not prematurely 
+  --        set ready/final=1 due to an inflight execution.
+  --      For a fast instruction, it is impossible for ready to go high if deps are unready.
+  --      A slow instruction must also block ready for this cycle.
+  --      Both must wipe the schedule so that final (and ready for slow) won't come later.
+  --   2. We must ensure two things for retried loads:
+  --     They must not be shifted out! The store final=1 and loads final=0 must be atomic.
+  --     If the load was being executed, it must be prevented from going ready/final
+  --     Loads are slow, so this means just blocking delayed ready and wiping the schedule
+  --   3. An instruction that does not go final has two sub-cases
+  --     a. The instruction was retried: this failed execution is ignored
+  --     b. The instruction was not retried: set issued+ready to 0
+  --
+  -- Here is how we handle mistakes A-D.
+  --   A. A branch/jump that detects the wrong next instruction will:
+  --      if it is preceded by non-final instructions, refuse to go final, causing its own reissue
+  --      otherwise, report the fault, causing an irreversible update to the branch predictor
+  --   B. A load that cannot find its data in cache will:
+  --      request the L1 to refill a selected line (this request can be ignored)
+  --      not go final, causing its own reissue later (dbus has 5 cycles to refill L1)
+  --   C. A page fault is handled like a mispredicted branch/jump; reissue until oldest, then fault
+  --   D. When a store executes, any loads with a matching address are reissued
+  --      For now, I consider addresses to alias if they have the same word offset in a page
+  --
+  -- To avoid wasteful reissue, we only issue stores once all priors are issued, making
+  -- it very likely that they execute only when all priors are final. Unfortunately, 
+  -- without a dedicated 'ioload' instruction, we cannot likewise delay load issue.
+  --
   
   -- To keep r_schedule0 as easy to compute as possible, half of the reservation station
   -- is shifted early, and half is shifted late. r_schedule0 is late, as is anything fed
@@ -324,7 +383,7 @@ begin
   s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
-    
+  
   -- We can get away with r_ready instead of s_readyab, because all reissues
   -- start with a load, which will stop everything older than it shifting out
   -- for long enough that the 1-cycle propogation of 0s in r_ready is faster.
