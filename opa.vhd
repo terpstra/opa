@@ -145,19 +145,32 @@ architecture rtl of opa is
   signal eu_issue_pc            : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   signal eu_issue_pcf           : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
   signal eu_issue_pcn           : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal slow_dbus_stb          : std_logic_vector(c_num_slow-1 downto 0);
-  signal slow_dbus_adr          : t_opa_matrix(c_num_slow-1 downto 0, c_adr_wide-1 downto 0);
   
-  signal dbus_slow_stb          : std_logic;
-  signal dbus_slow_adr          : std_logic_vector(c_adr_wide    -1 downto 0);
-  signal dbus_slow_dat          : std_logic_vector(c_dline_size*8-1 downto 0);
+  signal slow_l1d_stb           : std_logic_vector(c_num_slow-1 downto 0);
+  signal slow_l1d_we            : std_logic_vector(c_num_slow-1 downto 0);
+  signal slow_l1d_sext          : std_logic_vector(c_num_slow-1 downto 0);
+  signal slow_l1d_size          : t_opa_matrix(c_num_slow-1 downto 0, 1 downto 0);
+  signal slow_l1d_addr          : t_opa_matrix(c_num_slow-1 downto 0, c_reg_wide-1 downto 0);
+  signal slow_l1d_data          : t_opa_matrix(c_num_slow-1 downto 0, c_reg_wide-1 downto 0);
+  signal slow_l1d_oldest        : std_logic_vector(c_num_slow-1 downto 0);
+  
+  signal l1d_slow_retry         : std_logic_vector(c_num_slow-1 downto 0);
+  signal l1d_slow_data          : t_opa_matrix(c_num_slow-1 downto 0, c_reg_wide-1 downto 0);
+  signal l1d_dbus_stb           : std_logic;
+  signal l1d_dbus_adr           : std_logic_vector(c_adr_wide-1 downto 0);
+  
+  signal dbus_l1d_stb           : std_logic;
+  signal dbus_l1d_adr           : std_logic_vector(c_adr_wide    -1 downto 0);
+  signal dbus_l1d_dat           : std_logic_vector(c_dline_size*8-1 downto 0);
   
   type t_reg  is array (c_executers-1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
   type t_arg  is array (c_executers-1 downto 0) of std_logic_vector(c_arg_wide -1 downto 0);
   type t_imm  is array (c_executers-1 downto 0) of std_logic_vector(c_imm_wide -1 downto 0);
   type t_pc   is array (c_executers-1 downto 0) of std_logic_vector(c_adr_wide -1 downto c_op_align);
   type t_pcf  is array (c_executers-1 downto 0) of std_logic_vector(c_fetch_wide -1 downto c_op_align);
-  type t_adr  is array (c_num_slow -1 downto 0) of std_logic_vector(c_adr_wide -1 downto 0);
+  type t_size is array (c_num_slow -1 downto 0) of std_logic_vector(1 downto 0);
+  type t_adr  is array (c_num_slow -1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
+  type t_dat  is array (c_num_slow -1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
   
   signal s_regfile_eu_rega : t_reg;
   signal s_regfile_eu_regb : t_reg;
@@ -170,7 +183,10 @@ architecture rtl of opa is
   signal s_eu_issue_pc     : t_pc;
   signal s_eu_issue_pcf    : t_pcf;
   signal s_eu_issue_pcn    : t_pc;
-  signal s_slow_dbus_adr   : t_adr;
+  signal s_slow_l1d_size   : t_size;
+  signal s_slow_l1d_addr   : t_adr;
+  signal s_slow_l1d_data   : t_dat;
+  signal s_l1d_slow_data   : t_dat;
   
 begin
 
@@ -451,8 +467,13 @@ begin
   end generate;
   
   slows : for u in 0 to c_num_slow-1 generate
-    adr : for b in 0 to c_adr_wide-1 generate
-      slow_dbus_adr(u,b) <= s_slow_dbus_adr(u)(b);
+    sizes : for b in 0 to 1 generate
+      slow_l1d_size(u,b) <= s_slow_l1d_size(u)(b);
+    end generate;
+    adr : for b in 0 to c_reg_wide-1 generate
+      slow_l1d_addr(u,b) <= s_slow_l1d_addr(u)(b);
+      slow_l1d_data(u,b) <= s_slow_l1d_data(u)(b);
+      s_l1d_slow_data(u)(b) <= l1d_slow_data(u,b);
     end generate;
   end generate;
   
@@ -498,11 +519,14 @@ begin
         regfile_pcf_i  => s_regfile_eu_pcf (f_opa_slow_index(g_config, i)),
         regfile_pcn_i  => s_regfile_eu_pcn (f_opa_slow_index(g_config, i)),
         regfile_regx_o => s_eu_regfile_regx(f_opa_slow_index(g_config, i)),
-        dbus_stb_i     => dbus_slow_stb,
-        dbus_adr_i     => dbus_slow_adr,
-        dbus_dat_i     => dbus_slow_dat,
-        dbus_stb_o     => slow_dbus_stb(i),
-        dbus_adr_o     => s_slow_dbus_adr(i),
+        l1d_stb_o      => slow_l1d_stb     (i),
+        l1d_we_o       => slow_l1d_we      (i),
+        l1d_sext_o     => slow_l1d_sext    (i),
+        l1d_size_o     => s_slow_l1d_size  (i),
+        l1d_addr_o     => s_slow_l1d_addr  (i),
+        l1d_data_o     => s_slow_l1d_data  (i),
+        l1d_retry_i    => l1d_slow_retry   (i),
+        l1d_data_i     => s_l1d_slow_data  (i),
         issue_oldest_i => issue_eu_oldest  (f_opa_slow_index(g_config, i)),
         issue_retry_o  => eu_issue_retry   (f_opa_slow_index(g_config, i)),
         issue_fault_o  => eu_issue_fault   (f_opa_slow_index(g_config, i)),
@@ -510,6 +534,28 @@ begin
         issue_pcf_o    => s_eu_issue_pcf   (f_opa_slow_index(g_config, i)),
         issue_pcn_o    => s_eu_issue_pcn   (f_opa_slow_index(g_config, i)));
   end generate;
+  
+  l1d : opa_l1d
+    generic map(
+      g_config => g_config,
+      g_target => g_target)
+    port map(
+      clk_i         => clk_i,
+      rst_n_i       => rst_n_i,
+      slow_stb_i    => slow_l1d_stb,
+      slow_we_i     => slow_l1d_we,
+      slow_sext_i   => slow_l1d_sext,
+      slow_size_i   => slow_l1d_size,
+      slow_addr_i   => slow_l1d_addr,
+      slow_data_i   => slow_l1d_data,
+      slow_oldest_i => slow_l1d_oldest,
+      slow_retry_o  => l1d_slow_retry,
+      slow_data_o   => l1d_slow_data,
+      dbus_stb_i    => dbus_l1d_stb,
+      dbus_adr_i    => dbus_l1d_adr,
+      dbus_dat_i    => dbus_l1d_dat,
+      dbus_stb_o    => l1d_dbus_stb,
+      dbus_adr_o    => l1d_dbus_adr);
   
   dbus : opa_dbus
     generic map(
@@ -528,10 +574,10 @@ begin
       d_sel_o    => d_sel_o,
       d_data_o   => d_data_o,
       d_data_i   => d_data_i,
-      slow_stb_o => dbus_slow_stb,
-      slow_adr_o => dbus_slow_adr,
-      slow_dat_o => dbus_slow_dat,
-      slow_stb_i => slow_dbus_stb,
-      slow_adr_i => slow_dbus_adr);
+      l1d_stb_o  => dbus_l1d_stb,
+      l1d_adr_o  => dbus_l1d_adr,
+      l1d_dat_o  => dbus_l1d_dat,
+      l1d_stb_i  => l1d_dbus_stb,
+      l1d_adr_i  => l1d_dbus_adr);
   
 end rtl;
