@@ -404,6 +404,7 @@ package opa_components_pkg is
       slow_retry_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
       slow_data_o   : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
       
+      dbus_cyc_i    : in  std_logic;
       dbus_stb_i    : in  std_logic;
       dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
       dbus_dat_i    : in  std_logic_vector(c_dline_size*8          -1 downto 0);
@@ -430,6 +431,7 @@ package opa_components_pkg is
       d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
       d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
       
+      l1d_cyc_o : out std_logic;
       l1d_stb_o : out std_logic;
       l1d_adr_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
       l1d_dat_o : out std_logic_vector(c_dline_size*8          -1 downto 0);

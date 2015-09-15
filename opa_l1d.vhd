@@ -27,6 +27,7 @@ entity opa_l1d is
     slow_retry_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
     slow_data_o   : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
     
+    dbus_cyc_i    : in  std_logic;
     dbus_stb_i    : in  std_logic;
     dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
     dbus_dat_i    : in  std_logic_vector(c_dline_size*8          -1 downto 0);
@@ -72,6 +73,7 @@ architecture rtl of opa_l1d is
   constant c_reg_wide      : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide      : natural := f_opa_adr_wide(g_config);
   constant c_imm_wide      : natural := f_opa_imm_wide(g_config);
+  constant c_reg_bytes     : natural := c_reg_wide/8;
   constant c_log_reg_wide  : natural := f_opa_log2(c_reg_wide);
   constant c_log_reg_bytes : natural := c_log_reg_wide - 3;
   constant c_line_bytes    : natural := c_dline_size;
@@ -83,12 +85,6 @@ architecture rtl of opa_l1d is
 
   constant c_way_ones : std_logic_vector(c_num_ways     -1 downto 0) := (others => '1');
   
-  signal s_wtag : std_logic_vector(c_adr_wide -1 downto c_idx_high);
-  signal s_widx : std_logic_vector(c_idx_high -1 downto c_idx_low);
-  signal s_woff : std_logic_vector(c_idx_low  -1 downto 0);
-  signal s_wdat : std_logic_vector(8*c_dline_size-1 downto 0);
-  signal s_went : std_logic_vector(c_ent_wide -1 downto 0);
-  
   type t_tag  is array(natural range <>) of std_logic_vector(c_adr_wide-1 downto c_idx_high);
   type t_idx  is array(natural range <>) of std_logic_vector(c_idx_high-1 downto c_idx_low);
   type t_off  is array(natural range <>) of std_logic_vector(c_idx_low -1 downto 0);
@@ -98,6 +94,13 @@ architecture rtl of opa_l1d is
   type t_line is array(natural range <>) of std_logic_vector(8*c_dline_size-1 downto 0);
   type t_mux  is array(natural range <>) of std_logic_vector(c_log_reg_bytes  downto 0);
   type t_size is array(natural range <>) of std_logic_vector(1 downto 0);
+  
+  signal s_we    : std_logic_vector(c_num_ways -1 downto 0);
+  signal s_wtag  : std_logic_vector(c_adr_wide -1 downto c_idx_high);
+  signal s_widx  : std_logic_vector(c_idx_high -1 downto c_idx_low);
+  signal s_woff  : std_logic_vector(c_idx_low  -1 downto 0);
+  signal s_wdat  : t_line(c_num_ways-1 downto 0);
+  signal s_went  : t_ent (c_num_ways-1 downto 0);
   
   signal s_size  : t_size(c_num_slow-1 downto 0);
   signal s_vtag  : t_tag (c_num_slow-1 downto 0);
@@ -120,6 +123,7 @@ architecture rtl of opa_l1d is
   signal s_ways  : t_way (c_num_slow*c_reg_wide-1 downto 0);
   
   signal r_stb   : std_logic_vector(c_num_slow-1 downto 0);
+  signal r_we    : std_logic_vector(c_num_slow-1 downto 0);
   signal r_size  : t_size(c_num_slow-1 downto 0);
   signal r_vtag  : t_tag(c_num_slow-1 downto 0);
   signal r_vidx  : t_idx(c_num_slow-1 downto 0);
@@ -129,17 +133,23 @@ architecture rtl of opa_l1d is
   signal r_clear : t_opa_matrix(c_num_slow-1 downto 0, c_log_reg_bytes downto 0);
   signal r_zext  : t_reg (c_num_slow*c_num_ways-1 downto 0);
   
+  signal s_0dat  : std_logic_vector(c_reg_wide-1 downto 0);
+  signal s_wb_msk: std_logic_vector(c_line_bytes-1 downto 0);
+  signal r_wb_msk: std_logic_vector(c_line_bytes-1 downto 0);
+  signal s_wb_mux: t_reg(c_log_reg_bytes downto 0);
+  signal s_wb_dat: std_logic_vector(c_reg_wide-1 downto 0);
+  signal r_wb_dat: std_logic_vector(c_reg_wide-1 downto 0);
+  signal s_cyc   : std_logic_vector(c_num_slow-1 downto 0);
+  signal s_0we   : std_logic_vector(c_num_ways-1 downto 0);
+  signal s_wb_we : std_logic_vector(c_num_ways-1 downto 0);
+  signal s_wb_line : t_line(c_num_ways-1 downto 0);
+  
   function f_idx(p, w    : natural) return natural is begin return w*c_num_slow+p; end f_idx;
   function f_idx(p, w, b : natural) return natural is begin return (f_idx(p,w)*c_reg_wide)+b; end f_idx;
   function f_pow(m : natural) return natural is begin return 8*2**m; end f_pow;
   
 begin
 
-  s_wtag <= dbus_adr_i(s_wtag'range);
-  s_widx <= dbus_adr_i(s_widx'range);
-  s_wdat <= dbus_dat_i;
-  s_went <= (not s_wtag) & s_wdat;
-  
   ports : for p in 0 to c_num_slow-1 generate
     -- Select the address lines
     s_size(p) <= f_opa_select_row(slow_size_i, p);
@@ -147,17 +157,18 @@ begin
     s_vidx(p) <= f_opa_select_row(slow_addr_i, p)(s_widx'range);
     s_voff(p) <= f_opa_select_row(slow_addr_i, p)(s_woff'range);
     
+    -- 1-hot decode the size
+    size : for s in 0 to c_idx_low-1 generate
+      s_sizes(p)(s) <= f_opa_bit(unsigned(s_size(p)) = s);
+    end generate;
+    
     -- Compute the data shift
     big_shift : if c_big_endian generate
-      -- 1-hot decode the size
-      size : for s in 0 to c_idx_low-1 generate
-        s_sizes(p)(s) <= f_opa_bit(unsigned(s_size(p)) = s);
-      end generate;
+      s_shift(p) <= std_logic_vector(unsigned(s_voff(p)) + unsigned(s_sizes(p)));
     end generate;
     little_shift : if not c_big_endian generate
-      s_sizes(p) <= (others => '0');
+      s_shift(p) <= s_voff(p);
     end generate;
-    s_shift(p) <= std_logic_vector(unsigned(s_voff(p)) + unsigned(s_sizes(p)));
     
     -- If we miss, what to load first?
     tag_bits : for b in s_wtag'range generate -- !!! use physical address
@@ -170,13 +181,13 @@ begin
       s_adr(p,b) <= r_voff(p)(b);
     end generate;
     
-    -- The L1d ways
+    -- The L1d ways !!! find a way to use OPA_OLD instead ?
     ways : for w in 0 to c_num_ways-1 generate
       l1d : opa_dpram
         generic map(
           g_width  => c_ent_wide,
           g_size   => 2**c_idx_wide,
-          g_equal  => OPA_OLD,
+          g_equal  => OPA_NEW,
           g_regin  => true,
           g_regout => false)
         port map(
@@ -184,13 +195,13 @@ begin
           rst_n_i  => rst_n_i,
           r_addr_i => s_vidx(p),
           r_data_o => s_rent(f_idx(p,w)),
-          w_en_i   => dbus_stb_i,
+          w_en_i   => s_we(w),
           w_addr_i => s_widx,
-          w_data_i => s_went);
+          w_data_i => s_went(w));
       
       -- Split out the line contents
-      s_rtag(f_idx(p,w)) <= not s_rent(f_idx(p,w))(s_went'high downto s_wdat'high+1);
-      s_rdat(f_idx(p,w)) <= s_rent(f_idx(p,w))(s_wdat'range);
+      s_rtag(f_idx(p,w)) <= not s_rent(f_idx(p,w))(c_ent_wide-1 downto 8*c_dline_size);
+      s_rdat(f_idx(p,w)) <= s_rent(f_idx(p,w))(8*c_dline_size-1 downto 0);
       
       -- !!! use physical address
       s_match(p,w) <= f_opa_bit(r_vtag(p) = s_rtag(f_idx(p,w)));
@@ -234,6 +245,7 @@ begin
   begin
     if rising_edge(clk_i) then
       r_stb   <= slow_stb_i;
+      r_we    <= slow_we_i and slow_stb_i;
       r_size  <= s_size;
       r_vtag  <= s_vtag;
       r_vidx  <= s_vidx;
@@ -241,11 +253,59 @@ begin
       r_size  <= s_size;
       r_shift <= s_shift;
       r_clear <= s_clear;
+      r_wb_msk<= s_wb_msk;
+      r_wb_dat<= s_wb_dat;
       --
       r_match <= s_match;
       r_zext  <= s_zext;
     end if;
   end process;
+  
+  -- We will execute stores from port 0 to the matching way
+  
+  -- Which bytes of the line get written?
+  wb_little : if not c_big_endian generate
+    wb_msk : for b in 0 to c_line_bytes-1 generate
+      -- Hopefully synthesis realizes this all fits into a 6:1 LUT
+      s_wb_msk(b) <= f_opa_bit(b - unsigned(s_voff(0)) <= unsigned(s_sizes(0))-1);
+    end generate;
+  end generate;
+  wb_big : if c_big_endian generate
+    wb_msk : for b in 0 to c_line_bytes-1 generate
+      s_wb_msk(c_line_bytes-1-b) <= f_opa_bit(b - unsigned(s_voff(0)) <= unsigned(s_sizes(0))-1);
+    end generate;
+  end generate;
+  
+  -- Turn ...B into BBBB ..Hh into HhHh and ABCD into ABCD
+  s_0dat <= f_opa_select_row(slow_data_i, 0);
+  wb_mux : for m in 0 to c_log_reg_bytes generate
+    bits : for b in 0 to c_reg_wide-1 generate
+      s_wb_mux(m)(b) <= s_0dat(b mod f_pow(m));
+    end generate;
+  end generate;
+  s_wb_dat <= s_wb_mux(to_integer(unsigned(s_size(0))));
+  
+  -- Which ways get written by writeback?
+  s_0we     <= (others => r_we(0) and slow_oldest_i(0));
+  s_wb_we   <= s_0we and f_opa_select_row(s_match, 0);
+  
+  -- Construct the per-way data we would like to write
+  wb_ways : for w in 0 to c_num_ways-1 generate
+    wbytes : for b in 0 to c_line_bytes-1 generate
+      s_wb_line(w)((b+1)*8-1 downto b*8) <= 
+        s_rdat(f_idx(0,w))((b+1)*8-1 downto b*8) when r_wb_msk(b)='0' else
+        r_wb_dat(((b mod c_reg_bytes)+1)*8-1 downto (b mod c_reg_bytes)*8);
+    end generate;
+  end generate;
+  
+  -- Decide what to write to L1; dbus has priority
+  s_wtag    <= dbus_adr_i(s_wtag'range) when dbus_cyc_i='1' else r_vtag(0);
+  s_widx    <= dbus_adr_i(s_widx'range) when dbus_cyc_i='1' else r_vidx(0);
+  write_ways : for w in 0 to c_num_ways-1 generate
+    s_we(w)   <= dbus_stb_i             when dbus_cyc_i='1' else s_wb_we(w); -- !!! dbus writes all atm
+    s_wdat(w) <= dbus_dat_i             when dbus_cyc_i='1' else s_wb_line(w);
+    s_went(w) <= (not s_wtag) & s_wdat(w);
+  end generate;
   
   -- Let the dbus know we need to load something
   s_miss <= r_stb and not f_opa_product(s_match, c_way_ones);
@@ -253,8 +313,12 @@ begin
   dbus_stb_o <= f_opa_or(s_miss);
   dbus_adr_o <= f_opa_product(f_opa_transpose(s_adr), s_pick);
   
+  -- Restart if cache miss or store unacceptable
+  -- We only accept a store if it is the oldest and the dbus is not already writing L1
+  s_cyc <= (0 => dbus_cyc_i, others => '1');
+  slow_retry_o <= s_miss or ((not slow_oldest_i or s_cyc) and r_we);
+  
   -- Pick the matching way
-  slow_retry_o <= s_miss;
   out_ports : for p in 0 to c_num_slow-1 generate
     bits : for b in 0 to c_reg_wide-1 generate
       ways : for w in 0 to c_num_ways-1 generate

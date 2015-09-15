@@ -159,6 +159,7 @@ architecture rtl of opa is
   signal l1d_dbus_stb           : std_logic;
   signal l1d_dbus_adr           : std_logic_vector(c_adr_wide-1 downto 0);
   
+  signal dbus_l1d_cyc           : std_logic;
   signal dbus_l1d_stb           : std_logic;
   signal dbus_l1d_adr           : std_logic_vector(c_adr_wide    -1 downto 0);
   signal dbus_l1d_dat           : std_logic_vector(c_dline_size*8-1 downto 0);
@@ -525,6 +526,7 @@ begin
         l1d_size_o     => s_slow_l1d_size  (i),
         l1d_addr_o     => s_slow_l1d_addr  (i),
         l1d_data_o     => s_slow_l1d_data  (i),
+        l1d_oldest_o   => slow_l1d_oldest  (i),
         l1d_retry_i    => l1d_slow_retry   (i),
         l1d_data_i     => s_l1d_slow_data  (i),
         issue_oldest_i => issue_eu_oldest  (f_opa_slow_index(g_config, i)),
@@ -551,6 +553,7 @@ begin
       slow_oldest_i => slow_l1d_oldest,
       slow_retry_o  => l1d_slow_retry,
       slow_data_o   => l1d_slow_data,
+      dbus_cyc_i    => dbus_l1d_cyc,
       dbus_stb_i    => dbus_l1d_stb,
       dbus_adr_i    => dbus_l1d_adr,
       dbus_dat_i    => dbus_l1d_dat,
@@ -574,6 +577,7 @@ begin
       d_sel_o    => d_sel_o,
       d_data_o   => d_data_o,
       d_data_i   => d_data_i,
+      l1d_cyc_o  => dbus_l1d_cyc,
       l1d_stb_o  => dbus_l1d_stb,
       l1d_adr_o  => dbus_l1d_adr,
       l1d_dat_o  => dbus_l1d_dat,

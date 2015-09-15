@@ -27,6 +27,7 @@ entity opa_dbus is
     d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
     d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
     
+    l1d_cyc_o : out std_logic;
     l1d_stb_o : out std_logic;
     l1d_adr_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
     l1d_dat_o : out std_logic_vector(c_dline_size*8          -1 downto 0);
@@ -129,6 +130,7 @@ begin
   d_sel_o  <= (others => '1');
   d_data_o <= (others => '0');
   
+  l1d_cyc_o <= r_cyc;
   l1d_stb_o <= d_ack_i;
   l1d_adr_o <= r_adr(c_adr_wide-1 downto 0);
   l1d_dat_o <= s_dat;

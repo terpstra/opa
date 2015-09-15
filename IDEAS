@@ -1,11 +1,10 @@
 roll-out:
 	move ISA selection to a generic parameter
-	make a structure that describes all parameters needed and use it instead of c_num_*/etc
-	add valid flags to L1d ... 
-	finalize optimizations: regfile bypass, issue shift, and fast adder
-	implement write-to-store-buffer
-	implement store finalizer scheduler [a]
-	implement write port
+	add valid and dirty flags to L1d
+	implement flush of dirty line after refill
+	schedule writes only once priors issued => speed-up
+	allow writeback to an empty line (no miss before write)
+	finalize optimization of fast adder equality
 	implement load-alias detection CAM [0]
 	implement write alias wake-up [1]
 	implement TLB [3]
@@ -15,8 +14,6 @@ roll-out:
 	support sext[bh] in slow? OR sextb=(andi 0x80, muli -1, or)
 	try making non-faulting ops final once ready => IPC gain?
 	implement FPU [5]
-
-[a] finalize ready writes preceded by entirely final operations => implies in-order writeback
 
 [0] use 2*M10k as a 32-entry 18-bit CAM of load address hashes
 
