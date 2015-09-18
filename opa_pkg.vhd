@@ -23,8 +23,8 @@ package opa_pkg is
   -- 32-bit processor, 2-issue, 18 stations, 1+1 EU, 8KB dcache
   constant c_opa_small : t_opa_config := ( 5, 22, 2, 18, 1, 1, false, 2, 1);
   
-  -- 32-bit processor, 4-issue, 28 stations, 2+1 EU, 32KB dcache
-  constant c_opa_large : t_opa_config := ( 5, 32, 4, 28, 2, 1, false, 8, 4);
+  -- 32-bit processor, 4-issue, 28 stations, 2+1 EU, 16KB dcache
+  constant c_opa_large : t_opa_config := ( 5, 32, 4, 28, 2, 1, false, 4, 4);
   
   -- 64-bit processor, 4-issue, 48 stations, 2+2 EU, 32KB dcache
   constant c_opa_huge  : t_opa_config := ( 6, 39, 4, 44, 2, 2, true,  8, 4);
