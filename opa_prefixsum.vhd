@@ -269,7 +269,7 @@ architecture rtl of opa_prefixsum is
     for i in x'range(1) loop
       for j in x'range(2) loop
         if i = x'low(1) then
-          result(i,j) := f_opa_bit(j = 0);
+          result(i,j) := f_opa_bit(j = 0 or j = g_count);
         else
           result(i,j) := x(i-1,j);
         end if;
