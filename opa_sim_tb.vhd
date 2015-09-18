@@ -11,7 +11,7 @@ end opa_sim_tb;
 
 architecture rtl of opa_sim_tb is
 
-  constant period : time := 1 ns;
+  constant period : time := 5 ns; -- 100MHz has 5ns high
   signal clk, rstn : std_logic;
 
   constant c_config : t_opa_config := c_opa_large;
@@ -41,9 +41,9 @@ begin
 
   clock : process
   begin
-    clk <= '0';
-    wait for period;
     clk <= '1';
+    wait for period;
+    clk <= '0';
     wait for period;
   end process;
 
