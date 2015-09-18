@@ -203,7 +203,7 @@ architecture rtl of opa_regfile is
   signal s_map_new     : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
   signal s_map_aged    : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
   signal s_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0);
-  signal r_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0) := (others => (0 => '0', others => '1'));
+  signal r_map         : t_opa_matrix(c_num_back-1 downto 0, c_mux_wide-1 downto 0) := (others => (others => '0'));
   
   -- Synthesis tools bitch and moan if I use a 3D array, so use a quick-n-dirty hack function
   function f_idx(x : natural; y : natural) return natural is
@@ -291,8 +291,8 @@ begin
   back_reg : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      -- On power-up, select the last memory (which is full of zeros)
-      r_map <= (others => (0 => '0', others => '1'));
+      -- On power-up, select the first EU; it will age to regfile before anything gets issued
+      r_map <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
       r_map <= s_map;
     end if;

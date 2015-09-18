@@ -13,7 +13,6 @@ entity opa_dpram is
     g_width  : natural;
     g_size   : natural;
     g_equal  : t_dpram_equal;
-    g_bypass : boolean;
     g_regin  : boolean;
     g_regout : boolean);
   port(
