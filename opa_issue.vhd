@@ -254,6 +254,12 @@ architecture rtl of opa_issue is
   signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
   signal r_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
   signal r_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal r_fault_slow_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal r_fault_slow_pcf: std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal r_fault_slow_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal r_fault_fast_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal r_fault_fast_pcf: std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal r_fault_fast_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
   
   function f_decoder_labels(decoders : natural) return t_opa_matrix is
     variable result : t_opa_matrix(c_num_stat-1 downto 0, c_dec_wide-1 downto 0);
@@ -441,15 +447,27 @@ begin
       else
         r_fault_mask <= (others => '1');
       end if;
-      if eu_fault_i(c_fast0) = '1' then
-        r_fault_pc   <= f_opa_select_row(eu_pc_i,  c_fast0);
-        r_fault_pcf  <= f_opa_select_row(eu_pcf_i, c_fast0);
-        r_fault_pcn  <= f_opa_select_row(eu_pcn_i, c_fast0);
+      r_fault_fast_pc  <= f_opa_select_row(eu_pc_i,  c_fast0);
+      r_fault_fast_pcf <= f_opa_select_row(eu_pcf_i, c_fast0);
+      r_fault_fast_pcn <= f_opa_select_row(eu_pcn_i, c_fast0);
+      r_fault_slow_pc  <= f_opa_select_row(eu_pc_i,  c_slow0);
+      r_fault_slow_pcf <= f_opa_select_row(eu_pcf_i, c_slow0);
+      r_fault_slow_pcn <= f_opa_select_row(eu_pcn_i, c_slow0);
+      
+      r_fault_pc  <= r_fault_pc;
+      r_fault_pcf <= r_fault_pcf;
+      r_fault_pcn <= r_fault_pcn;
+      
+      -- These two cases are actually mutually exclusive, but whatever.
+      if r_fault_in(c_fast0) = '1' then
+        r_fault_pc   <= r_fault_fast_pc;
+        r_fault_pcf  <= r_fault_fast_pcf;
+        r_fault_pcn  <= r_fault_fast_pcn;
       end if;
-      if eu_fault_i(c_slow0) = '1' then
-        r_fault_pc   <= f_opa_select_row(eu_pc_i,  c_slow0);
-        r_fault_pcf  <= f_opa_select_row(eu_pcf_i, c_slow0);
-        r_fault_pcn  <= f_opa_select_row(eu_pcn_i, c_slow0);
+      if r_fault_in(c_slow0) = '1' then
+        r_fault_pc   <= r_fault_slow_pc;
+        r_fault_pcf  <= r_fault_slow_pcf;
+        r_fault_pcn  <= r_fault_slow_pcn;
       end if;
     end if;
   end process;
