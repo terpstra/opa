@@ -1,9 +1,9 @@
 files = [
  "opa_pkg.vhd",
- "opa_isa_base_pkg.vhd",
+ "opa_isa_base_pkg_riscv.vhd",
  "opa_functions_pkg.vhd",
  "opa_components_pkg.vhd",
- "opa_isa_pkg.vhd",
+ "opa_isa_pkg_riscv.vhd",
  "opa_dpram.vhd",
  "opa_lcell.vhd",
  "opa_prim_ternary.vhd",
@@ -17,8 +17,9 @@ files = [
  "opa_regfile.vhd",
  "opa_fast.vhd",
  "opa_slow.vhd",
+ "opa_l1d.vhd",
+ "opa_dbus.vhd",
  "opa.vhd",
- "demo/demo.vhd",
- "opa_core_tb.vhd",
+ "demo/riscv.vhd",
  "opa_sim_tb.vhd",
 ]
