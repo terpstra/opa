@@ -54,12 +54,19 @@ entity opa_l1d is
     slow_retry_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
     slow_data_o   : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
     
-    dbus_cyc_i    : in  std_logic;
-    dbus_stb_i    : in  std_logic;
-    dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    dbus_dat_i    : in  std_logic_vector(c_dline_size*8          -1 downto 0);
-    dbus_stb_o    : out std_logic;
-    dbus_adr_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0));
+    -- L1d requests action
+    dbus_req_o   : out t_opa_dbus_request;
+    dbus_radr_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    dbus_way_o   : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+    dbus_wadr_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    dbus_dirty_o : out std_logic_vector(c_dline_size            -1 downto 0);
+    dbus_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0);
+    
+    dbus_busy_i  : in  std_logic; -- can accept a req_i
+    dbus_we_i    : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+    dbus_adr_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    dbus_valid_i : in  std_logic_vector(c_dline_size            -1 downto 0);
+    dbus_data_i  : in  std_logic_vector(c_dline_size*8          -1 downto 0));
 end opa_l1d;
 
 architecture rtl of opa_l1d is
@@ -96,7 +103,7 @@ architecture rtl of opa_l1d is
   --  age for LRU is done using registers
   
   constant c_num_slow      : natural := f_opa_num_slow(g_config);
-  constant c_num_ways      : natural := 1; -- for now
+  constant c_num_ways      : natural := f_opa_num_dway(g_config);
   constant c_reg_wide      : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide      : natural := f_opa_adr_wide(g_config);
   constant c_imm_wide      : natural := f_opa_imm_wide(g_config);
@@ -110,7 +117,7 @@ architecture rtl of opa_l1d is
   constant c_tag_wide      : natural := c_adr_wide - c_idx_high;
   constant c_ent_wide      : natural := c_tag_wide + c_dline_size*8;
 
-  constant c_way_ones : std_logic_vector(c_num_ways     -1 downto 0) := (others => '1');
+  constant c_way_ones : std_logic_vector(c_num_ways-1 downto 0) := (others => '1');
   
   type t_tag  is array(natural range <>) of std_logic_vector(c_adr_wide-1 downto c_idx_high);
   type t_idx  is array(natural range <>) of std_logic_vector(c_idx_high-1 downto c_idx_low);
@@ -166,7 +173,7 @@ architecture rtl of opa_l1d is
   signal s_wb_mux: t_reg(c_log_reg_bytes downto 0);
   signal s_wb_dat: std_logic_vector(c_reg_wide-1 downto 0);
   signal r_wb_dat: std_logic_vector(c_reg_wide-1 downto 0);
-  signal s_cyc   : std_logic_vector(c_num_slow-1 downto 0);
+  signal s_busy  : std_logic_vector(c_num_slow-1 downto 0) := (others => '1');
   signal s_0we   : std_logic_vector(c_num_ways-1 downto 0);
   signal s_wb_we : std_logic_vector(c_num_ways-1 downto 0);
   signal s_wb_line : t_line(c_num_ways-1 downto 0);
@@ -328,24 +335,30 @@ begin
   end generate;
   
   -- Decide what to write to L1; dbus has priority
-  s_wtag    <= dbus_adr_i(s_wtag'range) when dbus_cyc_i='1' else r_vtag(0);
-  s_widx    <= dbus_adr_i(s_widx'range) when dbus_cyc_i='1' else r_vidx(0);
+  s_wtag    <= dbus_adr_i(s_wtag'range) when dbus_busy_i='1' else r_vtag(0);
+  s_widx    <= dbus_adr_i(s_widx'range) when dbus_busy_i='1' else r_vidx(0);
   write_ways : for w in 0 to c_num_ways-1 generate
-    s_we(w)   <= dbus_stb_i             when dbus_cyc_i='1' else s_wb_we(w); -- !!! dbus writes all atm
-    s_wdat(w) <= dbus_dat_i             when dbus_cyc_i='1' else s_wb_line(w);
+    s_we(w)   <= dbus_we_i(w)           when dbus_busy_i='1' else s_wb_we(w);
+    s_wdat(w) <= dbus_data_i            when dbus_busy_i='1' else s_wb_line(w);
+    -- !!! store valid bits
     s_went(w) <= (not s_wtag) & s_wdat(w);
   end generate;
   
   -- Let the dbus know we need to load something
   s_miss <= r_stb and not f_opa_product(s_match, c_way_ones);
   s_pick <= f_opa_pick_small(s_miss);
-  dbus_stb_o <= f_opa_or(s_miss);
-  dbus_adr_o <= f_opa_product(f_opa_transpose(s_adr), s_pick);
+  
+  dbus_req_o   <= OPA_DBUS_LOAD when f_opa_or(s_miss) = '1' else OPA_DBUS_IDLE; -- !!! also store
+  dbus_radr_o  <= f_opa_product(f_opa_transpose(s_adr), s_pick);
+  dbus_way_o   <= (0 => '1', others => '0'); -- !!! pick a way
+  dbus_wadr_o  <= (others => '0');
+  dbus_dirty_o <= (others => '0');
+  dbus_data_o  <= (others => '0');
   
   -- Restart if cache miss or store unacceptable
   -- We only accept a store if it is the oldest and the dbus is not already writing L1
-  s_cyc <= (0 => dbus_cyc_i, others => '1');
-  slow_retry_o <= s_miss or ((not slow_oldest_i or s_cyc) and r_we);
+  s_busy(0) <= dbus_busy_i; -- rest are 1s
+  slow_retry_o <= s_miss or ((not slow_oldest_i or s_busy) and r_we);
   
   -- Pick the matching way
   out_ports : for p in 0 to c_num_slow-1 generate

@@ -53,6 +53,7 @@ package opa_functions_pkg is
   function f_opa_num_back (conf : t_opa_config) return natural;
   function f_opa_num_aux  (conf : t_opa_config) return natural;
   function f_opa_num_fetch(conf : t_opa_config) return natural; -- in bytes
+  function f_opa_num_dway (conf : t_opa_config) return natural;
   function f_opa_arch_wide(conf : t_opa_config) return natural;
   function f_opa_back_wide(conf : t_opa_config) return natural;
   function f_opa_stat_wide(conf : t_opa_config) return natural;
@@ -338,6 +339,11 @@ package body opa_functions_pkg is
   begin
     return f_opa_decoders(conf) * c_op_avg_size;
   end f_opa_num_fetch;
+  
+  function f_opa_num_dway(conf : t_opa_config) return natural is
+  begin
+    return conf.dc_ways;
+  end f_opa_num_dway;
   
   function f_opa_arch_wide(conf : t_opa_config) return natural is
   begin 

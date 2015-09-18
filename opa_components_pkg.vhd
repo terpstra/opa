@@ -412,6 +412,16 @@ package opa_components_pkg is
       issue_pcn_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align));
   end component;
 
+  type t_opa_dbus_request is (
+    OPA_DBUS_IDLE,
+    OPA_DBUS_WAIT_STORE_LOAD,
+    OPA_DBUS_STORE_LOAD, -- request forbidden
+    OPA_DBUS_LOAD_STORE,
+    OPA_DBUS_WAIT_LOAD,
+    OPA_DBUS_WAIT_STORE,
+    OPA_DBUS_LOAD,
+    OPA_DBUS_STORE);     -- request forbidden
+  
   component opa_l1d is
     generic(
       g_config : t_opa_config;
@@ -431,12 +441,19 @@ package opa_components_pkg is
       slow_retry_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
       slow_data_o   : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
       
-      dbus_cyc_i    : in  std_logic;
-      dbus_stb_i    : in  std_logic;
-      dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      dbus_dat_i    : in  std_logic_vector(c_dline_size*8          -1 downto 0);
-      dbus_stb_o    : out std_logic;
-      dbus_adr_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0));
+      -- L1d requests action
+      dbus_req_o   : out t_opa_dbus_request;
+      dbus_radr_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      dbus_way_o   : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+      dbus_wadr_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      dbus_dirty_o : out std_logic_vector(c_dline_size            -1 downto 0);
+      dbus_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0);
+      
+      dbus_busy_i  : in  std_logic; -- can accept a req_i
+      dbus_we_i    : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+      dbus_adr_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      dbus_valid_i : in  std_logic_vector(c_dline_size            -1 downto 0);
+      dbus_data_i  : in  std_logic_vector(c_dline_size*8          -1 downto 0));
   end component;
 
   component opa_dbus is
@@ -444,26 +461,33 @@ package opa_components_pkg is
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
-      clk_i     : in  std_logic;
-      rst_n_i   : in  std_logic;
+      clk_i       : in  std_logic;
+      rst_n_i     : in  std_logic;
       
-      d_cyc_o   : out std_logic;
-      d_stb_o   : out std_logic;
-      d_we_o    : out std_logic;
-      d_stall_i : in  std_logic;
-      d_ack_i   : in  std_logic;
-      d_err_i   : in  std_logic;
-      d_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-      d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      d_cyc_o     : out std_logic;
+      d_stb_o     : out std_logic;
+      d_we_o      : out std_logic;
+      d_stall_i   : in  std_logic;
+      d_ack_i     : in  std_logic;
+      d_err_i     : in  std_logic;
+      d_addr_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+      d_sel_o     : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
+      d_data_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+      d_data_i    : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
       
-      l1d_cyc_o : out std_logic;
-      l1d_stb_o : out std_logic;
-      l1d_adr_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      l1d_dat_o : out std_logic_vector(c_dline_size*8          -1 downto 0);
-      l1d_stb_i : in  std_logic;
-      l1d_adr_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0));
+      -- L1d requests action
+      l1d_req_i   : in  t_opa_dbus_request;
+      l1d_radr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      l1d_way_i   : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+      l1d_wadr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      l1d_dirty_i : in  std_logic_vector(c_dline_size            -1 downto 0);
+      l1d_data_i  : in  std_logic_vector(c_dline_size*8          -1 downto 0);
+      
+      l1d_busy_o  : out std_logic; -- can accept a req_i
+      l1d_we_o    : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+      l1d_adr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      l1d_valid_o : out std_logic_vector(c_dline_size            -1 downto 0);
+      l1d_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0));
   end component;
   
 end package;

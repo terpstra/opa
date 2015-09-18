@@ -75,6 +75,7 @@ architecture rtl of opa is
   constant c_num_arch  : natural := f_opa_num_arch (g_config);
   constant c_num_stat  : natural := f_opa_num_stat (g_config);
   constant c_num_fetch : natural := f_opa_num_fetch(g_config);
+  constant c_num_dway  : natural := f_opa_num_dway(g_config);
   constant c_back_wide : natural := f_opa_back_wide(g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_arch_wide : natural := f_opa_arch_wide(g_config);
@@ -183,13 +184,18 @@ architecture rtl of opa is
   
   signal l1d_slow_retry         : std_logic_vector(c_num_slow-1 downto 0);
   signal l1d_slow_data          : t_opa_matrix(c_num_slow-1 downto 0, c_reg_wide-1 downto 0);
-  signal l1d_dbus_stb           : std_logic;
-  signal l1d_dbus_adr           : std_logic_vector(c_adr_wide-1 downto 0);
+  signal l1d_dbus_req           : t_opa_dbus_request;
+  signal l1d_dbus_radr          : std_logic_vector(c_adr_wide-1 downto 0);
+  signal l1d_dbus_way           : std_logic_vector(c_num_dway-1 downto 0);
+  signal l1d_dbus_wadr          : std_logic_vector(c_adr_wide-1 downto 0);
+  signal l1d_dbus_dirty         : std_logic_vector(c_dline_size  -1 downto 0);
+  signal l1d_dbus_data          : std_logic_vector(c_dline_size*8-1 downto 0);
   
-  signal dbus_l1d_cyc           : std_logic;
-  signal dbus_l1d_stb           : std_logic;
-  signal dbus_l1d_adr           : std_logic_vector(c_adr_wide    -1 downto 0);
-  signal dbus_l1d_dat           : std_logic_vector(c_dline_size*8-1 downto 0);
+  signal dbus_l1d_busy          : std_logic;
+  signal dbus_l1d_we            : std_logic_vector(c_num_dway-1 downto 0);
+  signal dbus_l1d_adr           : std_logic_vector(c_adr_wide-1 downto 0);
+  signal dbus_l1d_valid         : std_logic_vector(c_dline_size  -1 downto 0);
+  signal dbus_l1d_data          : std_logic_vector(c_dline_size*8-1 downto 0);
   
   type t_reg  is array (c_executers-1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
   type t_arg  is array (c_executers-1 downto 0) of std_logic_vector(c_arg_wide -1 downto 0);
@@ -580,35 +586,45 @@ begin
       slow_oldest_i => slow_l1d_oldest,
       slow_retry_o  => l1d_slow_retry,
       slow_data_o   => l1d_slow_data,
-      dbus_cyc_i    => dbus_l1d_cyc,
-      dbus_stb_i    => dbus_l1d_stb,
+      dbus_req_o    => l1d_dbus_req,
+      dbus_radr_o   => l1d_dbus_radr,
+      dbus_way_o    => l1d_dbus_way,
+      dbus_wadr_o   => l1d_dbus_wadr,
+      dbus_dirty_o  => l1d_dbus_dirty,
+      dbus_data_o   => l1d_dbus_data,
+      dbus_busy_i   => dbus_l1d_busy,
+      dbus_we_i     => dbus_l1d_we,
       dbus_adr_i    => dbus_l1d_adr,
-      dbus_dat_i    => dbus_l1d_dat,
-      dbus_stb_o    => l1d_dbus_stb,
-      dbus_adr_o    => l1d_dbus_adr);
+      dbus_valid_i  => dbus_l1d_valid,
+      dbus_data_i   => dbus_l1d_data);
   
   dbus : opa_dbus
     generic map(
       g_config => g_config,
       g_target => g_target)
     port map(
-      clk_i      => clk_i,
-      rst_n_i    => rst_n_i,
-      d_cyc_o    => d_cyc_o,
-      d_stb_o    => d_stb_o,
-      d_we_o     => d_we_o,
-      d_stall_i  => d_stall_i,
-      d_ack_i    => d_ack_i,
-      d_err_i    => d_err_i,
-      d_addr_o   => d_addr_o,
-      d_sel_o    => d_sel_o,
-      d_data_o   => d_data_o,
-      d_data_i   => d_data_i,
-      l1d_cyc_o  => dbus_l1d_cyc,
-      l1d_stb_o  => dbus_l1d_stb,
-      l1d_adr_o  => dbus_l1d_adr,
-      l1d_dat_o  => dbus_l1d_dat,
-      l1d_stb_i  => l1d_dbus_stb,
-      l1d_adr_i  => l1d_dbus_adr);
+      clk_i       => clk_i,
+      rst_n_i     => rst_n_i,
+      d_cyc_o     => d_cyc_o,
+      d_stb_o     => d_stb_o,
+      d_we_o      => d_we_o,
+      d_stall_i   => d_stall_i,
+      d_ack_i     => d_ack_i,
+      d_err_i     => d_err_i,
+      d_addr_o    => d_addr_o,
+      d_sel_o     => d_sel_o,
+      d_data_o    => d_data_o,
+      d_data_i    => d_data_i,
+      l1d_req_i   => l1d_dbus_req,
+      l1d_radr_i  => l1d_dbus_radr,
+      l1d_way_i   => l1d_dbus_way,
+      l1d_wadr_i  => l1d_dbus_wadr,
+      l1d_dirty_i => l1d_dbus_dirty,
+      l1d_data_i  => l1d_dbus_data,
+      l1d_busy_o  => dbus_l1d_busy,
+      l1d_we_o    => dbus_l1d_we,
+      l1d_adr_o   => dbus_l1d_adr,
+      l1d_valid_o => dbus_l1d_valid,
+      l1d_data_o  => dbus_l1d_data);
   
 end rtl;

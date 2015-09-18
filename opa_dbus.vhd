@@ -40,26 +40,33 @@ entity opa_dbus is
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
-    clk_i     : in  std_logic;
-    rst_n_i   : in  std_logic;
+    clk_i       : in  std_logic;
+    rst_n_i     : in  std_logic;
     
-    d_cyc_o   : out std_logic;
-    d_stb_o   : out std_logic;
-    d_we_o    : out std_logic;
-    d_stall_i : in  std_logic;
-    d_ack_i   : in  std_logic;
-    d_err_i   : in  std_logic;
-    d_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-    d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+    d_cyc_o     : out std_logic;
+    d_stb_o     : out std_logic;
+    d_we_o      : out std_logic;
+    d_stall_i   : in  std_logic;
+    d_ack_i     : in  std_logic;
+    d_err_i     : in  std_logic;
+    d_addr_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+    d_sel_o     : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
+    d_data_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+    d_data_i    : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
     
-    l1d_cyc_o : out std_logic;
-    l1d_stb_o : out std_logic;
-    l1d_adr_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    l1d_dat_o : out std_logic_vector(c_dline_size*8          -1 downto 0);
-    l1d_stb_i : in  std_logic;
-    l1d_adr_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0));
+    -- L1d requests action
+    l1d_req_i   : in  t_opa_dbus_request;
+    l1d_radr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    l1d_way_i   : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+    l1d_wadr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    l1d_dirty_i : in  std_logic_vector(c_dline_size            -1 downto 0);
+    l1d_data_i  : in  std_logic_vector(c_dline_size*8          -1 downto 0);
+    
+    l1d_busy_o  : out std_logic; -- can accept a req_i
+    l1d_we_o    : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+    l1d_adr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    l1d_valid_o : out std_logic_vector(c_dline_size            -1 downto 0);
+    l1d_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0));
 end opa_dbus;
 
 architecture rtl of opa_dbus is
@@ -67,6 +74,7 @@ architecture rtl of opa_dbus is
   constant c_reg_wide : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide : natural := f_opa_adr_wide(g_config);
   constant c_num_slow : natural := f_opa_num_slow(g_config);
+  constant c_num_dway : natural := f_opa_num_dway(g_config);
   
   constant c_idx_low    : natural := f_opa_log2(c_reg_wide/8);
   constant c_idx_high   : natural := f_opa_log2(c_dline_size);
@@ -75,76 +83,273 @@ architecture rtl of opa_dbus is
   constant c_idx_wide1  : natural := c_idx_high1- c_idx_low;
   constant c_line_words : natural := 2**c_idx_wide;
 
-  signal s_pick: std_logic_vector(c_num_slow-1 downto 0);
-  signal r_cyc : std_logic := '0';
-  signal r_stb : std_logic := '0';
-  signal r_adr : std_logic_vector(c_reg_wide-1 downto 0) := (others => '0');
-  signal r_out : unsigned(c_idx_wide1-1 downto 0);
-  signal r_in  : unsigned(c_idx_wide1-1 downto 0);
-  signal s_mask: unsigned(c_line_words-1 downto 0) := (others => '1');
-  signal r_mask: unsigned(c_line_words-1 downto 0);
-  signal s_dat : std_logic_vector(c_dline_size*8-1 downto 0);
-  signal r_dat : std_logic_vector(c_dline_size*8-1 downto 0);
+  signal r_state    : t_opa_dbus_request := OPA_DBUS_IDLE;
+  signal r_cyc      : std_logic := '0';
+  signal r_stb      : std_logic := '0';
+  signal r_we       : std_logic := '1'; -- May only be '0' if r_cyc='1'
+  signal r_sel      : std_logic_vector(c_reg_wide/8-1 downto 0);
+  signal r_out      : unsigned(c_idx_wide1-1 downto 0);
+  signal r_in       : unsigned(c_idx_wide1-1 downto 0);
+  signal r_radr     : std_logic_vector(c_adr_wide-1 downto 0);
+  signal s_way_en   : std_logic_vector(c_num_dway-1 downto 0);
+  signal r_way      : std_logic_vector(c_num_dway-1 downto 0);
+  signal r_wadr     : std_logic_vector(c_adr_wide-1 downto 0);
+  signal s_dirty    : std_logic_vector(c_dline_size-1 downto 0);
+  signal r_dirty    : std_logic_vector(c_dline_size-1 downto 0);
+  signal s_storeline: std_logic_vector(c_dline_size*8-1 downto 0);
+  signal r_storeline: std_logic_vector(c_dline_size*8-1 downto 0);
+  signal r_adr      : std_logic_vector(c_reg_wide-1 downto 0) := (others => '0');
+  signal s_last_ack : std_logic;
+  signal s_last_stb : std_logic;
+  signal s_loadat_in: std_logic_vector(c_line_words-1 downto 0);
+  signal s_loadat   : std_logic_vector(c_line_words-1 downto 0);
+  signal r_loadat   : std_logic_vector(c_line_words-1 downto 0);
+  signal r_loaded   : std_logic_vector(c_line_words-1 downto 0);
+  signal s_loaded_b : std_logic_vector(c_dline_size-1 downto 0);
+  signal s_loadline : std_logic_vector(c_dline_size*8-1 downto 0);
+  signal r_loadline : std_logic_vector(c_dline_size*8-1 downto 0);
+  signal s_way_ack  : std_logic_vector(c_num_dway-1 downto 0);
+  signal s_lineout  : std_logic_vector(c_reg_wide-1 downto 0);
+  signal s_dirty_mux: std_logic_vector(c_dline_size-1 downto 0);
 
 begin
 
-  datin : for i in 0 to c_line_words-1 generate
-    s_dat(c_reg_wide*(i+1)-1 downto c_reg_wide*i) <= 
-      d_data_i when r_mask(i)='1' else
-      r_dat(c_reg_wide*(i+1)-1 downto c_reg_wide*i);
-  end generate;
-
-  mask : for i in 0 to c_line_words-1 generate
-    useful : if c_line_words > 1 generate
-      big : if c_big_endian generate
-        s_mask(i) <= f_opa_bit(unsigned(l1d_adr_i(c_idx_high-1 downto c_idx_low)) = (c_line_words-1)-i);
-      end generate;
-      small : if not c_big_endian generate
-        s_mask(i) <= f_opa_bit(unsigned(l1d_adr_i(c_idx_high-1 downto c_idx_low)) = i);
-      end generate;
-    end generate;
-  end generate;
-
-  main : process(clk_i, rst_n_i) is
+  input : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      if r_state = OPA_DBUS_IDLE then
+        r_radr  <= l1d_radr_i;
+        r_way   <= l1d_way_i;
+        r_wadr  <= l1d_wadr_i;
+      end if;
+    end if;
+  end process;
+  
+  counters : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      if r_stb = '0' then
+        r_out <= (others => '0');
+      elsif d_stall_i = '0' then
+        r_out <= r_out + 1;
+      end if;
+      
+      if r_cyc = '0' then
+        r_in <= (others => '0');
+      elsif d_ack_i = '1' then
+        r_in <= r_in + 1;
+      end if;
+    end if;
+  end process;
+  
+  s_last_ack <= d_ack_i       and f_opa_bit(r_in  = c_line_words-1);
+  s_last_stb <= not d_stall_i and f_opa_bit(r_out = c_line_words-1);
+  
+  fsm : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_cyc <= '0';
-      r_stb <= '0';
-      r_adr <= (others => '0');
-      r_out <= (others => '-');
-      r_in  <= (others => '-');
-      r_mask<= (others => '-');
-      r_dat <= (others => '-');
+      r_state <= OPA_DBUS_IDLE;
+      r_cyc   <= '0';
+      r_stb   <= '0';
+      r_we    <= '1';
+      r_sel   <= (others => '-');
     elsif rising_edge(clk_i) then
-      if r_cyc = '0' then
-        r_cyc <= l1d_stb_i;
-        r_stb <= l1d_stb_i;
-        r_adr(c_adr_wide-1 downto 0) <= l1d_adr_i;
-        r_out <= (others => '0');
-        r_in  <= (others => '0');
-        r_mask<= s_mask;
-        r_dat <= (others => '-');
-      else
-        if d_stall_i = '0' then
-          if r_out = c_line_words-1 then
-            r_stb <= '0';
-          end if;
-          r_out <= r_out + 1;
-          -- increment is harmless if only loading one word
-          r_adr(c_idx_high1-1 downto c_idx_low) <= 
-            std_logic_vector(unsigned(r_adr(c_idx_high1-1 downto c_idx_low)) + 1);
-        end if;
-        if d_ack_i = '1' then
-          if r_in = c_line_words-1 then
-            r_cyc <= '0';
-          end if;
-          r_in <= r_in + 1;
-          r_dat <= s_dat;
-          if c_big_endian then
-            r_mask <= rotate_right(r_mask, 1);
+      case r_state is
+        when OPA_DBUS_IDLE =>
+          r_state <= l1d_req_i;
+          r_sel   <= (others => '1');
+          case l1d_req_i is
+            when OPA_DBUS_IDLE =>
+              r_cyc <= '0';
+              r_stb <= '0';
+              r_we  <= '1';
+            when OPA_DBUS_WAIT_STORE_LOAD | OPA_DBUS_WAIT_STORE =>
+              r_cyc <= '0';
+              r_stb <= '0';
+              r_we  <= '1';
+            when OPA_DBUS_LOAD_STORE | OPA_DBUS_LOAD =>
+              r_cyc <= '1';
+              r_stb <= '1';
+              r_we  <= '0';
+            when others => -- impossible cases
+              r_cyc <= '-';
+              r_stb <= '-';
+              r_we  <= '-';
+          end case;
+        when OPA_DBUS_WAIT_STORE_LOAD =>
+          r_state <= OPA_DBUS_STORE_LOAD;
+          r_cyc   <= '1';
+          r_stb   <= '1';
+          r_we    <= '1';
+          r_sel   <= s_dirty_mux(r_sel'range);
+        when OPA_DBUS_STORE_LOAD =>
+          r_stb <= r_stb and not s_last_stb;
+          if s_last_ack = '1' then
+            r_state <= OPA_DBUS_WAIT_LOAD;
+            r_cyc   <= '0';
+            r_we    <= '1';
+            r_sel   <= (others => '-');
           else
-            r_mask <= rotate_left(r_mask, 1);
+            r_state <= OPA_DBUS_STORE_LOAD;
+            r_cyc   <= '1';
+            r_we    <= '1';
+            r_sel   <= s_dirty_mux(r_sel'range);
           end if;
+        when OPA_DBUS_LOAD_STORE =>
+          r_stb <= r_stb and not s_last_stb;
+          if s_last_ack = '1' then
+            r_state <= OPA_DBUS_WAIT_STORE;
+            r_cyc   <= '0';
+            r_we    <= '1';
+            r_sel   <= (others => '-');
+          else
+            r_state <= OPA_DBUS_LOAD_STORE;
+            r_cyc   <= '1';
+            r_we    <= '0';
+            r_sel   <= (others => '1');
+          end if;
+        when OPA_DBUS_WAIT_LOAD =>
+          r_state <= OPA_DBUS_LOAD;
+          r_cyc   <= '1';
+          r_stb   <= '1';
+          r_we    <= '0';
+          r_sel   <= (others => '1');
+        when OPA_DBUS_WAIT_STORE =>
+          r_state <= OPA_DBUS_STORE;
+          r_cyc   <= '1';
+          r_stb   <= '1';
+          r_we    <= '1';
+          r_sel   <= s_dirty_mux(r_sel'range);
+        when OPA_DBUS_LOAD =>
+          r_stb <= r_stb and not s_last_stb;
+          if s_last_ack = '1' then
+            r_state <= OPA_DBUS_IDLE;
+            r_cyc   <= '0';
+            r_we    <= '1';
+            r_sel   <= (others => '-');
+          else
+            r_state <= OPA_DBUS_LOAD;
+            r_cyc   <= '1';
+            r_we    <= '0';
+            r_sel   <= (others => '1');
+          end if;
+        when OPA_DBUS_STORE =>
+          r_stb <= r_stb and not s_last_stb;
+          if s_last_ack = '1' then
+            r_state <= OPA_DBUS_IDLE;
+            r_cyc   <= '0';
+            r_we    <= '1';
+            r_sel   <= (others => '-');
+          else
+            r_state <= OPA_DBUS_STORE;
+            r_cyc   <= '1';
+            r_we    <= '1';
+            r_sel   <= s_dirty_mux(r_sel'range);
+          end if;
+      end case;
+    end if;
+  end process;
+  
+  load_big : if c_big_endian generate
+    s_loadat <= std_logic_vector(rotate_right(unsigned(r_loadat), 1));
+    onehot : for i in 0 to c_line_words-1 generate
+      s_loadat_in(i) <= f_opa_bit(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)) = (c_line_words-1)-i);
+    end generate;
+  end generate;
+  load_small : if not c_big_endian generate
+    s_loadat <= std_logic_vector(rotate_left(unsigned(r_loadat), 1));
+    onehot : for i in 0 to c_line_words-1 generate
+      s_loadat_in(i) <= f_opa_bit(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)) = i);
+    end generate;
+  end generate;
+  
+  datin : for i in 0 to c_line_words-1 generate
+    s_loadline(c_reg_wide*(i+1)-1 downto c_reg_wide*i) <= 
+      d_data_i when r_loadat(i)='1' else
+      r_loadline(c_reg_wide*(i+1)-1 downto c_reg_wide*i);
+  end generate;
+  
+  loadat : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      if r_state = OPA_DBUS_IDLE then
+        r_loadat <= s_loadat_in;
+        r_loaded <= s_loadat_in;
+      else
+        if d_ack_i = '1' then
+          -- does not matter if this rotates also on writes => complete rotation before read
+          r_loadat <= s_loadat;
+        end if;
+        if (not r_we and d_ack_i) = '1' then
+          -- need to be more careful here; note: r_we=0 implies r_cyc=1
+          r_loaded <= r_loaded or s_loadat;
+        end if;
+      end if;
+    end if;
+  end process;
+  
+  loaded_bytes : for i in 0 to c_dline_size-1 generate
+    s_loaded_b(i) <= r_loaded(i / (c_reg_wide/8));
+  end generate;
+  
+  loadline : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      if d_ack_i = '1' then
+        -- ack only needs to be '1' at the correct times during a load cycle
+        -- any garbage accepted will just get overwritten => harmless
+        r_loadline <= s_loadline;
+      end if;
+    end if;
+  end process;
+  
+  address : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      case r_state is
+        when OPA_DBUS_IDLE =>
+          r_adr <= l1d_radr_i;
+        when OPA_DBUS_WAIT_STORE_LOAD | OPA_DBUS_WAIT_STORE =>
+          r_adr <= r_wadr;
+        when OPA_DBUS_WAIT_LOAD =>
+          r_adr <= r_radr;
+        when OPA_DBUS_STORE_LOAD | OPA_DBUS_LOAD_STORE | OPA_DBUS_LOAD | OPA_DBUS_STORE =>
+          r_adr <= r_adr;
+          if d_stall_i = '0' then -- next output address
+            r_adr(c_idx_high1-1 downto c_idx_low) <= 
+              std_logic_vector(unsigned(r_adr(c_idx_high1-1 downto c_idx_low)) + 1);
+          end if;
+      end case;
+    end if;
+  end process;
+  
+  write_big : if c_big_endian generate
+    s_dirty     <= std_logic_vector(rotate_right(unsigned(r_dirty),     c_reg_wide/8));
+    s_storeline <= std_logic_vector(rotate_right(unsigned(r_storeline), c_reg_wide));
+    s_lineout   <= r_storeline(c_dline_size*8-1 downto c_dline_size*8-c_reg_wide);
+  end generate;
+  write_little : if not c_big_endian generate
+    s_dirty     <= std_logic_vector(rotate_left(unsigned(r_dirty),     c_reg_wide/8));
+    s_storeline <= std_logic_vector(rotate_left(unsigned(r_storeline), c_reg_wide));
+    s_lineout   <= r_storeline(c_reg_wide-1 downto 0);
+  end generate;
+  
+  -- Need this bypass to setup r_sel
+  s_dirty_mux <= s_dirty when (r_stb and not d_stall_i) = '1' else r_dirty;
+  
+  wdata : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      if r_state = OPA_DBUS_IDLE then
+        r_dirty     <= l1d_dirty_i;
+        r_storeline <= l1d_data_i;
+      else
+        if (r_stb and not d_stall_i) = '1' then
+          r_dirty     <= s_dirty;
+          r_storeline <= s_storeline;
+        else
+          r_dirty     <= r_dirty;
+          r_storeline <= r_storeline;
         end if;
       end if;
     end if;
@@ -152,14 +357,16 @@ begin
   
   d_cyc_o  <= r_cyc;
   d_stb_o  <= r_stb;
-  d_we_o   <= '0';
+  d_we_o   <= r_we;
   d_addr_o <= r_adr;
-  d_sel_o  <= (others => '1');
-  d_data_o <= (others => '0');
+  d_sel_o  <= r_sel;
+  d_data_o <= s_lineout;
   
-  l1d_cyc_o <= r_cyc;
-  l1d_stb_o <= d_ack_i;
-  l1d_adr_o <= r_adr(c_adr_wide-1 downto 0);
-  l1d_dat_o <= s_dat;
+  l1d_busy_o  <= not f_opa_bit(r_state = OPA_DBUS_IDLE);
+  s_way_ack   <= (others => d_ack_i and not r_we);
+  l1d_we_o    <= r_way and s_way_ack;
+  l1d_adr_o   <= r_radr(l1d_adr_o'range);
+  l1d_valid_o <= s_loaded_b;
+  l1d_data_o  <= s_loadline;
 
 end rtl;
