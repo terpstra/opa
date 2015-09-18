@@ -234,10 +234,12 @@ begin
       
       -- use 'when' instead of 'and' because it helps synthesis realize this can be sync clear
       zext : for b in 0 to c_log_reg_bytes generate
-        s_clear(p,b) <= f_opa_bit(unsigned(s_size(p)) < b) and not slow_sext_i(p);
         s_zext(f_idx(p,w))(8*2**b-1 downto 8*((2**b)/2)) <= 
           s_sext(f_idx(p,w))(8*2**b-1 downto 8*((2**b)/2)) when r_clear(p,b)='0' else (others => '0');
       end generate;
+    end generate;
+    zext : for b in 0 to c_log_reg_bytes generate
+      s_clear(p,b) <= f_opa_bit(unsigned(s_size(p)) < b) and not slow_sext_i(p);
     end generate;
   end generate;
   
