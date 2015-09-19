@@ -1,15 +1,15 @@
 [*]
-[*] GTKWave Analyzer v3.3.48 (w)1999-2013 BSI
-[*] Sat Sep 12 20:01:12 2015
+[*] GTKWave Analyzer v3.3.62 (w)1999-2014 BSI
+[*] Sat Sep 19 13:00:27 2015
 [*]
-[dumpfile] "/Users/terpstra/opa/sim/testbench.ghw"
-[dumpfile_mtime] "Sat Sep 12 19:28:04 2015"
-[dumpfile_size] 4644005
-[savefile] "/Users/terpstra/opa/sim/wave.gtkw"
-[timestart] 0
-[size] 1280 751
+[dumpfile] "/home/terpstra/opa/sim/testbench.ghw"
+[dumpfile_mtime] "Sat Sep 19 12:59:41 2015"
+[dumpfile_size] 7415319
+[savefile] "/home/terpstra/opa/sim/wave.gtkw"
+[timestart] 1300000000
+[size] 1920 1134
 [pos] 0 0
-*-27.000000 283800000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-29.000000 2456000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.opa_sim_tb.
 [treeopen] top.opa_sim_tb.opa_core.
@@ -19,9 +19,9 @@
 [treeopen] top.opa_sim_tb.opa_core.decode.r_ops.[3].
 [treeopen] top.opa_sim_tb.opa_core.fastx[0].fast.
 [sst_width] 289
-[signals_width] 230
+[signals_width] 251
 [sst_expanded] 1
-[sst_vpaned_height] 486
+[sst_vpaned_height] 760
 @28
 top.opa_sim_tb.opa_core.rst_n_i
 top.opa_sim_tb.opa_core.clk_i
@@ -366,7 +366,7 @@ top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,30]
 top.opa_sim_tb.opa_core.regfile.eu_regx_i[0,31]
 @1401200
 -group_end
-@c00029
+@c00028
 [color] 5
 #{top.opa_sim_tb.opa_core.issue.r_retry[2:0]} top.opa_sim_tb.opa_core.issue.r_retry[2] top.opa_sim_tb.opa_core.issue.r_retry[1] top.opa_sim_tb.opa_core.issue.r_retry[0]
 @28
@@ -376,7 +376,7 @@ top.opa_sim_tb.opa_core.issue.r_retry[2]
 top.opa_sim_tb.opa_core.issue.r_retry[1]
 [color] 5
 top.opa_sim_tb.opa_core.issue.r_retry[0]
-@1401201
+@1401200
 -group_end
 @28
 [color] 2
@@ -520,5 +520,85 @@ top.opa_sim_tb.opa_core.decode.r_ops[3].fast
 top.opa_sim_tb.opa_core.decode.r_ops[3].bad
 @1401200
 -Decode3
+@28
+top.opa_sim_tb.opa_core.l1d.slow_stb_i[0]
+top.opa_sim_tb.opa_core.l1d.slow_we_i[0]
+@c00024
+#{top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,31:0]} top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,31] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,30] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,29] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,28] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,27] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,26] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,25] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,24] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,23] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,22] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,21] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,20] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,19] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,18] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,17] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,16] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,15] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,14] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,13] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,12] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,11] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,10] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,9] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,8] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,7] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,6] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,5] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,4] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,3] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,2] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,1] top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,0]
+@28
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,0]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,1]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,2]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,3]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,4]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,5]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,6]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,7]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,8]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,9]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,10]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,11]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,12]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,13]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,14]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,15]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,16]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,17]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,18]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,19]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,20]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,21]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,22]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,23]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,24]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,25]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,26]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,27]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,28]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,29]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,30]
+top.opa_sim_tb.opa_core.l1d.slow_addr_i[0,31]
+@1401200
+-group_end
+@c00022
+#{top.opa_sim_tb.opa_core.l1d.slow_data_i[0,31:0]} top.opa_sim_tb.opa_core.l1d.slow_data_i[0,31] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,30] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,29] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,28] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,27] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,26] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,25] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,24] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,23] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,22] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,21] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,20] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,19] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,18] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,17] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,16] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,15] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,14] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,13] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,12] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,11] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,10] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,9] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,8] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,7] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,6] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,5] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,4] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,3] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,2] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,1] top.opa_sim_tb.opa_core.l1d.slow_data_i[0,0]
+@28
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,0]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,1]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,2]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,3]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,4]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,5]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,6]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,7]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,8]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,9]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,10]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,11]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,12]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,13]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,14]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,15]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,16]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,17]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,18]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,19]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,20]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,21]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,22]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,23]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,24]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,25]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,26]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,27]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,28]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,29]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,30]
+top.opa_sim_tb.opa_core.l1d.slow_data_i[0,31]
+@1401200
+-group_end
+@25
+[color] 2
+#{top.opa_sim_tb.opa_core.l1d.s_wb_we[3:0]} top.opa_sim_tb.opa_core.l1d.s_wb_we[3] top.opa_sim_tb.opa_core.l1d.s_wb_we[2] top.opa_sim_tb.opa_core.l1d.s_wb_we[1] top.opa_sim_tb.opa_core.l1d.s_wb_we[0]
 [pattern_trace] 1
 [pattern_trace] 0

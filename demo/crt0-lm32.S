@@ -9,6 +9,7 @@ _start:
 	ori  r1, r1, lo(_fbss)
 	ori  r2, r2, lo(_ebss)
 	be r1, r2, done
+	.align 4
 init:
 	sw (r1+0), r0
 	addi r1, r1, 4

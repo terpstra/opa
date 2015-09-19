@@ -8,6 +8,7 @@ _start:
 	add a0, a0,%lo(_fbss)
 	add a1, a1,%lo(_ebss)
 	beq a0, a1, done
+	.align 4
 init:
 	sw zero, 0(a0)
 	add a0, a0, 4
