@@ -87,6 +87,7 @@ architecture rtl of opa_dbus is
   signal r_cyc      : std_logic := '0';
   signal r_stb      : std_logic := '0';
   signal r_we       : std_logic := '1'; -- May only be '0' if r_cyc='1'
+  signal r_idle1    : std_logic; -- was idle last cycle?
   signal r_sel      : std_logic_vector(c_reg_wide/8-1 downto 0);
   signal r_out      : unsigned(c_idx_wide1-1 downto 0);
   signal r_in       : unsigned(c_idx_wide1-1 downto 0);
@@ -120,7 +121,6 @@ begin
       if r_state = OPA_DBUS_IDLE then
         r_radr  <= l1d_radr_i;
         r_way   <= l1d_way_i;
-        r_wadr  <= l1d_wadr_i;
       end if;
     end if;
   end process;
@@ -308,11 +308,11 @@ begin
     if rising_edge(clk_i) then
       case r_state is
         when OPA_DBUS_IDLE =>
-          r_adr <= l1d_radr_i;
+          r_adr(l1d_radr_i'range) <= l1d_radr_i;
         when OPA_DBUS_WAIT_STORE_LOAD | OPA_DBUS_WAIT_STORE =>
-          r_adr <= r_wadr;
+          r_adr(r_wadr'range) <= r_wadr;
         when OPA_DBUS_WAIT_LOAD =>
-          r_adr <= r_radr;
+          r_adr(r_radr'range) <= r_radr;
         when OPA_DBUS_STORE_LOAD | OPA_DBUS_LOAD_STORE | OPA_DBUS_LOAD | OPA_DBUS_STORE =>
           r_adr <= r_adr;
           if d_stall_i = '0' then -- next output address
@@ -340,10 +340,13 @@ begin
   wdata : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      if r_state = OPA_DBUS_IDLE then
+      r_idle1 <= f_opa_bit(r_state = OPA_DBUS_IDLE);
+      if r_idle1 = '1' then
+        r_wadr      <= l1d_wadr_i;
         r_dirty     <= l1d_dirty_i;
         r_storeline <= l1d_data_i;
       else
+        r_wadr <= r_wadr;
         if (r_stb and not d_stall_i) = '1' then
           r_dirty     <= s_dirty;
           r_storeline <= s_storeline;
