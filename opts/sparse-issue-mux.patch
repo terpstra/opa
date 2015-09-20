@@ -1,0 +1,35 @@
+diff --git a/opa_issue.vhd b/opa_issue.vhd
+index 6d18c13..68dd429 100644
+--- a/opa_issue.vhd
++++ b/opa_issue.vhd
+@@ -230,6 +230,8 @@ architecture rtl of opa_issue is
+   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
+   
+   -- Calculation of what to issue
++  type t_ready_pad is array(natural range <>) of std_logic_vector(2**c_stat_wide-1 downto 0);
++  signal s_ready_pads      : t_ready_pad(c_num_stat/c_decoders-1 downto 0) := (others => (others => '-'));
+   signal s_ready_pad       : std_logic_vector(2**c_stat_wide-1 downto 0) := (others => '0');
+   signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
+   signal s_readyb          : std_logic_vector(c_num_stat-1 downto 0);
+@@ -332,11 +334,16 @@ begin
+   s_issued <= f_shift(r_fast_issue or r_slow_issue, r_shift) or r_issued;
+ 
+   -- Which stations have ready operands?
+-  -- !!! use a sparse version of s_ready_pad to save half the muxes
+-  s_ready_pad(s_ready_pad'high) <= '1';
+-  s_ready_pad(r_ready'range) <= r_ready;
+-  s_readya <= f_opa_compose(s_ready_pad, r_stata);
+-  s_readyb <= f_opa_compose(s_ready_pad, r_statb);
++  -- For this calculation, insert '-'s for backward references (impossible) to save area.
++  s_ready_pad(r_ready'range) <= r_ready; -- pad with 0s
++  pads : for i in 0 to (c_num_stat/c_decoders)-1 generate
++    s_ready_pads(i)(2**c_stat_wide-1) <= '1'; -- no-stat-dep means always ready
++    s_ready_pads(i)((i+2)*c_decoders-2 downto 0) <= s_ready_pad((i+2)*c_decoders-2 downto 0);
++  end generate;
++  compose : for i in 0 to c_num_stat-1 generate
++    s_readya(i) <= s_ready_pads(i / c_decoders)(to_integer(unsigned(f_opa_select_row(r_stata, i))));
++    s_readyb(i) <= s_ready_pads(i / c_decoders)(to_integer(unsigned(f_opa_select_row(r_statb, i))));
++  end generate;
+   
+   -- Which stations are pending issue?
+   s_readyab <= s_readya and s_readyb; -- 3 levels (for stat_wide <= 5)

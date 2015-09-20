@@ -1,6 +1,5 @@
 roll-out:
 	move ISA selection to a generic parameter
-	schedule writes only once priors issued => speed-up
 	distinguish two types of dbus_busy, dbus loading into L1 and dbus cannot accept
 	finalize optimization of fast adder equality
 	implement load-alias detection CAM [0]

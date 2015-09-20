@@ -1,0 +1,57 @@
+diff --git a/opa_decode.vhd b/opa_decode.vhd
+index d0142e3..271feaa 100644
+--- a/opa_decode.vhd
++++ b/opa_decode.vhd
+@@ -350,24 +350,33 @@ begin
+     end generate;
+   end generate;
+   
+-  regfile_stb_o <= s_stb;
+-  regfile_aux_o <= std_logic_vector(r_aux);
+-  rf_out : for d in 0 to c_decoders-1 generate
+-    arg : for b in 0 to c_arg_wide-1 generate
+-      regfile_arg_o(d,b) <= r_ops(d).arg(b);
+-    end generate;
+-    imm : for b in 0 to c_imm_wide-1 generate
+-      regfile_imm_o(d,b) <= r_ops(d).imm(b);
+-    end generate;
+-    pc : for b in c_op_align to c_adr_wide-1 generate
+-      regfile_pc_o(d,b) <= r_pc(d)(b);
+-    end generate;
+-    pcf : for b in c_op_align to c_fetch_wide-1 generate
+-      regfile_pcf_o(d,b) <= r_pcf(d)(b);
+-    end generate;
+-  end generate;
+-  pcn : for b in c_op_align to c_adr_wide-1 generate
+-    regfile_pcn_o(b) <= r_pcn_taken(b) when s_pcn_reg='1' else r_pc(c_decoders)(b);
+-  end generate;
++  rf : process(clk_i) is
++  begin
++    if rising_edge(clk_i) then
++      regfile_stb_o <= s_stb;
++      regfile_aux_o <= std_logic_vector(r_aux);
++      for d in 0 to c_decoders-1 loop
++        for b in 0 to c_arg_wide-1 loop
++          regfile_arg_o(d,b) <= r_ops(d).arg(b);
++        end loop;
++        for b in 0 to c_imm_wide-1 loop
++          regfile_imm_o(d,b) <= r_ops(d).imm(b);
++        end loop;
++        for b in c_op_align to c_adr_wide-1 loop
++          regfile_pc_o(d,b) <= r_pc(d)(b);
++        end loop;
++        for b in c_op_align to c_fetch_wide-1 loop
++          regfile_pcf_o(d,b) <= r_pcf(d)(b);
++        end loop;
++      end loop;
++      for b in c_op_align to c_adr_wide-1 loop
++        if s_pcn_reg='1' then
++          regfile_pcn_o(b) <= r_pcn_taken(b);
++        else
++          regfile_pcn_o(b) <= r_pc(c_decoders)(b);
++        end if;
++      end loop;
++    end if;
++  end process;
+   
+ end rtl;
