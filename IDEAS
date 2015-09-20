@@ -1,12 +1,9 @@
 roll-out:
 	move ISA selection to a generic parameter
-	add valid and dirty flags to L1d
-	implement flush of dirty line after refill
 	schedule writes only once priors issued => speed-up
-	allow writeback to an empty line (no miss before write)
+	distinguish two types of dbus_busy, dbus loading into L1 and dbus cannot accept
 	finalize optimization of fast adder equality
 	implement load-alias detection CAM [0]
-	implement write alias wake-up [1]
 	implement TLB [3]
 	add instruction and data prefetch?
 	branch predictor - ITTAGE predictor
@@ -16,12 +13,6 @@ roll-out:
 	implement FPU [5]
 
 [0] use 2*M10k as a 32-entry 18-bit CAM of load address hashes
-
-[1] make issue wake-up a strobe => allows reissue with same circuit
-	... write’s final=>high concurrent to aliased load’s final+issued=>low
-
-test program: mul, mul, mul, mul, write, load, load, load, load, load, load
-=> check that all loads see same value
 
 [3] include a nocache bit for IO mappings
 
