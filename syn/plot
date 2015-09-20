@@ -1,0 +1,38 @@
+#! /bin/bash
+
+set -e
+
+for i in "$@"; do
+  cut -d, -f4 < $i | tail -n +4 | sed 's/"//g' > .table.$i
+done
+
+(
+echo 'library(ks)'
+echo 'pdf("foo.pdf")'
+echo 'plot(0,0,type="n",xlim=c(-2,2),ylim=c(0,2))'
+echo 'file=c()'
+echo 'col=c()'
+echo 'lty=c()'
+
+j=0
+for i in "$@"; do
+  j=$((j+1))
+  name="${i%%.*}"
+  name="${name//-/_}"
+  echo "f_$name = read.table(\".table.$i\")"
+  echo "$name = kde(f_$name\$V1)"
+  echo "lines($name\$eval.points, y=$name\$estimate,col=$j,lty=1)"
+  echo "mean(f_$name\$V1)"
+  echo "sd(f_$name\$V1)/sqrt(length(f_$name\$V1))"
+  echo "file=append(file,\"$i\")"
+  echo "col=append(col,\"$j\")"
+  echo "lty=append(lty,1)"
+done
+
+echo 'legend("topleft",legend=file,col=col,lty=lty)'
+echo 'dev.off()'
+) | R -f /dev/stdin
+
+rm -f .table.*
+
+evince foo.pdf
