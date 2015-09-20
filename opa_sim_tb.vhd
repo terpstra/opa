@@ -110,6 +110,7 @@ begin
       d_data_i  => d_data_i);
   
   test : process(clk, rstn) is
+    variable da, ia : integer;
   begin
     if rstn = '0' then
       i_ack    <= '0';
@@ -118,17 +119,40 @@ begin
       d_data_i <= (others => '0');
     elsif rising_edge(clk) then
       i_ack    <= i_cyc and i_stb;
-      i_data   <= ram(to_integer(unsigned(i_addr(i_addr'left downto (c_config.log_width-3)))));
       d_ack    <= d_cyc and d_stb;
-      d_data_i <= ram(to_integer(unsigned(d_addr(d_addr'left downto (c_config.log_width-3)))));
       
-      if (d_cyc and d_stb and d_we) = '1' then
-        for b in d_sel'range loop
-          if d_sel(b) = '1' then
-            ram(to_integer(unsigned(i_addr(i_addr'left downto (c_config.log_width-3)))))
-               ((b+1)*8-1 downto b*8) <= d_data_o((b+1)*8-1 downto b*8);
+      ia := to_integer(unsigned(i_addr(i_addr'left downto (c_config.log_width-3))));
+      da := to_integer(unsigned(d_addr(d_addr'left downto (c_config.log_width-3))));
+      
+      i_data   <= (others => 'X');
+      d_data_i <= (others => 'X');
+      
+      if (i_cyc and i_stb) = '1' then
+        if ia > ram'high or ia < ram'low then
+          assert (ia >= ram'low and ia <= ram'high)
+          report "Instruction bus read out-of-bounds"
+          severity warning;
+        else
+          i_data <= ram(ia);
+        end if;
+      end if;
+      
+      if (d_cyc and d_stb) = '1' then
+        if da > ram'high or da < ram'low then
+          assert (da >= ram'low and da <= ram'high)
+          report "Data bus access out-of-bounds"
+          severity warning;
+        else
+          if d_we = '0' then
+            d_data_i <= ram(da);
+          else
+            for b in d_sel'range loop
+              if d_sel(b) = '1' then
+                ram(da)((b+1)*8-1 downto b*8) <= d_data_o((b+1)*8-1 downto b*8);
+              end if;
+            end loop;
           end if;
-        end loop;
+        end if;
       end if;
     end if;
   end process;
