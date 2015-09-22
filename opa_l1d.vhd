@@ -203,7 +203,6 @@ architecture rtl of opa_l1d is
   signal r_wb_dat : std_logic_vector(c_reg_wide-1 downto 0);
   signal r_vidx0  : std_logic_vector(c_idx_high-1 downto c_idx_low);
   signal r_random : std_logic_vector(c_num_ways-1 downto 0);
-  signal r_rdirty : std_logic_vector(c_num_slow*c_num_ways-1 downto 0);
   signal r_rtag   : t_tag (c_num_slow*c_num_ways-1 downto 0);
   signal r_rvalid : t_valid(c_num_slow*c_num_ways-1 downto 0);
   signal r_rdat   : t_line(c_num_slow*c_num_ways-1 downto 0);
@@ -445,7 +444,6 @@ begin
       --
       r_vidx0 <= r_vidx(0);
       r_random<= s_random;
-      r_rdirty<= s_rdirty;
       r_rtag  <= s_rtag;
       r_rvalid<= s_rvalid;
       r_rdat  <= s_rdat;
