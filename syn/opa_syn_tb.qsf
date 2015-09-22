@@ -10,6 +10,7 @@ set_global_assignment -name VHDL_FILE ../opa_dpram_altera.vhd
 set_global_assignment -name VHDL_FILE ../opa_lcell_altera.vhd
 set_global_assignment -name VHDL_FILE ../opa_prim_ternary.vhd
 set_global_assignment -name VHDL_FILE ../opa_prim_mul.vhd
+set_global_assignment -name VHDL_FILE ../opa_lfsr.vhd
 set_global_assignment -name VHDL_FILE ../opa_prefixsum.vhd
 set_global_assignment -name VHDL_FILE ../opa_predict.vhd
 set_global_assignment -name VHDL_FILE ../opa_icache.vhd

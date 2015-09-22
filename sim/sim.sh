@@ -19,6 +19,7 @@ for i in 				\
 	opa_lcell.vhd			\
 	opa_prim_ternary.vhd		\
 	opa_prim_mul.vhd		\
+	opa_lfsr.vhd			\
 	opa_prefixsum.vhd		\
 	opa_predict.vhd			\
 	opa_icache.vhd			\

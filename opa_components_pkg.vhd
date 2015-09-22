@@ -95,6 +95,16 @@ package opa_components_pkg is
       total_o   : out std_logic_vector(g_width-1 downto 0));
   end component;
   
+  component opa_lfsr is
+    generic(
+      g_entropy : natural := 0;
+      g_bits    : natural);
+    port(
+      clk_i    : in  std_logic;
+      rst_n_i  : in  std_logic;
+      random_o : out std_logic_vector(g_bits-1 downto 0));
+  end component;
+  
   component opa_predict is
     generic(
       g_config : t_opa_config;
