@@ -112,6 +112,8 @@ architecture rtl of opa_dbus is
   signal s_way_ack  : std_logic_vector(c_num_dway-1 downto 0);
   signal s_lineout  : std_logic_vector(c_reg_wide-1 downto 0);
   signal s_dirty_mux: std_logic_vector(c_dline_size-1 downto 0);
+  signal s_storeline_mux : std_logic_vector(c_dline_size*8-1 downto 0);
+  signal s_wadr_mux : std_logic_vector(c_adr_wide-1 downto 0);
 
 begin
 
@@ -310,7 +312,7 @@ begin
         when OPA_DBUS_IDLE =>
           r_adr(l1d_radr_i'range) <= l1d_radr_i;
         when OPA_DBUS_WAIT_STORE_LOAD | OPA_DBUS_WAIT_STORE =>
-          r_adr(r_wadr'range) <= r_wadr;
+          r_adr(r_wadr'range) <= s_wadr_mux;
         when OPA_DBUS_WAIT_LOAD =>
           r_adr(r_radr'range) <= r_radr;
         when OPA_DBUS_STORE_LOAD | OPA_DBUS_LOAD_STORE | OPA_DBUS_LOAD | OPA_DBUS_STORE =>
@@ -334,27 +336,24 @@ begin
     s_lineout   <= r_storeline(c_reg_wide-1 downto 0);
   end generate;
   
-  -- Need this bypass to setup r_sel
-  s_dirty_mux <= s_dirty when (r_stb and not d_stall_i) = '1' else r_dirty;
+  -- Need this bypass to setup r_sel and r_adr
+  s_dirty_mux <= 
+    s_dirty     when (r_stb and not d_stall_i) = '1' else 
+    l1d_dirty_i when r_idle1                   = '1' else
+    r_dirty;
+  s_storeline_mux <=
+    s_storeline when (r_stb and not d_stall_i) = '1' else
+    l1d_data_i  when r_idle1                   = '1' else
+    r_storeline;
+  s_wadr_mux <= l1d_wadr_i when r_idle1 = '1' else r_wadr;
   
   wdata : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_idle1 <= f_opa_bit(r_state = OPA_DBUS_IDLE);
-      if r_idle1 = '1' then
-        r_wadr      <= l1d_wadr_i;
-        r_dirty     <= l1d_dirty_i;
-        r_storeline <= l1d_data_i;
-      else
-        r_wadr <= r_wadr;
-        if (r_stb and not d_stall_i) = '1' then
-          r_dirty     <= s_dirty;
-          r_storeline <= s_storeline;
-        else
-          r_dirty     <= r_dirty;
-          r_storeline <= r_storeline;
-        end if;
-      end if;
+      r_idle1     <= f_opa_bit(r_state = OPA_DBUS_IDLE);
+      r_wadr      <= s_wadr_mux;
+      r_dirty     <= s_dirty_mux;
+      r_storeline <= s_storeline_mux;
     end if;
   end process;
   
