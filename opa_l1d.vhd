@@ -260,7 +260,7 @@ begin
     idx_bits : for b in s_widx'range generate
       s_adr(p,b) <= r_vidx(p)(b);
     end generate;
-    off_bits : for b in s_woff'range generate
+    off_bits : for b in c_idx_low-1 downto c_log_reg_bytes generate
       s_adr(p,b) <= r_voff(p)(b);
     end generate;
     

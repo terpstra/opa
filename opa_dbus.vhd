@@ -91,10 +91,10 @@ architecture rtl of opa_dbus is
   signal r_sel      : std_logic_vector(c_reg_wide/8-1 downto 0);
   signal r_out      : unsigned(c_idx_wide1-1 downto 0);
   signal r_in       : unsigned(c_idx_wide1-1 downto 0);
-  signal r_radr     : std_logic_vector(c_adr_wide-1 downto 0);
+  signal r_radr     : std_logic_vector(c_adr_wide-1 downto 0) := (others => '0');
   signal s_way_en   : std_logic_vector(c_num_dway-1 downto 0);
   signal r_way      : std_logic_vector(c_num_dway-1 downto 0);
-  signal r_wadr     : std_logic_vector(c_adr_wide-1 downto 0);
+  signal r_wadr     : std_logic_vector(c_adr_wide-1 downto 0) := (others => '0');
   signal s_dirty    : std_logic_vector(c_dline_size-1 downto 0);
   signal r_dirty    : std_logic_vector(c_dline_size-1 downto 0);
   signal s_storeline: std_logic_vector(c_dline_size*8-1 downto 0);
