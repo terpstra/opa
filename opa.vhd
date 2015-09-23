@@ -272,6 +272,11 @@ begin
     assert (2**g_config.log_width <= c_iline_size*8)
     report "registers can not exceed the size of an L1i line"
     severity failure;
+  
+  check_dway :
+    assert (2**f_opa_log2(g_config.dc_ways) = g_config.dc_ways)
+    report "number of cache lines must be a power of two"
+    severity failure;
 
   -- !!! include our own reset extender
 
