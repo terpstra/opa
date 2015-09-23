@@ -276,7 +276,6 @@ begin
       s_adr(p,b) <= r_voff(p)(b);
     end generate;
     
-    -- !!! on power up, set each way to a tag = its index, valid=0s, and dirty=0
     -- The L1d ways
     ways : for w in 0 to c_num_ways-1 generate
       l1d : opa_dpram
@@ -297,7 +296,7 @@ begin
       
       -- Split out the line contents (dirty, tag, valid, data)
       s_rdirty(f_idx(p,w)) <= s_rent(f_idx(p,w))(c_ent_wide-1);
-      s_rtag  (f_idx(p,w)) <= not s_rent(f_idx(p,w))(c_ent_wide-2 downto 9*c_dline_size);
+      s_rtag  (f_idx(p,w)) <= s_rent(f_idx(p,w))(c_ent_wide-2 downto 9*c_dline_size);
       s_rvalid(f_idx(p,w)) <= s_rent(f_idx(p,w))(9*c_dline_size-1 downto 8*c_dline_size);
       s_rdat  (f_idx(p,w)) <= s_rent(f_idx(p,w))(8*c_dline_size-1 downto 0);
       
@@ -392,8 +391,7 @@ begin
     s_we(w)    <= dbus_we_i(w)           when dbus_busy_i='1' else s_wb_we(w);
     s_wvalid(w)<= dbus_valid_i           when dbus_busy_i='1' else s_wb_valid(w);
     s_wdat(w)  <= dbus_data_i            when dbus_busy_i='1' else s_wb_line(w);
-    s_went(w)  <= s_wdirty & (not s_wtag) & s_wvalid(w) & s_wdat(w);
-    -- !!! don't need not on tag?
+    s_went(w)  <= s_wdirty & s_wtag & s_wvalid(w) & s_wdat(w);
   end generate;
   
   -- Pick which port wins access to the dbus b/c no way satisfied its ldst

@@ -82,8 +82,11 @@ architecture rtl of opa_dbus is
   constant c_idx_wide   : natural := c_idx_high - c_idx_low;
   constant c_idx_wide1  : natural := c_idx_high1- c_idx_low;
   constant c_line_words : natural := 2**c_idx_wide;
+  constant c_page_high  : natural := f_opa_log2(c_page_size);
+  
+  constant c_ones : std_logic_vector(c_page_high-1 downto c_idx_high) := (others => '1');
 
-  signal r_state    : t_opa_dbus_request := OPA_DBUS_IDLE;
+  signal r_state    : t_opa_dbus_request := OPA_DBUS_WIPE;
   signal r_cyc      : std_logic := '0';
   signal r_stb      : std_logic := '0';
   signal r_we       : std_logic := '1'; -- May only be '0' if r_cyc='1'
@@ -104,12 +107,13 @@ architecture rtl of opa_dbus is
   signal s_last_stb : std_logic;
   signal s_loadat_in: std_logic_vector(c_line_words-1 downto 0);
   signal s_loadat   : std_logic_vector(c_line_words-1 downto 0);
-  signal r_loadat   : std_logic_vector(c_line_words-1 downto 0);
-  signal r_loaded   : std_logic_vector(c_line_words-1 downto 0);
+  signal r_loadat   : std_logic_vector(c_line_words-1 downto 0) := (others => '0');
+  signal r_loaded   : std_logic_vector(c_line_words-1 downto 0) := (others => '0');
   signal s_loaded_b : std_logic_vector(c_dline_size-1 downto 0);
   signal s_loadline : std_logic_vector(c_dline_size*8-1 downto 0);
-  signal r_loadline : std_logic_vector(c_dline_size*8-1 downto 0);
+  signal r_loadline : std_logic_vector(c_dline_size*8-1 downto 0) := (others => '0');
   signal s_way_ack  : std_logic_vector(c_num_dway-1 downto 0);
+  signal s_wipe     : std_logic_vector(c_num_dway-1 downto 0);
   signal s_lineout  : std_logic_vector(c_reg_wide-1 downto 0);
   signal s_dirty_mux: std_logic_vector(c_dline_size-1 downto 0);
   signal s_storeline_mux : std_logic_vector(c_dline_size*8-1 downto 0);
@@ -117,12 +121,29 @@ architecture rtl of opa_dbus is
 
 begin
 
-  input : process(clk_i) is
+  radr : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_radr <= (others => '0');
+    elsif rising_edge(clk_i) then
+      case r_state is
+        when OPA_DBUS_WIPE =>
+          r_radr <= r_radr;
+          r_radr(c_ones'high downto c_ones'low)
+            <= std_logic_vector(unsigned(r_radr(c_ones'high downto c_ones'low)) + 1);
+        when OPA_DBUS_IDLE =>
+          r_radr <= l1d_radr_i;
+        when others =>
+          r_radr <= r_radr;
+      end case;
+    end if;
+  end process;
+  
+  way : process(clk_i) is
   begin
     if rising_edge(clk_i) then
       if r_state = OPA_DBUS_IDLE then
-        r_radr  <= l1d_radr_i;
-        r_way   <= l1d_way_i;
+        r_way <= l1d_way_i;
       end if;
     end if;
   end process;
@@ -150,13 +171,23 @@ begin
   fsm : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_state <= OPA_DBUS_IDLE;
+      r_state <= OPA_DBUS_WIPE;
       r_cyc   <= '0';
       r_stb   <= '0';
       r_we    <= '1';
       r_sel   <= (others => '-');
     elsif rising_edge(clk_i) then
       case r_state is
+        when OPA_DBUS_WIPE =>
+          if r_radr(c_ones'range) = c_ones then
+            r_state <= OPA_DBUS_IDLE;
+          else
+            r_state <= OPA_DBUS_WIPE;
+          end if;
+          r_cyc <= '0';
+          r_stb <= '0';
+          r_we  <= '1';
+          r_sel <= (others => '1');
         when OPA_DBUS_IDLE =>
           r_state <= l1d_req_i;
           r_sel   <= (others => '1');
@@ -274,7 +305,10 @@ begin
   loadat : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      if r_state = OPA_DBUS_IDLE then
+      if r_state = OPA_DBUS_WIPE then
+        r_loadat <= (others => '0');
+        r_loaded <= (others => '0');
+      elsif r_state = OPA_DBUS_IDLE then
         r_loadat <= s_loadat_in;
         r_loaded <= s_loadat_in;
       else
@@ -297,7 +331,9 @@ begin
   loadline : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      if d_ack_i = '1' then
+      if r_state = OPA_DBUS_WIPE then
+        r_loadline <= (others => '0');
+      elsif d_ack_i = '1' then
         -- ack only needs to be '1' at the correct times during a load cycle
         -- any garbage accepted will just get overwritten => harmless
         r_loadline <= s_loadline;
@@ -309,6 +345,8 @@ begin
   begin
     if rising_edge(clk_i) then
       case r_state is
+        when OPA_DBUS_WIPE =>
+          r_adr <= (others => '-');
         when OPA_DBUS_IDLE =>
           r_adr(l1d_radr_i'range) <= l1d_radr_i;
         when OPA_DBUS_WAIT_STORE_LOAD | OPA_DBUS_WAIT_STORE =>
@@ -366,7 +404,8 @@ begin
   
   l1d_busy_o  <= not f_opa_bit(r_state = OPA_DBUS_IDLE);
   s_way_ack   <= (others => d_ack_i and not r_we);
-  l1d_we_o    <= r_way and s_way_ack;
+  s_wipe      <= (others => f_opa_bit(r_state = OPA_DBUS_WIPE));
+  l1d_we_o    <= (r_way and s_way_ack) or s_wipe;
   l1d_adr_o   <= r_radr(l1d_adr_o'range);
   l1d_valid_o <= s_loaded_b;
   l1d_data_o  <= s_loadline;

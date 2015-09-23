@@ -423,6 +423,7 @@ package opa_components_pkg is
   end component;
 
   type t_opa_dbus_request is (
+    OPA_DBUS_WIPE,
     OPA_DBUS_IDLE,
     OPA_DBUS_WAIT_STORE_LOAD,
     OPA_DBUS_STORE_LOAD, -- request forbidden
