@@ -131,6 +131,7 @@ architecture rtl of opa_l1d is
   type t_mux   is array(natural range <>) of std_logic_vector(c_log_reg_bytes  downto 0);
   type t_size  is array(natural range <>) of std_logic_vector(1 downto 0);
   
+  signal s_random_idx : std_logic_vector(f_opa_log2(c_num_ways)-1 downto 0);
   signal s_random : std_logic_vector(c_num_ways-1 downto 0);
   signal s_size   : t_size(c_num_slow-1 downto 0);
   signal s_vtag   : t_tag (c_num_slow-1 downto 0);
@@ -145,10 +146,11 @@ architecture rtl of opa_l1d is
   signal s_rvalid : t_valid(c_num_slow*c_num_ways-1 downto 0);
   signal s_rtag   : t_tag (c_num_slow*c_num_ways-1 downto 0);
   signal s_rdat   : t_line(c_num_slow*c_num_ways-1 downto 0);
+  signal s_dirtyw : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal s_validw : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal s_matchw : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal s_donew  : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
-  signal s_dirtyw : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
+  signal s_victimw: t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal s_rot    : t_line(c_num_slow*c_num_ways-1 downto 0);
   signal s_mux    : t_mux (c_num_slow*c_num_ways*c_reg_wide-1 downto 0);
   signal s_sext   : t_reg (c_num_slow*c_num_ways-1 downto 0);
@@ -159,8 +161,6 @@ architecture rtl of opa_l1d is
   signal s_wb_mux : t_reg(c_log_reg_bytes downto 0);
   signal s_wb_dat : std_logic_vector(c_reg_wide-1 downto 0);
   signal s_0we    : std_logic_vector(c_num_ways-1 downto 0);
-  signal s_0match : std_logic_vector(c_num_ways-1 downto 0);
-  signal s_0victim: std_logic_vector(c_num_ways-1 downto 0);
   signal s_wb_we  : std_logic_vector(c_num_ways-1 downto 0);
   signal s_wb_line : t_line (c_num_ways-1 downto 0);
   signal s_was_valid: t_valid(c_num_ways-1 downto 0);
@@ -207,6 +207,7 @@ architecture rtl of opa_l1d is
   signal r_rvalid : t_valid(c_num_slow*c_num_ways-1 downto 0);
   signal r_rdat   : t_line(c_num_slow*c_num_ways-1 downto 0);
   signal r_matchw : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
+  signal r_victimw: t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal r_zext   : t_reg (c_num_slow*c_num_ways-1 downto 0);
   signal r_grant  : std_logic_vector(c_num_slow-1 downto 0);
   
@@ -216,8 +217,20 @@ architecture rtl of opa_l1d is
   
 begin
 
-  -- !!! use LSFR+1hot decode
-  s_random <= (0 => '1', others => '0');
+  -- We use random way cache replacement policy
+  -- LRU is not possible b/c it requires modification on every access
+  lfsr : opa_lfsr
+    generic map(
+      g_bits   => f_opa_log2(c_num_ways))
+    port map(
+      clk_i    => clk_i,
+      rst_n_i  => rst_n_i,
+      random_o => s_random_idx);
+  
+  -- 1-hot decode the entropy to a way
+  way : for w in 0 to c_num_ways-1 generate
+    s_random(w) <= f_opa_bit(unsigned(s_random_idx) = w);
+  end generate;
 
   rdports : for p in 0 to c_num_slow-1 generate
     -- Select the address lines
@@ -263,7 +276,8 @@ begin
       s_adr(p,b) <= r_voff(p)(b);
     end generate;
     
-    -- The L1d ways !!! find a way to use OPA_OLD instead ?
+    -- !!! on power up, set each way to a tag = its index, valid=0s, and dirty=0
+    -- The L1d ways
     ways : for w in 0 to c_num_ways-1 generate
       l1d : opa_dpram
         generic map(
@@ -288,10 +302,13 @@ begin
       s_rdat  (f_idx(p,w)) <= s_rent(f_idx(p,w))(8*c_dline_size-1 downto 0);
       
       -- A load is done if the tag matches and the valid bits cover the request
+      s_dirtyw(p,w) <= s_rdirty(f_idx(p,w));
       s_validw(p,w) <= f_opa_and(not r_bmask(p) or s_rvalid(f_idx(p,w)));
       s_matchw(p,w) <= f_opa_bit(r_vtag(p) = s_rtag(f_idx(p,w)));
       s_donew (p,w) <= s_matchw(p,w) and (r_we(p) or s_validw(p,w));
-      s_dirtyw(p,w) <= s_rdirty(f_idx(p,w)) and s_random(w);
+      
+      -- Would this way be the victim on a refill?
+      s_victimw(p,w) <= s_matchw(p,w) when s_match(p)='1' else s_random(w);
       
       -- Rotate read line data to align with requested load
       big_rotate : if c_big_endian generate
@@ -352,10 +369,8 @@ begin
   
   -- Which way gets written by port 0?
   -- Note: s_wb_we is ignored if dbus_busy_i=1
-  s_0match  <= f_opa_select_row(s_matchw, 0); -- write into existing line?
-  s_0victim <= s_0match when f_opa_or(s_0match) = '1' else s_random;
-  s_0we     <= (others => r_we(0) and slow_oldest_i(0)); -- only the oldest write is allowed
-  s_wb_we   <= s_0we and s_0victim;
+  s_0we   <= (others => r_we(0) and slow_oldest_i(0)); -- only the oldest write is allowed
+  s_wb_we <= s_0we and f_opa_select_row(s_victimw, 0);
   
   -- Construct the per-way data we would like to write
   wb_ways : for w in 0 to c_num_ways-1 generate
@@ -384,7 +399,7 @@ begin
   -- Pick which port wins access to the dbus b/c no way satisfied its ldst
   -- Note: streq=1 => ldreq(0)=1 ... b/c load s_donew => s_matchw
   s_match <= f_opa_product(s_matchw, c_way_ones); -- a way tag matched?
-  s_dirty <= f_opa_product(s_dirtyw, c_way_ones); -- victim way is dirty?
+  s_dirty <= f_opa_product(s_dirtyw and s_victimw, c_way_ones); -- dirty line?
   s_streq <= not s_match(0) and r_we(0); -- store0 has priority over all loads
   s_ldreq <= r_stb and not f_opa_product(s_donew, c_way_ones); -- which port?
   s_grant <= f_opa_pick_small(s_ldreq); -- if streq=1 then grant(0)=1
@@ -397,13 +412,13 @@ begin
   dbus_req_o <= s_st_req                 when s_streq                          ='1' else s_ld_req; 
 
   -- Which line should the dbus refill and to which way
-  dbus_radr_o <= f_opa_product(f_opa_transpose(s_adr), s_grant);
-  dbus_way_o  <= s_random;
+  dbus_radr_o <= f_opa_product(f_opa_transpose(s_adr),     s_grant);
+  dbus_way_o  <= f_opa_product(f_opa_transpose(s_victimw), s_grant);
   
   -- Select line contents for writeback by the dbus
   wbports : for p in 0 to c_num_slow-1 generate
     ways : for w in 0 to c_num_ways-1 generate
-      s_grant_way(f_idx(p,w)) <= r_grant(p) and r_random(w);
+      s_grant_way(f_idx(p,w)) <= r_grant(p) and r_victimw(p,w);
       tag : for b in c_adr_wide-1 downto c_idx_high generate
         s_rtag_m  (b,f_idx(p,w)) <= r_rtag  (f_idx(p,w))(b);
       end generate;
@@ -443,11 +458,11 @@ begin
       r_wb_dat<= s_wb_dat;
       --
       r_vidx0 <= r_vidx(0);
-      r_random<= s_random;
       r_rtag  <= s_rtag;
       r_rvalid<= s_rvalid;
       r_rdat  <= s_rdat;
       r_matchw<= s_matchw;
+      r_victimw<= s_victimw;
       r_zext  <= s_zext;
       r_grant <= s_grant;
     end if;
