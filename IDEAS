@@ -6,6 +6,7 @@ roll-out:
 	implement TLB [3]
 	add instruction and data prefetch?
 	branch predictor - ITTAGE predictor
+	use the PC history to select the way?
 	add microcode for div
 	support sext[bh] in slow? OR sextb=(andi 0x80, muli -1, or)
 	try making non-faulting ops final once ready => IPC gain?
