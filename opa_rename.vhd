@@ -91,8 +91,6 @@ architecture rtl of opa_rename is
   constant c_arch_wide : natural := f_opa_arch_wide(g_config);
   constant c_back_wide : natural := f_opa_back_wide(g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
-  constant c_dec_wide  : natural := f_opa_dec_wide (g_config);
-  constant c_q_wide    : natural := c_stat_wide - c_dec_wide;
   constant c_data_wide : natural := (c_arch_wide + c_back_wide) * c_decoders;
   
   constant c_arch_ones   : std_logic_vector(c_num_arch-1 downto 0) := (others => '1');
