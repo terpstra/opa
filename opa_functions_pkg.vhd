@@ -166,6 +166,10 @@ package opa_functions_pkg is
     size   : std_logic_vector(1 downto 0); -- 1,2,4,8
   end record t_opa_ldst;
   
+  type t_opa_sext is record
+    size   : std_logic_vector(1 downto 0);
+  end record t_opa_sext;
+  
   type t_opa_arg is record
     fmode : std_logic_vector(1 downto 0);
     adder : t_opa_adder;
@@ -174,6 +178,7 @@ package opa_functions_pkg is
     mul   : t_opa_mul;
     shift : t_opa_shift;
     ldst  : t_opa_ldst;
+    sext  : t_opa_sext;
   end record t_opa_arg;
   
   -- General information every instruction must provide
@@ -224,10 +229,11 @@ package opa_functions_pkg is
       smode => (others => '-'),
       mul   => (sexta => '-', sextb => '-', high => '-', divide => '-'),
       shift => (right => '-', sext => '-'),
-      ldst  => (store => '-', sext => '-', size => (others => '-'))));
+      ldst  => (store => '-', sext => '-', size => (others => '-')),
+      sext  => (size => (others => '-'))));
   
   -- Define the arguments needed for operations in our execution units
-  constant c_arg_wide : natural := 24;
+  constant c_arg_wide : natural := 26;
   function f_opa_vec_from_arg(x : t_opa_arg) return std_logic_vector;
   function f_opa_arg_from_vec(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_arg;
 
@@ -724,31 +730,33 @@ package body opa_functions_pkg is
       x.smode &
       x.mul.sexta & x.mul.sextb & x.mul.high & x.mul.high &
       x.shift.right & x.shift.sext &
-      x.ldst.store & x.ldst.sext & x.ldst.size;
+      x.ldst.store & x.ldst.sext & x.ldst.size & 
+      x.sext.size;
     return result;
   end f_opa_vec_from_arg;
   
   function f_opa_arg_from_vec(x : std_logic_vector(c_arg_wide-1 downto 0)) return t_opa_arg is
     variable result : t_opa_arg;
   begin
-    result.fmode       := x(23 downto 22);
-    result.adder.eq    := x(21);
-    result.adder.nota  := x(20);
-    result.adder.notb  := x(19);
-    result.adder.cin   := x(18);
-    result.adder.sign  := x(17);
-    result.adder.fault := x(16);
-    result.lut         := x(15 downto 12);
-    result.smode       := x(11 downto 10);
-    result.mul.sexta   := x(9);
-    result.mul.sextb   := x(8);
-    result.mul.high    := x(7);
-    result.mul.divide  := x(6);
-    result.shift.right := x(5);
-    result.shift.sext  := x(4);
-    result.ldst.store  := x(3);
-    result.ldst.sext   := x(2);
-    result.ldst.size   := x(1 downto 0);
+    result.fmode       := x(25 downto 24);
+    result.adder.eq    := x(23);
+    result.adder.nota  := x(22);
+    result.adder.notb  := x(21);
+    result.adder.cin   := x(20);
+    result.adder.sign  := x(19);
+    result.adder.fault := x(18);
+    result.lut         := x(17 downto 14);
+    result.smode       := x(13 downto 12);
+    result.mul.sexta   := x(11);
+    result.mul.sextb   := x(10);
+    result.mul.high    := x(9);
+    result.mul.divide  := x(8);
+    result.shift.right := x(7);
+    result.shift.sext  := x(6);
+    result.ldst.store  := x(5);
+    result.ldst.sext   := x(4);
+    result.ldst.size   := x(3 downto 2);
+    result.sext.size   := x(1 downto 0);
     return result;
   end f_opa_arg_from_vec;
 

@@ -47,6 +47,23 @@ package body opa_isa_pkg is
   constant c_lm32_ea : std_logic_vector(4 downto 0) := "11110"; -- ea=30
   constant c_lm32_ba : std_logic_vector(4 downto 0) := "11111"; -- ba=31
   
+  function f_parse_rtype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
+    variable result : t_opa_op := c_opa_op_bad;
+    constant c_zero2 : std_logic_vector(20 downto 16) := (others => '0');
+    constant c_zero1 : std_logic_vector(10 downto  0) := (others => '0');
+  begin
+    result.bad   := f_opa_bit(x(20 downto 16) /= c_zero1 or x(10 downto 0) /= c_zero2);
+    result.jump  := '0';
+    result.take  := '0';
+    result.force := '0';
+    result.archa := x(25 downto 21);
+    result.archx := x(15 downto 11);
+    result.getb  := '0';
+    result.geta  := '1';
+    result.setx  := '1';
+    return result;
+  end f_parse_rtype;
+  
   function f_parse_rrtype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
     constant c_zero : std_logic_vector(10 downto 0) := (others => '0');
@@ -170,7 +187,7 @@ package body opa_isa_pkg is
     result.immb := result.imm;
     return result;
   end f_parse_jitype;
-
+  
   function f_parse_jrtype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
     constant c_zero : std_logic_vector(20 downto 0) := (others => '0');
@@ -973,6 +990,28 @@ package body opa_isa_pkg is
 
   ------------------------------------------------------------------------------------------
   
+  function f_decode_sextb(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
+    variable op : t_opa_op;
+  begin
+    op := f_parse_rtype(x);
+    op.arg.sext.size   := c_opa_ldst_byte;
+    op.arg.smode       := c_opa_slow_sext;
+    op.fast            := '0';
+    return op;
+  end f_decode_sextb;
+  
+  function f_decode_sexth(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
+    variable op : t_opa_op;
+  begin
+    op := f_parse_rtype(x);
+    op.arg.sext.size   := c_opa_ldst_half;
+    op.arg.smode       := c_opa_slow_sext;
+    op.fast            := '0';
+    return op;
+  end f_decode_sexth;
+  
+  ------------------------------------------------------------------------------------------
+  
   function f_decode(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     constant c_opcode : std_logic_vector(5 downto 0) := x(31 downto 26);
   begin
@@ -1024,8 +1063,8 @@ package body opa_isa_pkg is
       when "101011" => return c_opa_op_bad; -- !!! raise: break, scall
       when "100100" => return c_opa_op_bad; -- !!! rcsr
       when "001100" => return f_decode_sb(x);
-      when "101100" => return c_opa_op_bad; -- !!! sextb
-      when "110111" => return c_opa_op_bad; -- !!! sexth
+      when "101100" => return f_decode_sextb(x);
+      when "110111" => return f_decode_sexth(x);
       when "000011" => return f_decode_sh(x);
       when "101111" => return f_decode_sl(x);
       when "001111" => return f_decode_sli(x);

@@ -77,6 +77,9 @@ architecture rtl of opa_slow is
   constant c_adr_wide     : natural := f_opa_adr_wide(g_config);
   constant c_imm_wide     : natural := f_opa_imm_wide(g_config);
   constant c_log_reg_wide : natural := f_opa_log2(c_reg_wide);
+  constant c_log_reg_bytes: natural := c_log_reg_wide - 3;
+  
+  function f_pow(m : natural) return natural is begin return 8*2**m; end f_pow;
   
   signal s_arg     : t_opa_arg;
   signal r_stb     : std_logic;
@@ -103,6 +106,14 @@ architecture rtl of opa_slow is
   signal r_shamt   : std_logic_vector(c_log_reg_wide   downto 0);
   signal s_shout   : std_logic_vector(2*c_reg_wide  -1 downto 0);
   signal r_shout   : std_logic_vector(c_reg_wide    -1 downto 0);
+  
+  type t_reg is array(natural range <>) of std_logic_vector(c_reg_wide-1 downto 0);
+  signal s_sext    : t_opa_sext;
+  signal r_sext    : t_opa_sext;
+  signal s_sext_mux: t_reg(c_log_reg_bytes-1 downto 0);
+  signal s_sext_a  : std_logic_vector(c_reg_wide-1 downto 0);
+  signal r_sext_a  : std_logic_vector(c_reg_wide-1 downto 0);
+  signal r_sext_o  : std_logic_vector(c_reg_wide-1 downto 0);
 
 begin
 
@@ -116,6 +127,7 @@ begin
   s_mul  <= s_arg.mul;
   s_ldst <= s_arg.ldst;
   s_shift<= s_arg.shift;
+  s_sext <= s_arg.sext;
   
   main : process(clk_i) is
   begin
@@ -186,12 +198,28 @@ begin
   end process;
   s_shout <= std_logic_vector(rotate_right(unsigned(r_sexta), to_integer(unsigned(r_shamt))));
   
+  -- Implement sign extension
+  sextmux : for i in s_sext_mux'range generate
+    s_sext_mux(i)(c_reg_wide-1 downto f_pow(i)) <= (others => r_rega(f_pow(i)-1));
+    s_sext_mux(i)(f_pow(i)-1 downto 0) <= r_rega(f_pow(i)-1 downto 0);
+  end generate;
+  s_sext_a <= s_sext_mux(to_integer(unsigned(r_sext.size)));
+  sext : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      r_sext   <= s_sext;
+      r_sext_a <= s_sext_a;
+      r_sext_o <= r_sext_a;
+    end if;
+  end process;
+  
   -- pick the output
   with r_mode3 select
   regfile_regx_o <=
     s_mul_out       when c_opa_slow_mul,
     l1d_data_i      when c_opa_slow_ldst,
     r_shout         when c_opa_slow_shift,
+    r_sext_o        when c_opa_slow_sext,
     (others => '-') when others;
 
 end rtl;

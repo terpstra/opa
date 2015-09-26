@@ -1,6 +1,5 @@
 TODO:
 	implement load-alias detection CAM [0]			2 evenings
-	add sext[bh] to slow					0.5 evenings
 	add peripheral bus					2 evenings
 	write suduko solver for LM32				2 evenings
 	write a proper n-way icache				2 evenings
