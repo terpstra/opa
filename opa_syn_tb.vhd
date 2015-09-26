@@ -51,7 +51,7 @@ architecture rtl of opa_syn_tb is
   constant c_opa_bemicro : t_opa_config := (
     log_width  =>  5, -- 32-bit CPU
     adr_width  => 32, -- 32-bit address space
-    num_decode =>  4, -- rename 3 instructions per clock
+    num_rename =>  4, -- rename 3 instructions per clock
     num_stat   => 28, -- schedule 27 instructions at once
     num_fast   =>  2, -- execute 2 fast instructions per clock
     num_slow   =>  1, -- execute 1 slow instruction per clock

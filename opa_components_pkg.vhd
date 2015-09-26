@@ -117,7 +117,7 @@ package opa_components_pkg is
       icache_stall_i  : in  std_logic;
       icache_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       decode_hit_o    : out std_logic;
-      decode_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      decode_jump_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       
       -- Push a return stack entry
       decode_push_i   : in  std_logic;
@@ -126,7 +126,7 @@ package opa_components_pkg is
       -- Fixup PC to new target
       decode_fault_i  : in  std_logic;
       decode_return_i : in  std_logic;
-      decode_jump_i   : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      decode_jump_i   : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
   end component;
@@ -167,7 +167,7 @@ package opa_components_pkg is
 
       -- Predicted jumps?
       predict_hit_i    : in  std_logic;
-      predict_jump_i   : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      predict_jump_i   : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       
       -- Push a return stack entry
       predict_push_o   : out std_logic;
@@ -176,7 +176,7 @@ package opa_components_pkg is
       -- Fixup PC to new target
       predict_fault_o  : out std_logic;
       predict_return_o : out std_logic;
-      predict_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      predict_jump_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       predict_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       predict_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
@@ -190,15 +190,15 @@ package opa_components_pkg is
       -- Feed data to the renamer
       rename_stb_o   : out std_logic;
       rename_stall_i : in  std_logic;
-      rename_fast_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_slow_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_setx_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_geta_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_getb_o  : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_fast_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_slow_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_setx_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_geta_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_getb_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_aux_o   : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      rename_archx_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-      rename_archa_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-      rename_archb_o : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+      rename_archx_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+      rename_archa_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+      rename_archb_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
 
       -- Accept faults
       rename_fault_i : in  std_logic;
@@ -209,10 +209,10 @@ package opa_components_pkg is
       -- Give the regfile the information EUs will need for these operations
       regfile_stb_o  : out std_logic;
       regfile_aux_o  : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      regfile_arg_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
-      regfile_imm_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_imm_wide(g_config)-1 downto 0);
-      regfile_pc_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto c_op_align);
-      regfile_pcf_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      regfile_arg_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
+      regfile_imm_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_imm_wide(g_config)-1 downto 0);
+      regfile_pc_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto c_op_align);
+      regfile_pcf_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
       regfile_pcn_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
   end component;
   
@@ -227,34 +227,34 @@ package opa_components_pkg is
       -- Values the decoder needs to provide us
       decode_stb_i   : in  std_logic;
       decode_stall_o : out std_logic;
-      decode_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      decode_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      decode_setx_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      decode_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      decode_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      decode_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      decode_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      decode_setx_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      decode_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      decode_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       decode_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      decode_archx_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-      decode_archa_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-      decode_archb_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+      decode_archx_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+      decode_archa_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+      decode_archb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
       
       -- Values we provide to the issuer
       issue_stb_o    : out std_logic;
       issue_stall_i  : in  std_logic;
-      issue_fast_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      issue_slow_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      issue_geta_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      issue_getb_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      issue_fast_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      issue_slow_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      issue_geta_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      issue_getb_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       issue_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      issue_bakx_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      issue_baka_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      issue_bakb_o   : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      issue_stata_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      issue_statb_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      issue_bakx_i   : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      issue_bakx_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      issue_baka_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      issue_bakb_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      issue_stata_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+      issue_statb_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+      issue_bakx_i   : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
       -- Feed faults back up the pipeline
       issue_fault_i  : in  std_logic;
-      issue_mask_i   : in  std_logic_vector(f_opa_decoders  (g_config)-1 downto 0);
+      issue_mask_i   : in  std_logic_vector(f_opa_renamers  (g_config)-1 downto 0);
       issue_pc_i     : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       issue_pcf_i    : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
       issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
@@ -275,17 +275,17 @@ package opa_components_pkg is
       -- Values the renamer provides us
       rename_stb_i   : in  std_logic;
       rename_stall_o : out std_logic;
-      rename_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-      rename_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+      rename_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      rename_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      rename_baka_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      rename_bakb_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      rename_stata_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      rename_statb_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      rename_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      rename_bakx_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      rename_baka_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      rename_bakb_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      rename_stata_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+      rename_statb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+      rename_bakx_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
       -- Exceptions from the EUs
       eu_oldest_o    : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -297,7 +297,7 @@ package opa_components_pkg is
       
       -- Selected fault fed back up pipeline
       rename_fault_o : out std_logic;
-      rename_mask_o  : out std_logic_vector(f_opa_decoders  (g_config)-1 downto 0);
+      rename_mask_o  : out std_logic_vector(f_opa_renamers  (g_config)-1 downto 0);
       rename_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       rename_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
       rename_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
@@ -307,7 +307,7 @@ package opa_components_pkg is
       regfile_geta_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       regfile_getb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide (g_config)-1 downto 0);
-      regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide(g_config)-1 downto 0);
+      regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide(g_config)-1 downto 0);
       regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       regfile_bakb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
       
@@ -327,10 +327,10 @@ package opa_components_pkg is
       -- Record PC + immediate data
       decode_stb_i : in  std_logic;
       decode_aux_i : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      decode_arg_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
-      decode_imm_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
-      decode_pc_i  : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      decode_pcf_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      decode_arg_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
+      decode_imm_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
+      decode_pc_i  : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+      decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
       decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
       -- Issue has dispatched these instructions to us
@@ -338,7 +338,7 @@ package opa_components_pkg is
       issue_geta_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       issue_getb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       issue_aux_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide  (g_config)-1 downto 0);
-      issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide  (g_config)-1 downto 0);
+      issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide  (g_config)-1 downto 0);
       issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
       issue_bakb_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
       

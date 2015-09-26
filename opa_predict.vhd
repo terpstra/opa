@@ -47,7 +47,7 @@ entity opa_predict is
     icache_stall_i  : in  std_logic;
     icache_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
     decode_hit_o    : out std_logic;
-    decode_jump_o   : out std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    decode_jump_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     
     -- Push a return stack entry
     decode_push_i   : in  std_logic;
@@ -56,7 +56,7 @@ entity opa_predict is
     -- Fixup PC to new target
     decode_fault_i  : in  std_logic;
     decode_return_i : in  std_logic;
-    decode_jump_i   : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    decode_jump_i   : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
     decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
 end opa_predict;
@@ -64,7 +64,7 @@ end opa_predict;
 architecture rtl of opa_predict is
 
   constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
-  constant c_decoders  : natural := f_opa_decoders(g_config);
+  constant c_renamers  : natural := f_opa_renamers(g_config);
   constant c_num_fetch : natural := f_opa_num_fetch(g_config);
   constant c_rs_wide   : natural := 5; -- can maybe bump to 8 if IPC gain is substantial
   constant c_rs_deep   : natural := 2**c_rs_wide;
@@ -82,7 +82,7 @@ architecture rtl of opa_predict is
   signal s_rs_idx : unsigned(c_rs_wide-1 downto 0);
   
   signal r_loop_pc   : unsigned(c_adr_wide-1 downto c_op_align);
-  signal r_loop_jump : std_logic_vector(c_decoders-1 downto 0);
+  signal r_loop_jump : std_logic_vector(c_renamers-1 downto 0);
   signal r_loop_pcn  : unsigned(c_adr_wide-1 downto c_op_align);
 
 begin

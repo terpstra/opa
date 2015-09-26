@@ -193,7 +193,7 @@ begin
   
   i_addr_o(c_reg_wide  -1 downto c_adr_wide-1) <= (others => r_pc2(r_pc2'left));
   i_addr_o(c_adr_wide  -2 downto c_fetch_wide) <= r_pc2(c_adr_wide-2 downto c_fetch_wide);
-  -- !!! what if c_decoders*c_op_size <= c_reg_wide ... => make icache line larger
+  -- !!! what if c_renamers*c_op_size <= c_reg_wide ... => make icache line larger
   i_addr_o(c_fetch_wide-1 downto c_reg_align)  <= std_logic_vector(r_load);
   i_addr_o(c_reg_align -1 downto 0)            <= (others => '0');
   

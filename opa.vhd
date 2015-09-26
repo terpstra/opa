@@ -70,7 +70,7 @@ end opa;
 
 architecture rtl of opa is
 
-  constant c_decoders  : natural := f_opa_decoders (g_config);
+  constant c_renamers  : natural := f_opa_renamers (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_num_fast  : natural := f_opa_num_fast (g_config);
   constant c_num_slow  : natural := f_opa_num_slow (g_config);
@@ -87,12 +87,12 @@ architecture rtl of opa is
   constant c_arg_wide  : natural := f_opa_arg_wide(g_config);
   constant c_imm_wide  : natural := f_opa_imm_wide(g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide(g_config);
-  constant c_dec_wide  : natural := f_opa_dec_wide(g_config);
+  constant c_ren_wide  : natural := f_opa_ren_wide(g_config);
   constant c_fetch_wide  : natural := f_opa_fetch_wide(g_config);
   
   signal predict_icache_pc      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal predict_decode_hit     : std_logic;
-  signal predict_decode_jump    : std_logic_vector(c_decoders-1 downto 0);
+  signal predict_decode_jump    : std_logic_vector(c_renamers-1 downto 0);
 
   signal icache_predict_stall   : std_logic;
   signal icache_decode_stb      : std_logic;
@@ -104,26 +104,26 @@ architecture rtl of opa is
   signal decode_predict_ret     : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal decode_predict_fault   : std_logic;
   signal decode_predict_return  : std_logic;
-  signal decode_predict_jump    : std_logic_vector(c_decoders-1 downto 0);
+  signal decode_predict_jump    : std_logic_vector(c_renamers-1 downto 0);
   signal decode_predict_source  : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal decode_predict_target  : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal decode_icache_stall    : std_logic;
   signal decode_rename_stb      : std_logic;
-  signal decode_rename_fast     : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_rename_slow     : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_rename_setx     : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_rename_geta     : std_logic_vector(c_decoders-1 downto 0);
-  signal decode_rename_getb     : std_logic_vector(c_decoders-1 downto 0);
+  signal decode_rename_fast     : std_logic_vector(c_renamers-1 downto 0);
+  signal decode_rename_slow     : std_logic_vector(c_renamers-1 downto 0);
+  signal decode_rename_setx     : std_logic_vector(c_renamers-1 downto 0);
+  signal decode_rename_geta     : std_logic_vector(c_renamers-1 downto 0);
+  signal decode_rename_getb     : std_logic_vector(c_renamers-1 downto 0);
   signal decode_rename_aux      : std_logic_vector(c_aux_wide-1 downto 0);
-  signal decode_rename_archx    : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
-  signal decode_rename_archa    : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
-  signal decode_rename_archb    : t_opa_matrix(c_decoders-1 downto 0, c_arch_wide-1 downto 0);
+  signal decode_rename_archx    : t_opa_matrix(c_renamers-1 downto 0, c_arch_wide-1 downto 0);
+  signal decode_rename_archa    : t_opa_matrix(c_renamers-1 downto 0, c_arch_wide-1 downto 0);
+  signal decode_rename_archb    : t_opa_matrix(c_renamers-1 downto 0, c_arch_wide-1 downto 0);
   signal decode_regfile_stb     : std_logic;
   signal decode_regfile_aux     : std_logic_vector(c_aux_wide-1 downto 0);
-  signal decode_regfile_arg     : t_opa_matrix(c_decoders-1 downto 0, c_arg_wide-1 downto 0);
-  signal decode_regfile_imm     : t_opa_matrix(c_decoders-1 downto 0, c_imm_wide-1 downto 0);
-  signal decode_regfile_pc      : t_opa_matrix(c_decoders-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal decode_regfile_pcf     : t_opa_matrix(c_decoders-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal decode_regfile_arg     : t_opa_matrix(c_renamers-1 downto 0, c_arg_wide-1 downto 0);
+  signal decode_regfile_imm     : t_opa_matrix(c_renamers-1 downto 0, c_imm_wide-1 downto 0);
+  signal decode_regfile_pc      : t_opa_matrix(c_renamers-1 downto 0, c_adr_wide-1 downto c_op_align);
+  signal decode_regfile_pcf     : t_opa_matrix(c_renamers-1 downto 0, c_fetch_wide-1 downto c_op_align);
   signal decode_regfile_pcn     : std_logic_vector(c_adr_wide-1 downto c_op_align);
   
   signal rename_decode_stall    : std_logic;
@@ -132,22 +132,22 @@ architecture rtl of opa is
   signal rename_decode_pcf      : std_logic_vector(c_fetch_wide-1 downto c_op_align);
   signal rename_decode_pcn      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal rename_issue_stb       : std_logic;
-  signal rename_issue_fast      : std_logic_vector(c_decoders-1 downto 0);
-  signal rename_issue_slow      : std_logic_vector(c_decoders-1 downto 0);
-  signal rename_issue_geta      : std_logic_vector(c_decoders-1 downto 0);
-  signal rename_issue_getb      : std_logic_vector(c_decoders-1 downto 0);
+  signal rename_issue_fast      : std_logic_vector(c_renamers-1 downto 0);
+  signal rename_issue_slow      : std_logic_vector(c_renamers-1 downto 0);
+  signal rename_issue_geta      : std_logic_vector(c_renamers-1 downto 0);
+  signal rename_issue_getb      : std_logic_vector(c_renamers-1 downto 0);
   signal rename_issue_aux       : std_logic_vector(c_aux_wide-1 downto 0);
-  signal rename_issue_bakx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal rename_issue_baka      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal rename_issue_bakb      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal rename_issue_stata     : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
-  signal rename_issue_statb     : t_opa_matrix(c_decoders-1 downto 0, c_stat_wide-1 downto 0);
+  signal rename_issue_bakx      : t_opa_matrix(c_renamers-1 downto 0, c_back_wide-1 downto 0);
+  signal rename_issue_baka      : t_opa_matrix(c_renamers-1 downto 0, c_back_wide-1 downto 0);
+  signal rename_issue_bakb      : t_opa_matrix(c_renamers-1 downto 0, c_back_wide-1 downto 0);
+  signal rename_issue_stata     : t_opa_matrix(c_renamers-1 downto 0, c_stat_wide-1 downto 0);
+  signal rename_issue_statb     : t_opa_matrix(c_renamers-1 downto 0, c_stat_wide-1 downto 0);
   
   signal issue_rename_stall     : std_logic;
-  signal issue_rename_bakx      : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
+  signal issue_rename_bakx      : t_opa_matrix(c_renamers-1 downto 0, c_back_wide-1 downto 0);
   signal issue_eu_oldest        : std_logic_vector(c_executers-1 downto 0);
   signal issue_rename_fault     : std_logic;
-  signal issue_rename_mask      : std_logic_vector(c_decoders-1 downto 0);
+  signal issue_rename_mask      : std_logic_vector(c_renamers-1 downto 0);
   signal issue_rename_pc        : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal issue_rename_pcf       : std_logic_vector(c_fetch_wide-1 downto c_op_align);
   signal issue_rename_pcn       : std_logic_vector(c_adr_wide-1 downto c_op_align);
@@ -155,7 +155,7 @@ architecture rtl of opa is
   signal issue_regfile_geta     : std_logic_vector(c_executers-1 downto 0);
   signal issue_regfile_getb     : std_logic_vector(c_executers-1 downto 0);
   signal issue_regfile_aux      : t_opa_matrix(c_executers-1 downto 0, c_aux_wide-1 downto 0);
-  signal issue_regfile_dec      : t_opa_matrix(c_executers-1 downto 0, c_dec_wide-1 downto 0);
+  signal issue_regfile_dec      : t_opa_matrix(c_executers-1 downto 0, c_ren_wide-1 downto 0);
   signal issue_regfile_baka     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_bakb     : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
   signal issue_regfile_wstb     : std_logic_vector(c_executers-1 downto 0);
@@ -228,12 +228,12 @@ architecture rtl of opa is
 begin
 
   check_issue_divisible : 
-    assert (g_config.num_stat mod g_config.num_decode = 0) 
-    report "num_stat must be divisible by num_decode"
+    assert (g_config.num_stat mod g_config.num_rename = 0) 
+    report "num_stat must be divisible by num_rename"
     severity failure;
   
-    assert (g_config.num_decode >= 1)
-    report "num_decode must be >= 1"
+    assert (g_config.num_rename >= 1)
+    report "num_rename must be >= 1"
     severity failure;
   
   check_stat :

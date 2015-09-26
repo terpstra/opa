@@ -46,10 +46,10 @@ entity opa_regfile is
     -- Record PC + immediate data
     decode_stb_i : in  std_logic;
     decode_aux_i : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-    decode_arg_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
-    decode_imm_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
-    decode_pc_i  : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
-    decode_pcf_i : in  t_opa_matrix(f_opa_decoders (g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    decode_arg_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
+    decode_imm_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
+    decode_pc_i  : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
     decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
     -- Issue has dispatched these instructions to us
@@ -57,7 +57,7 @@ entity opa_regfile is
     issue_geta_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     issue_getb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     issue_aux_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide  (g_config)-1 downto 0);
-    issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide  (g_config)-1 downto 0);
+    issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide  (g_config)-1 downto 0);
     issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
     issue_bakb_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
     
@@ -82,7 +82,7 @@ end opa_regfile;
 architecture rtl of opa_regfile is
 
   constant c_executers : natural := f_opa_executers (g_config);
-  constant c_decoders  : natural := f_opa_decoders  (g_config);
+  constant c_renamers  : natural := f_opa_renamers  (g_config);
   constant c_num_back  : natural := f_opa_num_back  (g_config);
   constant c_num_aux   : natural := f_opa_num_aux   (g_config);
   constant c_back_wide : natural := f_opa_back_wide (g_config);
@@ -92,14 +92,14 @@ architecture rtl of opa_regfile is
   constant c_arg_wide  : natural := f_opa_arg_wide  (g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide  (g_config);
   constant c_imm_wide  : natural := f_opa_imm_wide  (g_config);
-  constant c_dec_wide  : natural := f_opa_dec_wide  (g_config);
+  constant c_ren_wide  : natural := f_opa_ren_wide  (g_config);
   constant c_pc_wide   : natural := c_adr_wide   - c_op_align;
   constant c_pcf_wide  : natural := c_fetch_wide - c_op_align;
   
-  constant c_aux_num_arg   : natural := c_decoders;
-  constant c_aux_num_imm   : natural := c_decoders;
-  constant c_aux_num_pc    : natural := c_decoders + 1;
-  constant c_aux_num_pcf   : natural := c_decoders;
+  constant c_aux_num_arg   : natural := c_renamers;
+  constant c_aux_num_imm   : natural := c_renamers;
+  constant c_aux_num_pc    : natural := c_renamers + 1;
+  constant c_aux_num_pcf   : natural := c_renamers;
   constant c_aux_off_arg   : natural := 0;
   constant c_aux_off_imm   : natural := c_aux_num_arg * c_arg_wide;
   constant c_aux_off_pc    : natural := c_aux_num_imm * c_imm_wide + c_aux_off_imm;
@@ -256,12 +256,12 @@ architecture rtl of opa_regfile is
   signal s_aux_rdata : t_aux_data_out;
   signal s_aux_wdata : std_logic_vector(c_aux_data_wide-1 downto 0);
   
-  type t_aux_imm_mux  is array(c_executers*c_imm_wide-1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
-  type t_aux_arg_mux  is array(c_executers*c_arg_wide-1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
-  type t_aux_pc_mux   is array(c_executers*c_pc_wide -1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
-  type t_aux_pcn_mux  is array(c_executers*c_pc_wide -1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
-  type t_aux_pcf_mux  is array(c_executers*c_pcf_wide-1 downto 0) of std_logic_vector(c_decoders-1 downto 0);
-  signal r_dec         : t_opa_matrix(c_executers-1 downto 0, c_dec_wide-1 downto 0);
+  type t_aux_imm_mux  is array(c_executers*c_imm_wide-1 downto 0) of std_logic_vector(c_renamers-1 downto 0);
+  type t_aux_arg_mux  is array(c_executers*c_arg_wide-1 downto 0) of std_logic_vector(c_renamers-1 downto 0);
+  type t_aux_pc_mux   is array(c_executers*c_pc_wide -1 downto 0) of std_logic_vector(c_renamers-1 downto 0);
+  type t_aux_pcn_mux  is array(c_executers*c_pc_wide -1 downto 0) of std_logic_vector(c_renamers-1 downto 0);
+  type t_aux_pcf_mux  is array(c_executers*c_pcf_wide-1 downto 0) of std_logic_vector(c_renamers-1 downto 0);
+  signal r_dec         : t_opa_matrix(c_executers-1 downto 0, c_ren_wide-1 downto 0);
   signal s_aux_imm_mux : t_aux_imm_mux;
   signal s_aux_arg_mux : t_aux_arg_mux;
   signal s_aux_pc_mux  : t_aux_pc_mux;
@@ -337,7 +337,7 @@ begin
     s_aux_addr(u) <= f_opa_select_row(issue_aux_i, u);
   end generate;
   
-  remap_aux_wdata : for d in 0 to c_decoders-1 generate
+  remap_aux_wdata : for d in 0 to c_renamers-1 generate
     -- We stride the data so that the muxed bits are adjacent (from same MLAB)
     arg : for b in 0 to c_arg_wide-1 generate
       s_aux_wdata(c_aux_off_arg + b*c_aux_num_arg + d) <= decode_arg_i(d,b);
@@ -353,7 +353,7 @@ begin
     end generate;
   end generate;
   pcn : for b in 0 to c_pc_wide-1 generate
-    s_aux_wdata(c_aux_off_pc + b*c_aux_num_pc + c_decoders) <= decode_pcn_i(b+c_op_align);
+    s_aux_wdata(c_aux_off_pc + b*c_aux_num_pc + c_renamers) <= decode_pcn_i(b+c_op_align);
   end generate;
   
   auxs : for u in 0 to c_executers-1 generate
@@ -375,7 +375,7 @@ begin
   end generate;
   
   demux_aux : for u in 0 to c_executers-1 generate
-    dec : for d in 0 to c_decoders-1 generate
+    dec : for d in 0 to c_renamers-1 generate
       arg : for b in 0 to c_arg_wide-1 generate
         s_aux_arg_mux(f_idx(u,b))(d) <= s_aux_rdata(u)(c_aux_off_arg + b*c_aux_num_arg + d);
       end generate;

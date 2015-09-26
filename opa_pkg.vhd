@@ -35,7 +35,7 @@ package opa_pkg is
   type t_opa_config is record
     log_width  : natural; -- 2**log_width  = # of bits in registers
     adr_width  : natural; -- Virtual address space
-    num_decode : natural; -- # of instructions decoded concurrently
+    num_rename : natural; -- # of instructions decoded concurrently
     num_stat   : natural; -- # of reservation stations
     num_fast   : natural; -- # of fast EUs (logic, add/sub, branch, ...)
     num_slow   : natural; -- # of slow EUs (load/store, mul, fp, ...)

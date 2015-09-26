@@ -43,7 +43,7 @@ package opa_functions_pkg is
   function f_opa_and(x : std_logic_vector) return std_logic;
   
   -- Decode config into useful values
-  function f_opa_decoders (conf : t_opa_config) return natural;
+  function f_opa_renamers (conf : t_opa_config) return natural;
   function f_opa_executers(conf : t_opa_config) return natural;
   function f_opa_num_fast (conf : t_opa_config) return natural;
   function f_opa_num_slow (conf : t_opa_config) return natural;
@@ -62,7 +62,7 @@ package opa_functions_pkg is
   function f_opa_reg_wide (conf : t_opa_config) return natural;
   function f_opa_arg_wide (conf : t_opa_config) return natural;
   function f_opa_imm_wide (conf : t_opa_config) return natural;
-  function f_opa_dec_wide (conf : t_opa_config) return natural;
+  function f_opa_ren_wide (conf : t_opa_config) return natural;
   function f_opa_fetch_wide(conf : t_opa_config) return natural;
   
   -- Mapping of execution units
@@ -285,10 +285,10 @@ package body opa_functions_pkg is
            f_opa_and(y(c_mid downto y'low));
   end f_opa_and;
   
-  function f_opa_decoders(conf : t_opa_config) return natural is
+  function f_opa_renamers(conf : t_opa_config) return natural is
   begin
-    return conf.num_decode;
-  end f_opa_decoders;
+    return conf.num_rename;
+  end f_opa_renamers;
   
   function f_opa_executers(conf : t_opa_config) return natural is
   begin
@@ -325,19 +325,19 @@ package body opa_functions_pkg is
   begin
     return f_opa_num_arch(conf) +
            f_opa_num_stat(conf) +
-           f_opa_decoders(conf)*pipeline_depth;
+           f_opa_renamers(conf)*pipeline_depth;
   end f_opa_num_back;
   
   function f_opa_num_aux(conf : t_opa_config) return natural is
     constant pipeline_depth : natural := 4;
   begin
-    return (f_opa_num_stat(conf) + f_opa_decoders(conf)*pipeline_depth) 
-           / f_opa_decoders(conf);
+    return (f_opa_num_stat(conf) + f_opa_renamers(conf)*pipeline_depth) 
+           / f_opa_renamers(conf);
   end f_opa_num_aux;
   
   function f_opa_num_fetch(conf : t_opa_config) return natural is
   begin
-    return f_opa_decoders(conf) * c_op_avg_size;
+    return f_opa_renamers(conf) * c_op_avg_size;
   end f_opa_num_fetch;
   
   function f_opa_num_dway(conf : t_opa_config) return natural is
@@ -357,7 +357,7 @@ package body opa_functions_pkg is
   
   function f_opa_stat_wide(conf : t_opa_config) return natural is
   begin
-    return f_opa_log2(f_opa_num_stat(conf) + f_opa_decoders(conf));
+    return f_opa_log2(f_opa_num_stat(conf) + f_opa_renamers(conf));
   end f_opa_stat_wide;
   
   function f_opa_adr_wide(conf : t_opa_config) return natural is
@@ -385,10 +385,10 @@ package body opa_functions_pkg is
     return c_imm_wide;
   end f_opa_imm_wide;
   
-  function f_opa_dec_wide(conf : t_opa_config) return natural is
+  function f_opa_ren_wide(conf : t_opa_config) return natural is
   begin
-    return f_opa_log2(f_opa_decoders(conf));
-  end f_opa_dec_wide;
+    return f_opa_log2(f_opa_renamers(conf));
+  end f_opa_ren_wide;
   
   function f_opa_fetch_wide(conf : t_opa_config) return natural is
   begin

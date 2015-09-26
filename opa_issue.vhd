@@ -46,17 +46,17 @@ entity opa_issue is
     -- Values the renamer provides us
     rename_stb_i   : in  std_logic;
     rename_stall_o : out std_logic;
-    rename_fast_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_slow_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_geta_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
-    rename_getb_i  : in  std_logic_vector(f_opa_decoders(g_config)-1 downto 0);
+    rename_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-    rename_bakx_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    rename_baka_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    rename_bakb_i  : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    rename_stata_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    rename_statb_i : in  t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    rename_bakx_o  : out t_opa_matrix(f_opa_decoders(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    rename_bakx_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    rename_baka_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    rename_bakb_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    rename_stata_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+    rename_statb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
+    rename_bakx_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
     -- Exceptions from the EUs
     eu_oldest_o    : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -68,7 +68,7 @@ entity opa_issue is
      
     -- Selected fault fed back up pipeline
     rename_fault_o : out std_logic;
-    rename_mask_o  : out std_logic_vector(f_opa_decoders  (g_config)-1 downto 0);
+    rename_mask_o  : out std_logic_vector(f_opa_renamers  (g_config)-1 downto 0);
     rename_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
     rename_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
     rename_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
@@ -78,7 +78,7 @@ entity opa_issue is
     regfile_geta_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     regfile_getb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide (g_config)-1 downto 0);
-    regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_dec_wide(g_config)-1 downto 0);
+    regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide(g_config)-1 downto 0);
     regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     regfile_bakb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     
@@ -95,16 +95,16 @@ architecture rtl of opa_issue is
   constant c_num_slow  : natural := f_opa_num_slow (g_config);
   constant c_back_wide : natural := f_opa_back_wide(g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide (g_config);
-  constant c_dec_wide  : natural := f_opa_dec_wide (g_config);
+  constant c_ren_wide  : natural := f_opa_ren_wide (g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide (g_config);
   constant c_fetch_wide: natural := f_opa_fetch_wide(g_config);
-  constant c_decoders  : natural := f_opa_decoders (g_config);
+  constant c_renamers  : natural := f_opa_renamers (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_fast0     : natural := f_opa_fast_index(g_config, 0);
   constant c_slow0     : natural := f_opa_slow_index(g_config, 0);
   
-  constant c_decoder_zeros : std_logic_vector(c_decoders -1 downto 0) := (others => '0');
+  constant c_decoder_zeros : std_logic_vector(c_renamers -1 downto 0) := (others => '0');
   constant c_stat_ones     : std_logic_vector(c_num_stat -1 downto 0) := (others => '1');
   constant c_fast_zeros    : std_logic_vector(c_num_fast -1 downto 0) := (others => '0');
   constant c_slow_ones     : std_logic_vector(c_num_slow -1 downto 0) := (others => '1');
@@ -263,12 +263,12 @@ architecture rtl of opa_issue is
   signal r_shift         : std_logic := '0';
   
   -- Accept data from the renamer; use a skidpad to synchronize state
-  signal r_sp_geta : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sp_getb : std_logic_vector(c_decoders-1 downto 0);
-  signal r_sp_bakx : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sp_baka : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sp_bakb : t_opa_matrix(c_decoders-1 downto 0, c_back_wide-1 downto 0);
-  signal r_sp_aux  : t_opa_matrix(c_decoders-1 downto 0, c_aux_wide -1 downto 0);
+  signal r_sp_geta : std_logic_vector(c_renamers-1 downto 0);
+  signal r_sp_getb : std_logic_vector(c_renamers-1 downto 0);
+  signal r_sp_bakx : t_opa_matrix(c_renamers-1 downto 0, c_back_wide-1 downto 0);
+  signal r_sp_baka : t_opa_matrix(c_renamers-1 downto 0, c_back_wide-1 downto 0);
+  signal r_sp_bakb : t_opa_matrix(c_renamers-1 downto 0, c_back_wide-1 downto 0);
+  signal r_sp_aux  : t_opa_matrix(c_renamers-1 downto 0, c_aux_wide -1 downto 0);
   
   -- Faults are resolved to the oldest and executed when all preceding ops are final
   signal r_fault_in      : std_logic_vector(c_executers-1 downto 0) := (others => '0');
@@ -277,7 +277,7 @@ architecture rtl of opa_issue is
   signal s_fault_out     : std_logic;
   signal r_fault_out     : std_logic := '0'; -- lasts one cycle
   signal r_fault_pipe    : std_logic := '0'; -- lasts two cycles
-  signal r_fault_mask    : std_logic_vector(c_decoders  -1 downto 0);
+  signal r_fault_mask    : std_logic_vector(c_renamers  -1 downto 0);
   signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
   signal r_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
   signal r_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
@@ -288,26 +288,26 @@ architecture rtl of opa_issue is
   signal r_fault_fast_pcf: std_logic_vector(c_fetch_wide-1 downto c_op_align);
   signal r_fault_fast_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
   
-  function f_decoder_labels(decoders : natural) return t_opa_matrix is
-    variable result : t_opa_matrix(c_num_stat-1 downto 0, c_dec_wide-1 downto 0);
+  function f_decoder_labels(renamers : natural) return t_opa_matrix is
+    variable result : t_opa_matrix(c_num_stat-1 downto 0, c_ren_wide-1 downto 0);
     variable value : unsigned(result'range(2));
   begin
     for s in result'range(1) loop
-      value := to_unsigned(s mod c_decoders, value'length);
+      value := to_unsigned(s mod c_renamers, value'length);
       for b in value'range loop
         result(s,b) := value(b);
       end loop;
     end loop;
     return result;
   end f_decoder_labels;
-  constant c_decoder_labels : t_opa_matrix := f_decoder_labels(c_decoders);
+  constant c_decoder_labels : t_opa_matrix := f_decoder_labels(c_renamers);
   
   function f_shift(x : std_logic_vector; s : std_logic) return std_logic_vector is
     alias y : std_logic_vector(x'high downto x'low) is x;
     variable result : std_logic_vector(y'range) :=  y;
   begin
     if s = '1' then 
-      result := c_decoder_zeros & y(y'high downto y'low+c_decoders);
+      result := c_decoder_zeros & y(y'high downto y'low+c_renamers);
     end if;
     return result;
   end f_shift;
@@ -318,8 +318,8 @@ architecture rtl of opa_issue is
     if s = '1' then
       result := (others => (others => '0'));
       for i in x'range(1) loop
-        for j in x'high(2)-c_decoders downto x'low(2) loop
-          result(i,j) := x(i,j+c_decoders);
+        for j in x'high(2)-c_renamers downto x'low(2) loop
+          result(i,j) := x(i,j+c_renamers);
         end loop;
       end loop;
     end if;
@@ -426,7 +426,7 @@ begin
   --  s_alias, this i must also consider
   
   -- Determine if the execution window should be shifted
-  s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
+  s_stall  <= not f_opa_and(s_final(c_renamers-1 downto 0));
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
   
@@ -456,7 +456,7 @@ begin
   -- We can use r_final instead of s_final/s_stall because a fault only happens if it was last
   s_fault_pending <= r_fault_in(c_fast0) or r_fault_in(c_slow0);
   s_fault_out     <= (s_fault_pending or r_fault_pending) and 
-                     not f_opa_and(r_final(c_decoders-1 downto 0));
+                     not f_opa_and(r_final(c_renamers-1 downto 0));
   
   fault_ctl : process(clk_i, rst_n_i) is
   begin
@@ -483,7 +483,7 @@ begin
   begin
     if rising_edge(clk_i) then
       if s_fault_out = '1' then
-        r_fault_mask <= s_complete(c_decoders-1 downto 0);
+        r_fault_mask <= s_complete(c_renamers-1 downto 0);
       else
         r_fault_mask <= (others => '1');
       end if;
@@ -513,13 +513,13 @@ begin
   end process;
   
   -- Prepare decremented versions of the station references
-  s_stata <= f_opa_decrement(r_stata, c_decoders) when r_shift='1' else r_stata;
-  s_statb <= f_opa_decrement(r_statb, c_decoders) when r_shift='1' else r_statb;
+  s_stata <= f_opa_decrement(r_stata, c_renamers) when r_shift='1' else r_stata;
+  s_statb <= f_opa_decrement(r_statb, c_renamers) when r_shift='1' else r_statb;
   
   -- Feed back unused registers back to the renamer
   bakx_o : for b in 0 to c_back_wide-1 generate
-    dec : for i in 0 to c_decoders-1 generate
-      rename_bakx_o(i,b) <= r_bakx(i+c_decoders,b) when r_shift='1' else r_bakx(i,b);
+    dec : for i in 0 to c_renamers-1 generate
+      rename_bakx_o(i,b) <= r_bakx(i+c_renamers,b) when r_shift='1' else r_bakx(i,b);
     end generate;
   end generate;
   
@@ -533,7 +533,7 @@ begin
         r_sp_bakx <= rename_bakx_i;
         r_sp_baka <= rename_baka_i;
         r_sp_bakb <= rename_bakb_i;
-        r_sp_aux  <= f_opa_dup_row(c_decoders, rename_aux_i);
+        r_sp_aux  <= f_opa_dup_row(c_renamers, rename_aux_i);
       end if;
     end if;
   end process;
@@ -563,16 +563,16 @@ begin
     elsif rising_edge(clk_i) then
       if s_shift = '1' then -- load enable
         -- These two are sneaky; they are half lagged. Content lags thanks to s_stat[ab].
-        for i in 0 to c_num_stat-c_decoders-1 loop
+        for i in 0 to c_num_stat-c_renamers-1 loop
           for b in 0 to c_stat_wide-1 loop
-            r_stata(i,b) <= s_stata(i+c_decoders,b);
-            r_statb(i,b) <= s_statb(i+c_decoders,b);
+            r_stata(i,b) <= s_stata(i+c_renamers,b);
+            r_statb(i,b) <= s_statb(i+c_renamers,b);
           end loop;
         end loop;
-        for i in c_num_stat-c_decoders to c_num_stat-1 loop
+        for i in c_num_stat-c_renamers to c_num_stat-1 loop
           for b in 0 to c_stat_wide-1 loop
-            r_stata(i,b) <= rename_stata_i(i-(c_num_stat-c_decoders),b);
-            r_statb(i,b) <= rename_statb_i(i-(c_num_stat-c_decoders),b);
+            r_stata(i,b) <= rename_stata_i(i-(c_num_stat-c_renamers),b);
+            r_statb(i,b) <= rename_statb_i(i-(c_num_stat-c_renamers),b);
           end loop;
         end loop;
       else
@@ -590,8 +590,8 @@ begin
       r_slow <= (others => '0');
     elsif rising_edge(clk_i) then
       if s_shift = '1' then
-        r_fast <= rename_fast_i & r_fast(c_num_stat-1 downto c_decoders);
-        r_slow <= rename_slow_i & r_slow(c_num_stat-1 downto c_decoders);
+        r_fast <= rename_fast_i & r_fast(c_num_stat-1 downto c_renamers);
+        r_slow <= rename_slow_i & r_slow(c_num_stat-1 downto c_renamers);
       end if;
     end if;
   end process;
@@ -659,14 +659,14 @@ begin
       r_bakx <= c_init_bak;
     elsif rising_edge(clk_i) then
       if r_shift = '1' then -- clock enable port
-        for i in 0 to c_num_stat-c_decoders-1 loop
+        for i in 0 to c_num_stat-c_renamers-1 loop
           for b in 0 to c_back_wide-1 loop
-            r_bakx(i,b) <= r_bakx(i+c_decoders,b);
+            r_bakx(i,b) <= r_bakx(i+c_renamers,b);
           end loop;
         end loop;
-        for i in c_num_stat-c_decoders to c_num_stat-1 loop
+        for i in c_num_stat-c_renamers to c_num_stat-1 loop
           for b in 0 to c_back_wide-1 loop
-            r_bakx(i,b) <= r_sp_bakx(i-(c_num_stat-c_decoders),b);
+            r_bakx(i,b) <= r_sp_bakx(i-(c_num_stat-c_renamers),b);
           end loop;
         end loop;
       end if;
@@ -678,26 +678,26 @@ begin
   begin
     if rising_edge(clk_i) then
       if r_shift = '1' then -- clock enable port
-        for i in 0 to c_num_stat-c_decoders-1 loop
-          r_geta(i) <= r_geta(i+c_decoders);
-          r_getb(i) <= r_getb(i+c_decoders);
+        for i in 0 to c_num_stat-c_renamers-1 loop
+          r_geta(i) <= r_geta(i+c_renamers);
+          r_getb(i) <= r_getb(i+c_renamers);
           for b in 0 to c_aux_wide-1 loop
-            r_aux (i,b) <= r_aux (i+c_decoders,b);
+            r_aux (i,b) <= r_aux (i+c_renamers,b);
           end loop;
           for b in 0 to c_back_wide-1 loop
-            r_baka(i,b) <= r_baka(i+c_decoders,b);
-            r_bakb(i,b) <= r_bakb(i+c_decoders,b);
+            r_baka(i,b) <= r_baka(i+c_renamers,b);
+            r_bakb(i,b) <= r_bakb(i+c_renamers,b);
           end loop;
         end loop;
-        for i in c_num_stat-c_decoders to c_num_stat-1 loop
-          r_geta(i) <= r_sp_geta(i-(c_num_stat-c_decoders));
-          r_getb(i) <= r_sp_getb(i-(c_num_stat-c_decoders));
+        for i in c_num_stat-c_renamers to c_num_stat-1 loop
+          r_geta(i) <= r_sp_geta(i-(c_num_stat-c_renamers));
+          r_getb(i) <= r_sp_getb(i-(c_num_stat-c_renamers));
           for b in 0 to c_aux_wide-1 loop
-            r_aux (i,b) <= r_sp_aux (i-(c_num_stat-c_decoders),b);
+            r_aux (i,b) <= r_sp_aux (i-(c_num_stat-c_renamers),b);
           end loop;
           for b in 0 to c_back_wide-1 loop
-            r_baka(i,b) <= r_sp_baka(i-(c_num_stat-c_decoders),b);
-            r_bakb(i,b) <= r_sp_bakb(i-(c_num_stat-c_decoders),b);
+            r_baka(i,b) <= r_sp_baka(i-(c_num_stat-c_renamers),b);
+            r_bakb(i,b) <= r_sp_bakb(i-(c_num_stat-c_renamers),b);
           end loop;
         end loop;
       end if;
