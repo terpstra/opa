@@ -191,988 +191,783 @@ package body opa_isa_pkg is
   ------------------------------------------------------------------------------------------
   
   function f_decode_b(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
-    variable ret   : std_logic;
+    variable op  : t_opa_op;
+    variable ret : std_logic;
   begin
     op := f_parse_jrtype(x);
     -- !!! mess around with CSRs on eret/bret
-    adder.eq    := '0';
-    adder.nota  := '0';
-    adder.notb  := '0';
-    adder.cin   := '0';
-    adder.sign  := '-';
-    adder.fault := '-';
-    fast.mode   := c_opa_fast_jump;
-    fast.raw    := f_opa_fast_from_adder(adder);
     ret         := f_opa_bit(op.archa = c_lm32_ra or op.archa = c_lm32_ba or op.archa = c_lm32_ea);
     op.take     := ret; -- only follow indirect branches that are returns
     op.setx     := '0';
     op.pop      := ret;
     op.push     := '0';
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '-';
+    op.arg.adder.fault := '-';
+    op.arg.fmode       := c_opa_fast_jump;
+    op.fast            := '1';
     return op;
   end f_decode_b;
   
   function f_decode_bi(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_jitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0';
-    adder.notb  := '0';
-    adder.cin   := '0';
-    adder.sign  := '-';
-    adder.fault := '-';
-    fast.mode   := c_opa_fast_jump;
-    fast.raw    := f_opa_fast_from_adder(adder);
     op.setx     := '0';
     op.pop      := '0';
     op.push     := '0';
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '-';
+    op.arg.adder.fault := '-';
+    op.arg.fmode       := c_opa_fast_jump;
+    op.fast            := '1';
     return op;
   end f_decode_bi;
   
   function f_decode_call(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_jrtype(x);
-    adder.eq    := '0';
-    adder.nota  := '0';
-    adder.notb  := '0';
-    adder.cin   := '0';
-    adder.sign  := '-';
-    adder.fault := '-';
-    fast.mode   := c_opa_fast_jump;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.archx    := c_lm32_ra;
     op.setx     := '1';
     op.pop      := '0';
     op.push     := '1';
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '-';
+    op.arg.adder.fault := '-';
+    op.arg.fmode       := c_opa_fast_jump;
+    op.archx           := c_lm32_ra;
+    op.fast            := '1';
     return op;
   end f_decode_call;
   
   function f_decode_calli(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_jitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0';
-    adder.notb  := '0';
-    adder.cin   := '0';
-    adder.sign  := '-';
-    adder.fault := '-';
-    fast.mode   := c_opa_fast_jump;
-    fast.raw    := f_opa_fast_from_adder(adder);
     op.archx    := c_lm32_ra;
     op.setx     := '1';
     op.pop      := '0';
     op.push     := '1';
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '-';
+    op.arg.adder.fault := '-';
+    op.arg.fmode       := c_opa_fast_jump;
+    op.fast            := '1';
     return op;
   end f_decode_calli;
 
   ------------------------------------------------------------------------------------------
 
   function f_decode_add(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    adder.eq    := '0';
-    adder.nota  := '0';
-    adder.notb  := '0';
-    adder.cin   := '0';
-    adder.sign  := '-';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addl;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '-';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addl;
+    op.fast            := '1';
     return op;
   end f_decode_add;
   
   function f_decode_sub(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    adder.eq    := '0';
-    adder.nota  := '0';
-    adder.notb  := '1';
-    adder.cin   := '1';
-    adder.sign  := '-';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addl;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '-';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addl;
+    op.fast            := '1';
     return op;
   end f_decode_sub;
   
   function f_decode_addi(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0';
-    adder.notb  := '0';
-    adder.cin   := '0';
-    adder.sign  := '-';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addl;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '-';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addl;
+    op.fast            := '1';
     return op;
   end f_decode_addi;
   
   ------------------------------------------------------------------------------------------
   
   function f_decode_and(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("1000"); -- X = A and B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "1000"; -- X = A and B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_and;
   
   function f_decode_andhi(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_hitype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("1000"); -- X = A and B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "1000"; -- X = A and B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_andhi;
   
   function f_decode_andi(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_lotype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("1000"); -- X = A and B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "1000"; -- X = A and B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_andi;
   
   function f_decode_or(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("1110"); -- X = A or B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "1110"; -- X = A or B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_or;
   
   function f_decode_ori(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_lotype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("1110"); -- X = A or B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "1110"; -- X = A or B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_ori;
   
   function f_decode_orhi(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_hitype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("1110"); -- X = A or B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "1110"; -- X = A or B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_orhi;
 
   function f_decode_nor(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("0001"); -- X = A nor B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "0001"; -- X = A nor B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_nor;
   
   function f_decode_nori(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_lotype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("0001"); -- X = A nor B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "0001"; -- X = A nor B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_nori;
 
   function f_decode_xor(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("0110"); -- X = A xor B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "0110"; -- X = A xor B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_xor;
   
   function f_decode_xori(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_lotype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("0110"); -- X = A xor B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "0110"; -- X = A xor B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_xori;
 
   function f_decode_xnor(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("1001"); -- X = A xnor B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.fmode := c_opa_fast_lut;
+    op.arg.lut   := "1001"; -- X = A xnor B
+    op.fast      := '1';
     return op;
   end f_decode_xnor;
   
   function f_decode_xnori(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_lotype(x);
-    fast.mode := c_opa_fast_lut;
-    fast.raw  := f_opa_fast_from_lut("1001"); -- X = A xnor B
-    op.fast   := '1';
-    op.arg    := f_opa_arg_from_fast(fast);
+    op.arg.lut   := "1001"; -- X = A xnor B
+    op.arg.fmode := c_opa_fast_lut;
+    op.fast      := '1';
     return op;
   end f_decode_xnori;
 
   ------------------------------------------------------------------------------------------
   
   function f_decode_be(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_bitype(x);
-    adder.eq    := '1';
-    adder.nota  := '1';
-    adder.notb  := '0';
-    adder.cin   := '1';
-    adder.sign  := '0';
-    adder.fault := '1';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '1';
+    op.arg.adder.nota  := '1';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '1';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_be;
   
   function f_decode_cmpe(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    adder.eq    := '1';
-    adder.nota  := '1';
-    adder.notb  := '0';
-    adder.cin   := '1';
-    adder.sign  := '0';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '1';
+    op.arg.adder.nota  := '1';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpe;
   
   function f_decode_cmpei(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    adder.eq    := '1';
-    adder.nota  := '1';
-    adder.notb  := '0';
-    adder.cin   := '1';
-    adder.sign  := '0';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '1';
+    op.arg.adder.nota  := '1';
+    op.arg.adder.notb  := '0';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpei;
   
   function f_decode_bne(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_bitype(x);
-    adder.eq    := '1';
-    adder.nota  := '0';
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '0';
-    adder.fault := '1';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '1';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '1';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_bne;
   
   function f_decode_cmpne(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    adder.eq    := '1';
-    adder.nota  := '0';
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '0';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '1';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpne;
   
   function f_decode_cmpnei(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    adder.eq    := '1';
-    adder.nota  := '0';
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '0';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '1';
+    op.arg.adder.nota  := '0';
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpnei;
   
   function f_decode_bg(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_bitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '1';
-    adder.fault := '1';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '1';
+    op.arg.adder.fault := '1';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_bg;
 
   function f_decode_cmpg(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '1';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '1';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpg;
   
   function f_decode_cmpgi(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '1';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '1';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpgi;
   
   function f_decode_bgu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_bitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '0';
-    adder.fault := '1';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '1';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_bgu;
   
   function f_decode_cmpgu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '0';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpgu;
   
   function f_decode_cmpgui(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_lotype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
-    adder.notb  := '1';
-    adder.cin   := '0';
-    adder.sign  := '0';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>b)=(a-b-1>=0)=overflow(a-b-1)=overflow(a+!b)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '0';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpgui;
 
   function f_decode_bge(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_bitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
-    adder.notb  := '1';
-    adder.cin   := '1';
-    adder.sign  := '1';
-    adder.fault := '1';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '1';
+    op.arg.adder.fault := '1';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_bge;
   
   function f_decode_cmpge(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
-    adder.notb  := '1';
-    adder.cin   := '1';
-    adder.sign  := '1';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '1';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpge;
   
   function f_decode_cmpgei(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
-    adder.notb  := '1';
-    adder.cin   := '1';
-    adder.sign  := '1';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '1';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpgei;
   
   function f_decode_bgeu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_bitype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
-    adder.notb  := '1';
-    adder.cin   := '1';
-    adder.sign  := '0';
-    adder.fault := '1';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '1';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_bgeu;
   
   function f_decode_cmpgeu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
-    adder.notb  := '1';
-    adder.cin   := '1';
-    adder.sign  := '0';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpgeu;
   
   function f_decode_cmpgeui(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable adder : t_opa_adder;
-    variable fast  : t_opa_fast;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_lotype(x);
-    adder.eq    := '0';
-    adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
-    adder.notb  := '1';
-    adder.cin   := '1';
-    adder.sign  := '0';
-    adder.fault := '0';
-    fast.mode   := c_opa_fast_addh;
-    fast.raw    := f_opa_fast_from_adder(adder);
-    op.fast     := '1';
-    op.arg      := f_opa_arg_from_fast(fast);
+    op.arg.adder.eq    := '0';
+    op.arg.adder.nota  := '0'; -- x=(a>=b)=(a-b>=0)=overflow(a-b)=overflow(a+!b+1)
+    op.arg.adder.notb  := '1';
+    op.arg.adder.cin   := '1';
+    op.arg.adder.sign  := '0';
+    op.arg.adder.fault := '0';
+    op.arg.fmode       := c_opa_fast_addh;
+    op.fast            := '1';
     return op;
   end f_decode_cmpgeui;
 
   ------------------------------------------------------------------------------------------
   
   function f_decode_mul(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable mul  : t_opa_mul;
-    variable slow : t_opa_slow;
-    variable op   : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    mul.sexta   := '-';
-    mul.sextb   := '-';
-    mul.high    := '0';
-    mul.divide  := '0';
-    slow.mode   := c_opa_slow_mul;
-    slow.raw    := f_opa_slow_from_mul(mul);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.mul.sexta   := '-';
+    op.arg.mul.sextb   := '-';
+    op.arg.mul.high    := '0';
+    op.arg.mul.divide  := '0';
+    op.arg.smode       := c_opa_slow_mul;
+    op.fast            := '0';
     return op;
   end f_decode_mul;
 
   function f_decode_muli(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable mul  : t_opa_mul;
-    variable slow : t_opa_slow;
-    variable op   : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    mul.sexta   := '-';
-    mul.sextb   := '-';
-    mul.high    := '0';
-    mul.divide  := '0';
-    slow.mode   := c_opa_slow_mul;
-    slow.raw    := f_opa_slow_from_mul(mul);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.mul.sexta   := '-';
+    op.arg.mul.sextb   := '-';
+    op.arg.mul.high    := '0';
+    op.arg.mul.divide  := '0';
+    op.arg.smode       := c_opa_slow_mul;
+    op.fast            := '0';
     return op;
   end f_decode_muli;
   
   function f_decode_mulh(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable mul  : t_opa_mul;
-    variable slow : t_opa_slow;
-    variable op   : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    mul.sexta   := '0';
-    mul.sextb   := '0';
-    mul.high    := '1';
-    mul.divide  := '0';
-    slow.mode   := c_opa_slow_mul;
-    slow.raw    := f_opa_slow_from_mul(mul);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.mul.sexta   := '0';
+    op.arg.mul.sextb   := '0';
+    op.arg.mul.high    := '1';
+    op.arg.mul.divide  := '0';
+    op.arg.smode       := c_opa_slow_mul;
+    op.fast            := '0';
     return op;
   end f_decode_mulh;
 
   function f_decode_mulhi(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable mul  : t_opa_mul;
-    variable slow : t_opa_slow;
-    variable op   : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    mul.sexta   := '0';
-    mul.sextb   := '0';
-    mul.high    := '1';
-    mul.divide  := '0';
-    slow.mode   := c_opa_slow_mul;
-    slow.raw    := f_opa_slow_from_mul(mul);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.mul.sexta   := '0';
+    op.arg.mul.sextb   := '0';
+    op.arg.mul.high    := '1';
+    op.arg.mul.divide  := '0';
+    op.arg.smode       := c_opa_slow_mul;
+    op.fast            := '0';
     return op;
   end f_decode_mulhi;
   
   function f_decode_div(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable mul  : t_opa_mul;
-    variable slow : t_opa_slow;
-    variable op   : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    mul.sexta   := '-';
-    mul.sextb   := '1';
-    mul.high    := '0';
-    mul.divide  := '1';
-    slow.mode   := c_opa_slow_mul;
-    slow.raw    := f_opa_slow_from_mul(mul);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.mul.sexta   := '-';
+    op.arg.mul.sextb   := '1';
+    op.arg.mul.high    := '0';
+    op.arg.mul.divide  := '1';
+    op.arg.smode       := c_opa_slow_mul;
+    op.fast            := '0';
     return op;
   end f_decode_div;
 
   function f_decode_divu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable mul  : t_opa_mul;
-    variable slow : t_opa_slow;
-    variable op   : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    mul.sexta   := '-';
-    mul.sextb   := '0';
-    mul.high    := '0';
-    mul.divide  := '1';
-    slow.mode   := c_opa_slow_mul;
-    slow.raw    := f_opa_slow_from_mul(mul);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.mul.sexta   := '-';
+    op.arg.mul.sextb   := '0';
+    op.arg.mul.high    := '0';
+    op.arg.mul.divide  := '1';
+    op.arg.smode       := c_opa_slow_mul;
+    op.fast            := '0';
     return op;
   end f_decode_divu;
 
   function f_decode_modu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable mul  : t_opa_mul;
-    variable slow : t_opa_slow;
-    variable op   : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    mul.sexta   := '0';
-    mul.sextb   := '0';
-    mul.high    := '1';
-    mul.divide  := '1';
-    slow.mode   := c_opa_slow_mul;
-    slow.raw    := f_opa_slow_from_mul(mul);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.mul.sexta   := '0';
+    op.arg.mul.sextb   := '0';
+    op.arg.mul.high    := '1';
+    op.arg.mul.divide  := '1';
+    op.arg.smode       := c_opa_slow_mul;
+    op.fast            := '0';
     return op;
   end f_decode_modu;
   
   ------------------------------------------------------------------------------------------
   
   function f_decode_lb(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable ldst  : t_opa_ldst;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    ldst.store  := '0';
-    ldst.sext   := '1';
-    ldst.size   := c_opa_ldst_byte;
-    slow.mode   := c_opa_slow_ldst;
-    slow.raw    := f_opa_slow_from_ldst(ldst);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.ldst.store  := '0';
+    op.arg.ldst.sext   := '1';
+    op.arg.ldst.size   := c_opa_ldst_byte;
+    op.arg.smode       := c_opa_slow_ldst;
+    op.fast            := '0';
     return op;
   end f_decode_lb;
   
   function f_decode_lbu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable ldst  : t_opa_ldst;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    ldst.store  := '0';
-    ldst.sext   := '0';
-    ldst.size   := c_opa_ldst_byte;
-    slow.mode   := c_opa_slow_ldst;
-    slow.raw    := f_opa_slow_from_ldst(ldst);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.ldst.store  := '0';
+    op.arg.ldst.sext   := '0';
+    op.arg.ldst.size   := c_opa_ldst_byte;
+    op.arg.smode       := c_opa_slow_ldst;
+    op.fast            := '0';
     return op;
   end f_decode_lbu;
 
   function f_decode_lh(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable ldst  : t_opa_ldst;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    ldst.store  := '0';
-    ldst.sext   := '1';
-    ldst.size   := c_opa_ldst_half;
-    slow.mode   := c_opa_slow_ldst;
-    slow.raw    := f_opa_slow_from_ldst(ldst);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.ldst.store  := '0';
+    op.arg.ldst.sext   := '1';
+    op.arg.ldst.size   := c_opa_ldst_half;
+    op.arg.smode       := c_opa_slow_ldst;
+    op.fast            := '0';
     return op;
   end f_decode_lh;
   
   function f_decode_lhu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable ldst  : t_opa_ldst;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    ldst.store  := '0';
-    ldst.sext   := '0';
-    ldst.size   := c_opa_ldst_half;
-    slow.mode   := c_opa_slow_ldst;
-    slow.raw    := f_opa_slow_from_ldst(ldst);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.ldst.store  := '0';
+    op.arg.ldst.sext   := '0';
+    op.arg.ldst.size   := c_opa_ldst_half;
+    op.arg.smode       := c_opa_slow_ldst;
+    op.fast            := '0';
     return op;
   end f_decode_lhu;
 
   function f_decode_lw(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable ldst  : t_opa_ldst;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sitype(x);
-    ldst.store  := '0';
-    ldst.sext   := '1';
-    ldst.size   := c_opa_ldst_word;
-    slow.mode   := c_opa_slow_ldst;
-    slow.raw    := f_opa_slow_from_ldst(ldst);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.ldst.store  := '0';
+    op.arg.ldst.sext   := '1';
+    op.arg.ldst.size   := c_opa_ldst_word;
+    op.arg.smode       := c_opa_slow_ldst;
+    op.fast            := '0';
     return op;
   end f_decode_lw;
 
   function f_decode_sb(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable ldst  : t_opa_ldst;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sttype(x);
-    ldst.store  := '1';
-    ldst.sext   := '-';
-    ldst.size   := c_opa_ldst_byte;
-    slow.mode   := c_opa_slow_ldst;
-    slow.raw    := f_opa_slow_from_ldst(ldst);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.ldst.store  := '1';
+    op.arg.ldst.sext   := '-';
+    op.arg.ldst.size   := c_opa_ldst_byte;
+    op.arg.smode       := c_opa_slow_ldst;
+    op.fast            := '0';
     return op;
   end f_decode_sb;
   
   function f_decode_sh(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable ldst  : t_opa_ldst;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sttype(x);
-    ldst.store  := '1';
-    ldst.sext   := '-';
-    ldst.size   := c_opa_ldst_half;
-    slow.mode   := c_opa_slow_ldst;
-    slow.raw    := f_opa_slow_from_ldst(ldst);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.ldst.store  := '1';
+    op.arg.ldst.sext   := '-';
+    op.arg.ldst.size   := c_opa_ldst_half;
+    op.arg.smode       := c_opa_slow_ldst;
+    op.fast            := '0';
     return op;
   end f_decode_sh;
   
   function f_decode_sw(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable ldst  : t_opa_ldst;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_sttype(x);
-    ldst.store  := '1';
-    ldst.sext   := '-';
-    ldst.size   := c_opa_ldst_word;
-    slow.mode   := c_opa_slow_ldst;
-    slow.raw    := f_opa_slow_from_ldst(ldst);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.ldst.store  := '1';
+    op.arg.ldst.sext   := '-';
+    op.arg.ldst.size   := c_opa_ldst_word;
+    op.arg.smode       := c_opa_slow_ldst;
+    op.fast            := '0';
     return op;
   end f_decode_sw;
   
   ------------------------------------------------------------------------------------------
   
   function f_decode_sl(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable shift : t_opa_shift;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    shift.right := '0';
-    shift.sext  := '0';
-    slow.mode   := c_opa_slow_shift;
-    slow.raw    := f_opa_slow_from_shift(shift);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.shift.right := '0';
+    op.arg.shift.sext  := '0';
+    op.arg.smode       := c_opa_slow_shift;
+    op.fast            := '0';
     return op;
   end f_decode_sl;
   
   function f_decode_sli(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable shift : t_opa_shift;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_intype(x);
-    shift.right := '0';
-    shift.sext  := '0';
-    slow.mode   := c_opa_slow_shift;
-    slow.raw    := f_opa_slow_from_shift(shift);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.shift.right := '0';
+    op.arg.shift.sext  := '0';
+    op.arg.smode       := c_opa_slow_shift;
+    op.fast            := '0';
     return op;
   end f_decode_sli;
   
   function f_decode_sr(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable shift : t_opa_shift;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    shift.right := '1';
-    shift.sext  := '1';
-    slow.mode   := c_opa_slow_shift;
-    slow.raw    := f_opa_slow_from_shift(shift);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.shift.right := '1';
+    op.arg.shift.sext  := '1';
+    op.arg.smode       := c_opa_slow_shift;
+    op.fast            := '0';
     return op;
   end f_decode_sr;
   
   function f_decode_sri(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable shift : t_opa_shift;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_intype(x);
-    shift.right := '1';
-    shift.sext  := '1';
-    slow.mode   := c_opa_slow_shift;
-    slow.raw    := f_opa_slow_from_shift(shift);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.shift.right := '1';
+    op.arg.shift.sext  := '1';
+    op.arg.smode       := c_opa_slow_shift;
+    op.fast            := '0';
     return op;
   end f_decode_sri;
   
   function f_decode_sru(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable shift : t_opa_shift;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    shift.right := '1';
-    shift.sext  := '0';
-    slow.mode   := c_opa_slow_shift;
-    slow.raw    := f_opa_slow_from_shift(shift);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.shift.right := '1';
+    op.arg.shift.sext  := '0';
+    op.arg.smode       := c_opa_slow_shift;
+    op.fast            := '0';
     return op;
   end f_decode_sru;
   
   function f_decode_srui(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
-    variable shift : t_opa_shift;
-    variable slow  : t_opa_slow;
-    variable op    : t_opa_op;
+    variable op : t_opa_op;
   begin
     op := f_parse_intype(x);
-    shift.right := '1';
-    shift.sext  := '0';
-    slow.mode   := c_opa_slow_shift;
-    slow.raw    := f_opa_slow_from_shift(shift);
-    op.fast     := '0';
-    op.arg      := f_opa_arg_from_slow(slow);
+    op.arg.shift.right := '1';
+    op.arg.shift.sext  := '0';
+    op.arg.smode       := c_opa_slow_shift;
+    op.fast            := '0';
     return op;
   end f_decode_srui;
 

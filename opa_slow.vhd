@@ -78,7 +78,7 @@ architecture rtl of opa_slow is
   constant c_imm_wide     : natural := f_opa_imm_wide(g_config);
   constant c_log_reg_wide : natural := f_opa_log2(c_reg_wide);
   
-  signal s_slow    : t_opa_slow;
+  signal s_arg     : t_opa_arg;
   signal r_stb     : std_logic;
   signal r_rega    : std_logic_vector(c_reg_wide-1 downto 0);
   signal r_regb    : std_logic_vector(c_reg_wide-1 downto 0);
@@ -112,10 +112,10 @@ begin
   issue_pcf_o     <= (others => '0');
   issue_pcn_o     <= (others => '0');
   
-  s_slow <= f_opa_slow_from_arg(regfile_arg_i);
-  s_mul  <= f_opa_mul_from_slow(s_slow.raw);
-  s_ldst <= f_opa_ldst_from_slow(s_slow.raw);
-  s_shift<= f_opa_shift_from_slow(s_slow.raw);
+  s_arg  <= f_opa_arg_from_vec(regfile_arg_i);
+  s_mul  <= s_arg.mul;
+  s_ldst <= s_arg.ldst;
+  s_shift<= s_arg.shift;
   
   main : process(clk_i) is
   begin
@@ -125,7 +125,7 @@ begin
       r_regb  <= regfile_regb_i;
       r_imm   <= regfile_imm_i;
       r_ldst  <= s_ldst;
-      r_mode1 <= s_slow.mode;
+      r_mode1 <= s_arg.smode;
       r_mode2 <= r_mode1;
       r_mode3 <= r_mode2;
       r_high1 <= s_mul.high;

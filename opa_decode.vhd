@@ -356,7 +356,7 @@ begin
   regfile_aux_o <= std_logic_vector(r_aux);
   rf_out : for d in 0 to c_renamers-1 generate
     arg : for b in 0 to c_arg_wide-1 generate
-      regfile_arg_o(d,b) <= r_ops(d).arg(b);
+      regfile_arg_o(d,b) <= f_opa_vec_from_arg(r_ops(d).arg)(b);
     end generate;
     imm : for b in 0 to c_imm_wide-1 generate
       regfile_imm_o(d,b) <= r_ops(d).imm(b);

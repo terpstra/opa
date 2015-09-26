@@ -67,9 +67,9 @@ architecture rtl of opa_fast is
   constant c_adr_wide : natural := f_opa_adr_wide(g_config);
   constant c_sum_wide : natural := f_opa_choose(c_imm_wide<c_adr_wide,c_imm_wide,c_adr_wide);
 
-  signal s_fast  : t_opa_fast;
+  signal s_arg   : t_opa_arg;
   signal s_adder : t_opa_adder;
-  signal s_lut    :std_logic_vector(3 downto 0);
+  signal s_lut   : std_logic_vector(3 downto 0);
 
   signal r_rega : std_logic_vector(regfile_rega_i'range);
   signal r_regb : std_logic_vector(regfile_regb_i'range);
@@ -131,9 +131,9 @@ architecture rtl of opa_fast is
   -- attribute maxfan of r_mode : signal is 8;
 begin
 
-  s_fast  <= f_opa_fast_from_arg(regfile_arg_i);
-  s_adder <= f_opa_adder_from_fast(s_fast.raw);
-  s_lut   <= f_opa_lut_from_fast(s_fast.raw);
+  s_arg   <= f_opa_arg_from_vec(regfile_arg_i);
+  s_adder <= s_arg.adder;
+  s_lut   <= s_arg.lut;
   
   -- Register our inputs
   main : process(clk_i) is
@@ -146,7 +146,7 @@ begin
       r_pc   <= regfile_pc_i;
       r_pcn  <= regfile_pcn_i;
       
-      r_mode <= s_fast.mode;
+      r_mode <= s_arg.fmode;
       r_lut  <= s_lut;
       r_eq   <= s_adder.eq;
       r_nota <= s_adder.nota;
