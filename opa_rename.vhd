@@ -73,14 +73,14 @@ entity opa_rename is
     
     -- Feed faults back up the pipeline
     issue_fault_i  : in  std_logic;
-    issue_mask_i   : in  std_logic_vector(f_opa_renamers  (g_config)-1 downto 0);     
-    issue_pc_i     : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    issue_mask_i   : in  std_logic_vector(f_opa_renamers   (g_config)-1 downto 0);     
+    issue_pc_i     : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
     issue_pcf_i    : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
     decode_fault_o : out std_logic;
-    decode_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    decode_pc_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
     decode_pcf_o   : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    decode_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align));
+    decode_pcn_o   : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align));
 end opa_rename;
 
 architecture rtl of opa_rename is

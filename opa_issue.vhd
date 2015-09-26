@@ -62,23 +62,23 @@ entity opa_issue is
     eu_oldest_o    : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_retry_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
     eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-    eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
      
     -- Selected fault fed back up pipeline
     rename_fault_o : out std_logic;
-    rename_mask_o  : out std_logic_vector(f_opa_renamers  (g_config)-1 downto 0);
-    rename_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    rename_mask_o  : out std_logic_vector(f_opa_renamers   (g_config)-1 downto 0);
+    rename_pc_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
     rename_pcf_o   : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    rename_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
+    rename_pcn_o   : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
     
     -- Regfile needs to fetch these for EU
     regfile_rstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     regfile_geta_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     regfile_getb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide (g_config)-1 downto 0);
-    regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide(g_config)-1 downto 0);
+    regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide (g_config)-1 downto 0);
     regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     regfile_bakb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
     

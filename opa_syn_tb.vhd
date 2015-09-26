@@ -52,8 +52,8 @@ architecture rtl of opa_syn_tb is
     log_width  =>  5, -- 32-bit CPU
     adr_width  => 32, -- 32-bit address space
     num_fetch  =>  4, -- fetch  4 instructions per clock
-    num_rename =>  4, -- rename 3 instructions per clock
-    num_stat   => 28, -- schedule 27 instructions at once
+    num_rename =>  3, -- rename 3 instructions per clock
+    num_stat   => 27, -- schedule 27 instructions at once
     num_fast   =>  2, -- execute 2 fast instructions per clock
     num_slow   =>  1, -- execute 1 slow instruction per clock
     ieee_fp    => false, -- hell no

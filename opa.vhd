@@ -70,6 +70,7 @@ end opa;
 
 architecture rtl of opa is
 
+  constant c_fetchers  : natural := f_opa_fetchers (g_config);
   constant c_renamers  : natural := f_opa_renamers (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_num_fast  : natural := f_opa_num_fast (g_config);
@@ -92,7 +93,7 @@ architecture rtl of opa is
   
   signal predict_icache_pc      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal predict_decode_hit     : std_logic;
-  signal predict_decode_jump    : std_logic_vector(c_renamers-1 downto 0);
+  signal predict_decode_jump    : std_logic_vector(c_fetchers-1 downto 0);
 
   signal icache_predict_stall   : std_logic;
   signal icache_decode_stb      : std_logic;
@@ -104,7 +105,7 @@ architecture rtl of opa is
   signal decode_predict_ret     : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal decode_predict_fault   : std_logic;
   signal decode_predict_return  : std_logic;
-  signal decode_predict_jump    : std_logic_vector(c_renamers-1 downto 0);
+  signal decode_predict_jump    : std_logic_vector(c_fetchers-1 downto 0);
   signal decode_predict_source  : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal decode_predict_target  : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal decode_icache_stall    : std_logic;
