@@ -366,9 +366,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
-    ldst.size   := c_opa_ldst_byte;
+    ldst.store  := '0';
     ldst.sext   := '1';
-    slow.mode   := c_opa_slow_load;
+    ldst.size   := c_opa_ldst_byte;
+    slow.mode   := c_opa_slow_ldst;
     slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
@@ -381,9 +382,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
-    ldst.size   := c_opa_ldst_half;
+    ldst.store  := '0';
     ldst.sext   := '1';
-    slow.mode   := c_opa_slow_load;
+    ldst.size   := c_opa_ldst_half;
+    slow.mode   := c_opa_slow_ldst;
     slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
@@ -396,9 +398,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
-    ldst.size   := c_opa_ldst_word;
+    ldst.store  := '0';
     ldst.sext   := '1';
-    slow.mode   := c_opa_slow_load;
+    ldst.size   := c_opa_ldst_word;
+    slow.mode   := c_opa_slow_ldst;
     slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
@@ -411,9 +414,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
-    ldst.size   := c_opa_ldst_byte;
+    ldst.store  := '0';
     ldst.sext   := '0';
-    slow.mode   := c_opa_slow_load;
+    ldst.size   := c_opa_ldst_byte;
+    slow.mode   := c_opa_slow_ldst;
     slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
@@ -426,9 +430,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_itype(x);
-    ldst.size   := c_opa_ldst_half;
+    ldst.store  := '0';
     ldst.sext   := '0';
-    slow.mode   := c_opa_slow_load;
+    ldst.size   := c_opa_ldst_half;
+    slow.mode   := c_opa_slow_ldst;
     slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
@@ -441,9 +446,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_stype(x);
-    ldst.size   := c_opa_ldst_byte;
+    ldst.store  := '1';
     ldst.sext   := '-';
-    slow.mode   := c_opa_slow_store;
+    ldst.size   := c_opa_ldst_byte;
+    slow.mode   := c_opa_slow_ldst;
     slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
@@ -456,9 +462,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_stype(x);
-    ldst.size   := c_opa_ldst_half;
+    ldst.store  := '1';
     ldst.sext   := '-';
-    slow.mode   := c_opa_slow_store;
+    ldst.size   := c_opa_ldst_half;
+    slow.mode   := c_opa_slow_ldst;
     slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);
@@ -471,9 +478,10 @@ package body opa_isa_pkg is
     variable op    : t_opa_op;
   begin
     op := f_parse_stype(x);
-    ldst.size   := c_opa_ldst_word;
+    ldst.store  := '1';
     ldst.sext   := '-';
-    slow.mode   := c_opa_slow_store;
+    ldst.size   := c_opa_ldst_word;
+    slow.mode   := c_opa_slow_ldst;
     slow.raw    := f_opa_slow_from_ldst(ldst);
     op.fast     := '0';
     op.arg      := f_opa_arg_from_slow(slow);

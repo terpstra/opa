@@ -151,18 +151,8 @@ begin
     s_product(2*c_reg_wide-1 downto c_reg_wide);
   
   -- Hand over memory accesses to the L1d
-  with r_mode1 select
-  l1d_stb_o <= 
-    r_stb when c_opa_slow_load,
-    r_stb when c_opa_slow_store,
-    '0'   when others;
-  
-  with r_mode1 select
-  l1d_we_o <=
-    '1' when c_opa_slow_store,
-    '0' when c_opa_slow_load,
-    '-' when others;
-  
+  l1d_stb_o    <= r_stb when r_mode1=c_opa_slow_ldst else '0';
+  l1d_we_o     <= r_ldst.store;
   l1d_sext_o   <= r_ldst.sext;
   l1d_size_o   <= r_ldst.size;
   l1d_addr_o   <= std_logic_vector(signed(r_rega) + signed(r_imm));
@@ -200,7 +190,7 @@ begin
   with r_mode3 select
   regfile_regx_o <=
     s_mul_out       when c_opa_slow_mul,
-    l1d_data_i      when c_opa_slow_load,
+    l1d_data_i      when c_opa_slow_ldst,
     r_shout         when c_opa_slow_shift,
     (others => '-') when others;
 

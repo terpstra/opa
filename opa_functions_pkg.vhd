@@ -190,8 +190,8 @@ package opa_functions_pkg is
   
   constant c_opa_slow_mul   : std_logic_vector(1 downto 0) := "00";
   constant c_opa_slow_shift : std_logic_vector(1 downto 0) := "01";
-  constant c_opa_slow_load  : std_logic_vector(1 downto 0) := "10";
-  constant c_opa_slow_store : std_logic_vector(1 downto 0) := "11";
+  constant c_opa_slow_ldst  : std_logic_vector(1 downto 0) := "10";
+  constant c_opa_slow_sext  : std_logic_vector(1 downto 0) := "11";
   
   -- !!! consider trying to decode operations into distinct fields
   -- we already put this into a dpram, so width is fairly cheap
@@ -220,8 +220,9 @@ package opa_functions_pkg is
   constant c_opa_ldst_quad : std_logic_vector(1 downto 0) := "11";
   
   type t_opa_ldst is record
-    size   : std_logic_vector(1 downto 0); -- 1,2,4,8
+    store  : std_logic;
     sext   : std_logic;
+    size   : std_logic_vector(1 downto 0); -- 1,2,4,8
   end record t_opa_ldst;
   
   -- Encode to/from types
@@ -797,7 +798,8 @@ package body opa_functions_pkg is
   function f_opa_slow_from_ldst (x : t_opa_ldst)  return std_logic_vector is
     variable result : std_logic_vector(5 downto 0) := (others => '-');
   begin
-    result(0) := x.sext;
+    result(0) := x.store;
+    result(1) := x.sext;
     result(3 downto 2) := x.size;
     return result;
   end f_opa_slow_from_ldst;
@@ -842,8 +844,9 @@ package body opa_functions_pkg is
   function f_opa_ldst_from_slow (x : std_logic_vector(5 downto 0)) return t_opa_ldst is
     variable result : t_opa_ldst;
   begin
-    result.sext := x(0);
-    result.size := x(3 downto 2);
+    result.store := x(0);
+    result.sext  := x(1);
+    result.size  := x(3 downto 2);
     return result;
   end f_opa_ldst_from_slow;
 
