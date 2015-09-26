@@ -418,10 +418,23 @@ begin
   s_complete <= s_final and not std_logic_vector(unsigned(s_final) + 1);
   s_new_final <= s_final and not s_nodep;
   
+  -- !!! need to speed up eu_oldest_o
+  -- one idea: pre-decode how it would respond to r_retry, thus:
+  -- consider one step earlier, what can kill off r_schedule3s before it reaches final state
+  --  s_nodep, should not matter; prior is also not final
+  --  s_retry, this i will consider
+  --  s_alias, this i must also consider
+  
   -- Determine if the execution window should be shifted
   s_stall  <= not f_opa_and(s_final(c_decoders-1 downto 0));
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
+  
+  -- BUG?! s_complete above is correct
+  -- BUT: just because all priors are complete does not mean
+  --      that i myself am still run! i might have been wiped from r_schedule3?
+  --      check also: s_nodep and s_alias ... might these mean i break?
+  --      we need oldest_i to mean not only you are the oldest, but also you are alive!
   
   -- Let EUs know if they are the oldest incomplete operation
   -- ie: they can cause side effects
