@@ -54,6 +54,30 @@ package opa_components_pkg is
       w_data_i : in  std_logic_vector(g_width-1 downto 0));
   end component;
   
+  -- Inputs are registered
+  -- Read output from a port during a write is undefined
+  -- Simultaneous write to the same address writes 'X's
+  -- Data read from one port while written by another outputs 'X'
+  component opa_tdpram is
+    generic(
+      g_width  : natural;
+      g_size   : natural;
+      g_hunks  : natural := 1);
+    port(
+      clk_i    : in  std_logic;
+      rst_n_i  : in  std_logic;
+      a_wen_i  : in  std_logic;
+      a_sel_i  : in  std_logic_vector(g_hunks-1 downto 0) := (others => '1');
+      a_addr_i : in  std_logic_vector(f_opa_log2(g_size)-1 downto 0);
+      a_data_i : in  std_logic_vector(g_hunks*g_width-1 downto 0);
+      a_data_o : out std_logic_vector(g_hunks*g_width-1 downto 0);
+      b_wen_i  : in  std_logic;
+      b_sel_i  : in  std_logic_vector(g_hunks-1 downto 0) := (others => '1');
+      b_addr_i : in  std_logic_vector(f_opa_log2(g_size)-1 downto 0);
+      b_data_i : in  std_logic_vector(g_hunks*g_width-1 downto 0);
+      b_data_o : out std_logic_vector(g_hunks*g_width-1 downto 0));
+  end component;
+  
   -- Inhibit optimization between these points
   component opa_lcell is
     port(

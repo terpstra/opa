@@ -8,6 +8,7 @@ set_global_assignment -name VHDL_FILE ../opa_functions_pkg.vhd
 set_global_assignment -name VHDL_FILE ../opa_components_pkg.vhd
 set_global_assignment -name VHDL_FILE ../opa_isa_pkg_lm32.vhd
 set_global_assignment -name VHDL_FILE ../opa_dpram_altera.vhd
+set_global_assignment -name VHDL_FILE ../opa_tdpram.vhd
 set_global_assignment -name VHDL_FILE ../opa_lcell_altera.vhd
 set_global_assignment -name VHDL_FILE ../opa_prim_ternary.vhd
 set_global_assignment -name VHDL_FILE ../opa_prim_mul.vhd

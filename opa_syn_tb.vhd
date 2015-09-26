@@ -59,6 +59,9 @@ architecture rtl of opa_syn_tb is
     ieee_fp    => false, -- hell no
     dc_ways    =>  2, -- keep the size down; only 2-way L1d
     dtlb_ways  =>  1);-- direct mapped TLB
+  
+  -- How many words to run it with?
+  constant c_log_ram : natural := 13;
 
   component pll is
     port(
@@ -90,29 +93,22 @@ architecture rtl of opa_syn_tb is
   signal r_gate   : std_logic;
   signal clk      : std_logic;
   
-  -- Memory
-  constant c_log_ram : natural := 13;
-  type word_t is array (3 downto 0) of std_logic_vector(7 downto 0);
-  type ram_t  is array (2**c_log_ram-1 downto 0) of word_t;
-  
-  signal ram   : ram_t;
-  signal i_idx : unsigned(c_log_ram-1 downto 0);
-  signal d_idx : unsigned(c_log_ram-1 downto 0);
-  
   -- OPA signals
   signal i_cyc  : std_logic;
   signal i_stb  : std_logic;
   signal i_ack  : std_logic;
   signal i_addr : std_logic_vector(31 downto 0);
-  signal i_dat  : word_t;  
+  signal i_dat  : std_logic_vector(31 downto 0); 
   signal d_cyc  : std_logic;
   signal d_stb  : std_logic;
   signal d_we   : std_logic;
   signal d_ack  : std_logic;
   signal d_addr : std_logic_vector(31 downto 0);
   signal d_sel  : std_logic_vector( 3 downto 0);
-  signal d_dati : word_t;
-  signal d_dato : word_t;
+  signal d_dati : std_logic_vector(31 downto 0);
+  signal d_dato : std_logic_vector(31 downto 0);
+  signal s_led  : std_logic_vector( 2 downto 0);
+  signal d_wem  : std_logic;
 
 begin
 
@@ -221,66 +217,55 @@ begin
       g_config => c_opa_bemicro,
       g_target => c_opa_cyclone_v)
     port map(
-      clk_i                  => clk,
-      rst_n_i                => rstn,
-      i_cyc_o                => i_cyc,
-      i_stb_o                => i_stb,
-      i_stall_i              => '0',
-      i_ack_i                => i_ack,
-      i_err_i                => '0',
-      i_addr_o               => i_addr,
-      i_data_i(31 downto 24) => i_dat(3),
-      i_data_i(23 downto 16) => i_dat(2),
-      i_data_i(15 downto  8) => i_dat(1),
-      i_data_i( 7 downto  0) => i_dat(0),
-      d_cyc_o                => d_cyc,
-      d_stb_o                => d_stb,
-      d_we_o                 => d_we,
-      d_stall_i              => '0',
-      d_ack_i                => d_ack,
-      d_err_i                => '0',
-      d_addr_o               => d_addr,
-      d_sel_o                => d_sel,
-      d_data_o(31 downto 24) => d_dato(3),
-      d_data_o(23 downto 16) => d_dato(2),
-      d_data_o(15 downto  8) => d_dato(1),
-      d_data_o( 7 downto  0) => d_dato(0),
-      d_data_i(31 downto 24) => d_dati(3),
-      d_data_i(23 downto 16) => d_dati(2),
-      d_data_i(15 downto  8) => d_dati(1),
-      d_data_i( 7 downto  0) => d_dati(0),
-      "not"(status_o)        => led(2 downto 0));
+      clk_i     => clk,
+      rst_n_i   => rstn,
+      i_cyc_o   => i_cyc,
+      i_stb_o   => i_stb,
+      i_stall_i => '0',
+      i_ack_i   => i_ack,
+      i_err_i   => '0',
+      i_addr_o  => i_addr,
+      i_data_i  => i_dat,
+      d_cyc_o   => d_cyc,
+      d_stb_o   => d_stb,
+      d_we_o    => d_we,
+      d_stall_i => '0',
+      d_ack_i   => d_ack,
+      d_err_i   => '0',
+      d_addr_o  => d_addr,
+      d_sel_o   => d_sel,
+      d_data_o  => d_dato,
+      d_data_i  => d_dati,
+      status_o  => s_led);
+  
+  led(2) <= '0' when s_led(2)='1' else 'Z';
+  led(1) <= '0' when s_led(1)='1' else 'Z';
+  led(0) <= '0' when s_led(0)='1' else 'Z';
+  d_wem <= d_cyc and d_stb and d_we;
+  
+  ram : opa_tdpram
+    generic map(
+      g_width => 8,
+      g_size  => 2**c_log_ram,
+      g_hunks => 4)
+    port map(
+      clk_i    => clk,
+      rst_n_i  => rstn,
+      a_wen_i  => '0',
+      a_addr_i => i_addr(c_log_ram+1 downto 2),
+      a_data_i => (others => '0'),
+      a_data_o => i_dat,
+      b_wen_i  => d_wem,
+      b_sel_i  => d_sel,
+      b_addr_i => d_addr(c_log_ram+1 downto 2),
+      b_data_i => d_dato,
+      b_data_o => d_dati);
 
-   i_idx <= unsigned(i_addr(c_log_ram+1 downto 2));
-   ibus : process(clk) is
-   begin
-     if rising_edge(clk) then
-       i_dat <= ram(to_integer(i_idx));
-       i_ack <= i_cyc and i_stb;
-       -- !!! use the write port to fill memory from JTAG
-     end if;
-   end process;
-
-  d_idx <= unsigned(d_addr(c_log_ram+1 downto 2));
-  dbus : process(clk) is
+  idbus : process(clk) is
   begin
     if rising_edge(clk) then
-      if (d_cyc and d_stb and d_we) = '1' then
-        if d_sel(0) = '1' then
-          ram(to_integer(d_idx))(0) <= d_dato(0);
-        end if;
-        if d_sel(1) = '1' then
-          ram(to_integer(d_idx))(1) <= d_dato(1);
-        end if;
-        if d_sel(2) = '1' then
-          ram(to_integer(d_idx))(2) <= d_dato(2);
-        end if;
-        if d_sel(3) = '1' then
-          ram(to_integer(d_idx))(3) <= d_dato(3);
-        end if;
-      end if;
-      d_dati <= ram(to_integer(d_idx));
-      d_ack  <= d_cyc and d_stb;
+      i_ack <= i_cyc and i_stb;
+      d_ack <= d_cyc and d_stb;
     end if;
   end process;
    

@@ -16,6 +16,7 @@ for i in 				\
 	opa_components_pkg.vhd		\
 	opa_isa_pkg_$arch.vhd		\
 	opa_dpram.vhd			\
+	opa_tdpram.vhd			\
 	opa_lcell.vhd			\
 	opa_prim_ternary.vhd		\
 	opa_prim_mul.vhd		\
