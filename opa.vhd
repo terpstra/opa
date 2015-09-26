@@ -62,7 +62,10 @@ entity opa is
     d_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
     d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
     d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0));
+    d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      
+    -- Execution unit acitivity indication
+    status_o  : out std_logic_vector(g_config.num_fast+g_config.num_slow-1 downto 0));
 end opa;
 
 architecture rtl of opa is
@@ -632,4 +635,6 @@ begin
       l1d_valid_o => dbus_l1d_valid,
       l1d_data_o  => dbus_l1d_data);
   
+  status_o <= issue_regfile_rstb;
+
 end rtl;
