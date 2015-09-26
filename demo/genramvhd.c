@@ -236,14 +236,15 @@ int main(int argc, char **argv)
 	for (i = 0; i < size; ++i) {
 		if (i % columns == 0)
 			printf("    ");
+		
+		if (i == elements) {
+			printf("others => (others => '0'));\n");
+			break;
+		}
 
-		if (i < elements) {
-			if (fread(x, 1, width, f) != width) {
-				perror("fread");
-				return 1;
-			}
-		} else {
-			memset(x, 0, sizeof(x));
+		if (fread(x, 1, width, f) != width) {
+			perror("fread");
+			return 1;
 		}
 
 		printf("%*ld => x\"", i_width, i);
@@ -264,7 +265,7 @@ int main(int argc, char **argv)
 			printf(", ");
 	}
 	fclose(f);
-
+	
 	printf("end %s_pkg;\n", package);
 
 	return 0;
