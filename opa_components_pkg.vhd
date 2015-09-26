@@ -146,7 +146,7 @@ package opa_components_pkg is
       decode_stall_i  : in  std_logic;
       decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      decode_dat_o    : out std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
+      decode_dat_o    : out std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
       
       i_cyc_o         : out std_logic;
       i_stb_o         : out std_logic;
@@ -185,7 +185,7 @@ package opa_components_pkg is
       icache_stall_o   : out std_logic;
       icache_pc_i      : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       icache_pcn_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      icache_dat_i     : in  std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
+      icache_dat_i     : in  std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
       
       -- Feed data to the renamer
       rename_stb_o   : out std_logic;
@@ -203,7 +203,7 @@ package opa_components_pkg is
       -- Accept faults
       rename_fault_i : in  std_logic;
       rename_pc_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      rename_pcf_i   : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      rename_pcf_i   : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
       rename_pcn_i   : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       
       -- Give the regfile the information EUs will need for these operations
@@ -212,7 +212,7 @@ package opa_components_pkg is
       regfile_arg_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
       regfile_imm_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_imm_wide(g_config)-1 downto 0);
       regfile_pc_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto c_op_align);
-      regfile_pcf_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      regfile_pcf_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
       regfile_pcn_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
   end component;
   
@@ -256,11 +256,11 @@ package opa_components_pkg is
       issue_fault_i  : in  std_logic;
       issue_mask_i   : in  std_logic_vector(f_opa_renamers  (g_config)-1 downto 0);
       issue_pc_i     : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      issue_pcf_i    : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      issue_pcf_i    : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
       issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       decode_fault_o : out std_logic;
       decode_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      decode_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      decode_pcf_o   : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
       decode_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align));
   end component;
 
@@ -292,14 +292,14 @@ package opa_components_pkg is
       eu_retry_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
       eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
       
       -- Selected fault fed back up pipeline
       rename_fault_o : out std_logic;
       rename_mask_o  : out std_logic_vector(f_opa_renamers  (g_config)-1 downto 0);
       rename_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      rename_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      rename_pcf_o   : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
       rename_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       
       -- Regfile needs to fetch these for EU
@@ -330,7 +330,7 @@ package opa_components_pkg is
       decode_arg_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
       decode_imm_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
       decode_pc_i  : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
       decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
       -- Issue has dispatched these instructions to us
@@ -349,7 +349,7 @@ package opa_components_pkg is
       eu_arg_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
       eu_imm_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
       eu_pc_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
       eu_pcn_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
       
       -- Issue has indicated these EUs will write now
@@ -374,7 +374,7 @@ package opa_components_pkg is
       regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide  (g_config)-1 downto 0);
       regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide  (g_config)-1 downto 0);
       regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
       regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       regfile_regx_o : out std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
       
@@ -382,7 +382,7 @@ package opa_components_pkg is
       issue_retry_o  : out std_logic;
       issue_fault_o  : out std_logic;
       issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      issue_pcf_o    : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      issue_pcf_o    : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
       issue_pcn_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align));
   end component;
 
@@ -400,7 +400,7 @@ package opa_components_pkg is
       regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide  (g_config)-1 downto 0);
       regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide  (g_config)-1 downto 0);
       regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
       regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       regfile_regx_o : out std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
       
@@ -418,7 +418,7 @@ package opa_components_pkg is
       issue_retry_o  : out std_logic;
       issue_fault_o  : out std_logic;
       issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-      issue_pcf_o    : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+      issue_pcf_o    : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
       issue_pcn_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align));
   end component;
 

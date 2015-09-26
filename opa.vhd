@@ -77,7 +77,7 @@ architecture rtl of opa is
   constant c_num_back  : natural := f_opa_num_back (g_config);
   constant c_num_arch  : natural := f_opa_num_arch (g_config);
   constant c_num_stat  : natural := f_opa_num_stat (g_config);
-  constant c_num_fetch : natural := f_opa_num_fetch(g_config);
+  constant c_fetch_bits: natural := f_opa_fetch_bits(g_config);
   constant c_num_dway  : natural := f_opa_num_dway(g_config);
   constant c_back_wide : natural := f_opa_back_wide(g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
@@ -88,7 +88,7 @@ architecture rtl of opa is
   constant c_imm_wide  : natural := f_opa_imm_wide(g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide(g_config);
   constant c_ren_wide  : natural := f_opa_ren_wide(g_config);
-  constant c_fetch_wide  : natural := f_opa_fetch_wide(g_config);
+  constant c_fetch_align : natural := f_opa_fetch_align(g_config);
   
   signal predict_icache_pc      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal predict_decode_hit     : std_logic;
@@ -98,7 +98,7 @@ architecture rtl of opa is
   signal icache_decode_stb      : std_logic;
   signal icache_decode_pc       : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal icache_decode_pcn      : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal icache_decode_dat      : std_logic_vector(c_num_fetch*8-1 downto 0);
+  signal icache_decode_dat      : std_logic_vector(c_fetch_bits-1 downto 0);
   
   signal decode_predict_push    : std_logic;
   signal decode_predict_ret     : std_logic_vector(c_adr_wide-1 downto c_op_align);
@@ -123,13 +123,13 @@ architecture rtl of opa is
   signal decode_regfile_arg     : t_opa_matrix(c_renamers-1 downto 0, c_arg_wide-1 downto 0);
   signal decode_regfile_imm     : t_opa_matrix(c_renamers-1 downto 0, c_imm_wide-1 downto 0);
   signal decode_regfile_pc      : t_opa_matrix(c_renamers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal decode_regfile_pcf     : t_opa_matrix(c_renamers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal decode_regfile_pcf     : t_opa_matrix(c_renamers-1 downto 0, c_fetch_align-1 downto c_op_align);
   signal decode_regfile_pcn     : std_logic_vector(c_adr_wide-1 downto c_op_align);
   
   signal rename_decode_stall    : std_logic;
   signal rename_decode_fault    : std_logic;
   signal rename_decode_pc       : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal rename_decode_pcf      : std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal rename_decode_pcf      : std_logic_vector(c_fetch_align-1 downto c_op_align);
   signal rename_decode_pcn      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal rename_issue_stb       : std_logic;
   signal rename_issue_fast      : std_logic_vector(c_renamers-1 downto 0);
@@ -149,7 +149,7 @@ architecture rtl of opa is
   signal issue_rename_fault     : std_logic;
   signal issue_rename_mask      : std_logic_vector(c_renamers-1 downto 0);
   signal issue_rename_pc        : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal issue_rename_pcf       : std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal issue_rename_pcf       : std_logic_vector(c_fetch_align-1 downto c_op_align);
   signal issue_rename_pcn       : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal issue_regfile_rstb     : std_logic_vector(c_executers-1 downto 0);
   signal issue_regfile_geta     : std_logic_vector(c_executers-1 downto 0);
@@ -167,14 +167,14 @@ architecture rtl of opa is
   signal regfile_eu_arg         : t_opa_matrix(c_executers-1 downto 0, c_arg_wide-1  downto 0);
   signal regfile_eu_imm         : t_opa_matrix(c_executers-1 downto 0, c_imm_wide-1  downto 0);
   signal regfile_eu_pc          : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal regfile_eu_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal regfile_eu_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fetch_align-1 downto c_op_align);
   signal regfile_eu_pcn         : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   
   signal eu_regfile_regx        : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0);
   signal eu_issue_retry         : std_logic_vector(c_executers-1 downto 0);
   signal eu_issue_fault         : std_logic_vector(c_executers-1 downto 0);
   signal eu_issue_pc            : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal eu_issue_pcf           : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal eu_issue_pcf           : t_opa_matrix(c_executers-1 downto 0, c_fetch_align-1 downto c_op_align);
   signal eu_issue_pcn           : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   
   signal slow_l1d_stb           : std_logic_vector(c_num_slow-1 downto 0);
@@ -204,7 +204,7 @@ architecture rtl of opa is
   type t_arg  is array (c_executers-1 downto 0) of std_logic_vector(c_arg_wide -1 downto 0);
   type t_imm  is array (c_executers-1 downto 0) of std_logic_vector(c_imm_wide -1 downto 0);
   type t_pc   is array (c_executers-1 downto 0) of std_logic_vector(c_adr_wide -1 downto c_op_align);
-  type t_pcf  is array (c_executers-1 downto 0) of std_logic_vector(c_fetch_wide -1 downto c_op_align);
+  type t_pcf  is array (c_executers-1 downto 0) of std_logic_vector(c_fetch_align -1 downto c_op_align);
   type t_size is array (c_num_slow -1 downto 0) of std_logic_vector(1 downto 0);
   type t_adr  is array (c_num_slow -1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
   type t_dat  is array (c_num_slow -1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
@@ -232,16 +232,22 @@ begin
     report "num_stat must be divisible by num_rename"
     severity failure;
   
+  check_fetch :
+    assert (2**f_opa_log2(g_config.num_fetch) = g_config.num_fetch)
+    report "num_fetch must be a power of 2"
+    severity failure;
+  
+  check_rename :
     assert (g_config.num_rename >= 1)
     report "num_rename must be >= 1"
     severity failure;
   
-  check_stat :
+  check_fast :
     assert (g_config.num_fast >= 1)
     report "num_fast must be >= 1"
     severity failure;
 
-  check_ieu :
+  check_slow :
     assert (g_config.num_slow >= 1)
     report "num_slow must be >= 1"
     severity failure;
@@ -502,7 +508,7 @@ begin
       eu_issue_pc (u,b) <= s_eu_issue_pc (u)(b);
       eu_issue_pcn(u,b) <= s_eu_issue_pcn(u)(b);
     end generate;
-    pcf : for b in c_op_align to c_fetch_wide-1 generate
+    pcf : for b in c_op_align to c_fetch_align-1 generate
       s_regfile_eu_pcf(u)(b) <= regfile_eu_pcf(u,b);
       eu_issue_pcf(u,b) <= s_eu_issue_pcf(u)(b);
     end generate;

@@ -64,7 +64,7 @@ entity opa_decode is
     icache_stall_o   : out std_logic;
     icache_pc_i      : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
     icache_pcn_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    icache_dat_i     : in  std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
+    icache_dat_i     : in  std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
     
     -- Feed data to the renamer
     rename_stb_o     : out std_logic;
@@ -82,7 +82,7 @@ entity opa_decode is
     -- Accept faults
     rename_fault_i : in  std_logic;
     rename_pc_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-    rename_pcf_i   : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    rename_pcf_i   : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
     rename_pcn_i   : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
       
     -- Give the regfile the information EUs will need for these operations
@@ -91,7 +91,7 @@ entity opa_decode is
     regfile_arg_o    : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
     regfile_imm_o    : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_imm_wide(g_config)-1 downto 0);
     regfile_pc_o     : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto c_op_align);
-    regfile_pcf_o    : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    regfile_pcf_o    : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
     regfile_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
 end opa_decode;
 
@@ -102,7 +102,7 @@ architecture rtl of opa_decode is
   constant c_adr_wide : natural := f_opa_adr_wide(g_config);
   constant c_ren_wide : natural := f_opa_ren_wide(g_config);
   constant c_aux_wide : natural := f_opa_aux_wide(g_config);
-  constant c_fetch_wide : natural := f_opa_fetch_wide(g_config);
+  constant c_fetch_align : natural := f_opa_fetch_align(g_config);
   
   constant c_min_imm_pc : natural := f_opa_choose(c_imm_wide<c_adr_wide, c_imm_wide, c_adr_wide);
   
@@ -110,7 +110,7 @@ architecture rtl of opa_decode is
   
   type t_op_array  is array(natural range <>) of t_opa_op;
   type t_pc_array  is array(natural range <>) of std_logic_vector(c_adr_wide-1 downto c_op_align);
-  type t_pcf_array is array(natural range <>) of std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  type t_pcf_array is array(natural range <>) of std_logic_vector(c_fetch_align-1 downto c_op_align);
   type t_idx_array is array(natural range <>) of unsigned(c_ren_wide-1 downto 0);
   
   function f_flip(x : natural) return natural is
@@ -174,11 +174,11 @@ architecture rtl of opa_decode is
 begin
 
   -- Decode the flow control information from the instructions
-  s_pc_off <= unsigned(icache_pc_i(c_fetch_wide-1 downto c_op_align));
+  s_pc_off <= unsigned(icache_pc_i(c_fetch_align-1 downto c_op_align));
   s_mask_tail(0) <= '0';
   decode : for i in 0 to c_renamers-1 generate
     s_ops_in(i) <= f_decode(icache_dat_i((f_flip(i)+1)*c_op_wide-1 downto f_flip(i)*c_op_wide));
-    s_pc_in(i)  <= icache_pc_i(c_adr_wide-1 downto c_fetch_wide) & std_logic_vector(to_unsigned(i, c_ren_wide));
+    s_pc_in(i)  <= icache_pc_i(c_adr_wide-1 downto c_fetch_align) & std_logic_vector(to_unsigned(i, c_ren_wide));
     
     s_immb_in(i)(c_min_imm_pc-2 downto c_op_align) <= s_ops_in(i).immb(c_min_imm_pc-2 downto c_op_align);
     s_immb_in(i)(c_adr_wide-1 downto c_min_imm_pc-1) <= (others => s_ops_in(i).immb(c_min_imm_pc-1));
@@ -220,11 +220,11 @@ begin
   s_pcn_taken  <= s_static_target when s_use_static='1' else icache_pcn_i;
   
   -- Decode renamer's fault information
-  s_rename_source(c_adr_wide-1   downto c_fetch_wide) <= rename_pc_i(c_adr_wide-1 downto c_fetch_wide);
-  s_rename_source(c_fetch_wide-1 downto c_op_align)   <= rename_pcf_i;
+  s_rename_source(c_adr_wide-1   downto c_fetch_align) <= rename_pc_i(c_adr_wide-1 downto c_fetch_align);
+  s_rename_source(c_fetch_align-1 downto c_op_align)   <= rename_pcf_i;
   
   jumps : for i in 0 to c_renamers-1 generate
-    s_rename_jump(i) <= '1' when i = unsigned(rename_pc_i(c_fetch_wide-1 downto c_op_align)) else '0';
+    s_rename_jump(i) <= '1' when i = unsigned(rename_pc_i(c_fetch_align-1 downto c_op_align)) else '0';
   end generate;
   
   -- Feed back information to fetch
@@ -235,8 +235,8 @@ begin
   predict_target_o <= rename_pcn_i    when rename_fault_i='1' else s_static_target;
   
   -- Do we need to push the PC?
-  s_jal_pc(c_adr_wide  -1 downto c_fetch_wide) <= icache_pc_i(c_adr_wide-1 downto c_fetch_wide);
-  s_jal_pc(c_fetch_wide-1 downto c_op_align)   <= f_opa_1hot_dec(s_jump_taken);
+  s_jal_pc(c_adr_wide  -1 downto c_fetch_align) <= icache_pc_i(c_adr_wide-1 downto c_fetch_align);
+  s_jal_pc(c_fetch_align-1 downto c_op_align)   <= f_opa_1hot_dec(s_jump_taken);
   predict_push_o <= '0' when (s_push and s_jump_taken) = c_zeros else s_accept;
   predict_ret_o  <= std_logic_vector(1 + unsigned(s_jal_pc));
   
@@ -254,7 +254,7 @@ begin
     -- !!! avoid addition by constant via mux permutation
     s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(to_integer(s_idx(i)));
     s_pc (i) <= r_pc (i) when i < r_fill else s_pc_in(to_integer(s_idx(i)));
-    s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_wide-1 downto c_op_align);
+    s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_align-1 downto c_op_align);
   end generate;
   
   s_ops_sub <= unsigned(f_opa_1hot_dec(f_opa_reverse(s_jump_taken))) + s_pc_off;
@@ -362,7 +362,7 @@ begin
     pc : for b in c_op_align to c_adr_wide-1 generate
       regfile_pc_o(d,b) <= r_pc(d)(b);
     end generate;
-    pcf : for b in c_op_align to c_fetch_wide-1 generate
+    pcf : for b in c_op_align to c_fetch_align-1 generate
       regfile_pcf_o(d,b) <= r_pcf(d)(b);
     end generate;
   end generate;

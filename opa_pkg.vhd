@@ -35,6 +35,7 @@ package opa_pkg is
   type t_opa_config is record
     log_width  : natural; -- 2**log_width  = # of bits in registers
     adr_width  : natural; -- Virtual address space
+    num_fetch  : natural; -- # of instructions fetched concurrently
     num_rename : natural; -- # of instructions decoded concurrently
     num_stat   : natural; -- # of reservation stations
     num_fast   : natural; -- # of fast EUs (logic, add/sub, branch, ...)
@@ -45,16 +46,16 @@ package opa_pkg is
   end record;
   
   -- 16-bit processor, 1-issue,  6 stations, 1+1 EU, 4KB dcache
-  constant c_opa_tiny  : t_opa_config := ( 4, 16, 1,  6, 1, 1, false, 1, 1);
+  constant c_opa_tiny  : t_opa_config := ( 4, 16, 1, 1,  6, 1, 1, false, 1, 1);
   
   -- 32-bit processor, 2-issue, 18 stations, 1+1 EU, 8KB dcache
-  constant c_opa_small : t_opa_config := ( 5, 22, 2, 18, 1, 1, false, 2, 1);
+  constant c_opa_small : t_opa_config := ( 5, 22, 2, 2, 18, 1, 1, false, 2, 1);
   
   -- 32-bit processor, 4-issue, 28 stations, 2+1 EU, 16KB dcache
-  constant c_opa_large : t_opa_config := ( 5, 32, 4, 28, 2, 1, false, 4, 4);
+  constant c_opa_large : t_opa_config := ( 5, 32, 4, 4, 28, 2, 1, false, 4, 4);
   
   -- 64-bit processor, 4-issue, 48 stations, 2+2 EU, 32KB dcache
-  constant c_opa_huge  : t_opa_config := ( 6, 39, 4, 44, 2, 2, true,  8, 4);
+  constant c_opa_huge  : t_opa_config := ( 6, 39, 4, 4, 44, 2, 2, true,  8, 4);
   
   type t_opa_target is record
     lut_width  : natural; -- How many inputs to combine at once

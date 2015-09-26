@@ -50,7 +50,7 @@ entity opa_icache is
     decode_stall_i  : in  std_logic;
     decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
     decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    decode_dat_o    : out std_logic_vector(f_opa_num_fetch(g_config)*8-1 downto 0);
+    decode_dat_o    : out std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
     
     i_cyc_o         : out std_logic;
     i_stb_o         : out std_logic;
@@ -65,16 +65,17 @@ architecture rtl of opa_icache is
 
   constant c_reg_wide  : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
-  constant c_num_fetch : natural := f_opa_num_fetch(g_config);
-  constant c_num_load  : natural := c_num_fetch*8/c_reg_wide;
+  constant c_fetch_bits: natural := f_opa_fetch_bits(g_config);
+  constant c_num_load  : natural := c_fetch_bits/c_reg_wide;
   constant c_reg_align : natural := f_opa_log2(c_reg_wide/8);
   constant c_load_wide : natural := f_opa_log2(c_num_load);
   constant c_page_wide : natural := f_opa_log2(c_page_size);
-  constant c_fetch_wide: natural := f_opa_log2(c_num_fetch);
+  constant c_fetch_align: natural := f_opa_fetch_align(g_config);
+  constant c_fetch_bytes: natural := f_opa_fetch_bytes(g_config);
   constant c_tag_wide  : natural := c_adr_wide - c_page_wide;
-  constant c_size      : natural := c_page_size/c_num_fetch;
+  constant c_size      : natural := c_page_size/c_fetch_bytes;
   
-  constant c_fetch_adr : unsigned(c_adr_wide-1 downto 0) := to_unsigned(c_num_fetch, c_adr_wide);
+  constant c_fetch_adr : unsigned(c_adr_wide-1 downto 0) := to_unsigned(c_fetch_bytes, c_adr_wide);
   constant c_increment : unsigned(c_adr_wide-1 downto c_op_align) := c_fetch_adr(c_adr_wide-1 downto c_op_align);
   
   signal r_hit   : std_logic := '0';
@@ -87,12 +88,12 @@ architecture rtl of opa_icache is
   signal r_istb  : std_logic := '0';
   signal s_raddr : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal s_rtag  : std_logic_vector(c_adr_wide-1 downto c_page_wide);
-  signal s_rdata : std_logic_vector(c_num_fetch*8-1 downto 0);
-  signal r_rdata : std_logic_vector(c_num_fetch*8-1 downto 0);
-  signal s_wdata : std_logic_vector(c_num_fetch*8-1 downto 0);
-  signal r_wdata : std_logic_vector(c_num_fetch*8-1 downto 0);
-  signal s_rraw  : std_logic_vector(c_tag_wide+c_num_fetch*8-1 downto 0);
-  signal s_wraw  : std_logic_vector(c_tag_wide+c_num_fetch*8-1 downto 0);
+  signal s_rdata : std_logic_vector(c_fetch_bits-1 downto 0);
+  signal r_rdata : std_logic_vector(c_fetch_bits-1 downto 0);
+  signal s_wdata : std_logic_vector(c_fetch_bits-1 downto 0);
+  signal r_wdata : std_logic_vector(c_fetch_bits-1 downto 0);
+  signal s_rraw  : std_logic_vector(c_tag_wide+c_fetch_bits-1 downto 0);
+  signal s_wraw  : std_logic_vector(c_tag_wide+c_fetch_bits-1 downto 0);
   signal r_pc1   : std_logic_vector(c_adr_wide-1 downto c_op_align) := std_logic_vector(c_increment);
   signal r_pc2   : std_logic_vector(c_adr_wide-1 downto c_op_align) := (others => '0');
   signal r_load  : unsigned(c_load_wide-1 downto 0) := (others => '0');
@@ -114,10 +115,10 @@ begin
     port map(
       clk_i    => clk_i,
       rst_n_i  => rst_n_i,
-      r_addr_i => s_raddr(c_page_wide-1 downto c_fetch_wide),
+      r_addr_i => s_raddr(c_page_wide-1 downto c_fetch_align),
       r_data_o => s_rraw,
       w_en_i   => s_wen,
-      w_addr_i => r_pc2 (c_page_wide-1 downto c_fetch_wide),
+      w_addr_i => r_pc2 (c_page_wide-1 downto c_fetch_align),
       w_data_i => s_wraw);
   
   -- !!! add a valid bit; inverting the tag is temporary
@@ -170,10 +171,10 @@ begin
   
   -- When accepting data into the line, endian matters
   big : if c_big_endian generate
-    s_wdata <= r_wdata(c_num_fetch*8-c_reg_wide-1 downto 0) & i_data_i;
+    s_wdata <= r_wdata(c_fetch_bits-c_reg_wide-1 downto 0) & i_data_i;
   end generate;
   small : if not c_big_endian generate
-    s_wdata <= i_data_i & r_wdata(c_num_fetch*8-1 downto c_reg_wide);
+    s_wdata <= i_data_i & r_wdata(c_fetch_bits-1 downto c_reg_wide);
   end generate;
   
   refill : process(clk_i) is
@@ -192,9 +193,9 @@ begin
   i_stb_o <= r_istb;
   
   i_addr_o(c_reg_wide  -1 downto c_adr_wide-1) <= (others => r_pc2(r_pc2'left));
-  i_addr_o(c_adr_wide  -2 downto c_fetch_wide) <= r_pc2(c_adr_wide-2 downto c_fetch_wide);
+  i_addr_o(c_adr_wide  -2 downto c_fetch_align) <= r_pc2(c_adr_wide-2 downto c_fetch_align);
   -- !!! what if c_renamers*c_op_size <= c_reg_wide ... => make icache line larger
-  i_addr_o(c_fetch_wide-1 downto c_reg_align)  <= std_logic_vector(r_load);
+  i_addr_o(c_fetch_align-1 downto c_reg_align)  <= std_logic_vector(r_load);
   i_addr_o(c_reg_align -1 downto 0)            <= (others => '0');
   
   s_wen  <= i_ack_i and f_opa_bit(r_got = c_num_load-1);

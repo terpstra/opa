@@ -65,11 +65,11 @@ architecture rtl of opa_predict is
 
   constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
   constant c_renamers  : natural := f_opa_renamers(g_config);
-  constant c_num_fetch : natural := f_opa_num_fetch(g_config);
+  constant c_fetch_bytes : natural := f_opa_fetch_bytes(g_config);
   constant c_rs_wide   : natural := 5; -- can maybe bump to 8 if IPC gain is substantial
   constant c_rs_deep   : natural := 2**c_rs_wide;
   
-  constant c_fetch_adr : unsigned(c_adr_wide-1 downto 0) := to_unsigned(c_num_fetch, c_adr_wide);
+  constant c_fetch_adr : unsigned(c_adr_wide-1 downto 0) := to_unsigned(c_fetch_bytes, c_adr_wide);
   constant c_increment : unsigned(c_adr_wide-1 downto c_op_align) := c_fetch_adr(c_adr_wide-1 downto c_op_align);
   constant c_mask      : unsigned(c_adr_wide-1 downto c_op_align) := not (c_increment - 1);
 

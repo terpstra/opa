@@ -49,7 +49,7 @@ entity opa_slow is
     regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide  (g_config)-1 downto 0);
     regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide  (g_config)-1 downto 0);
     regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-    regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
     regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
     regfile_regx_o : out std_logic_vector(f_opa_reg_wide  (g_config)-1 downto 0);
     
@@ -67,7 +67,7 @@ entity opa_slow is
     issue_retry_o  : out std_logic;
     issue_fault_o  : out std_logic;
     issue_pc_o     : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-    issue_pcf_o    : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    issue_pcf_o    : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
     issue_pcn_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align));
 end opa_slow;
 

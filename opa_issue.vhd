@@ -63,14 +63,14 @@ entity opa_issue is
     eu_retry_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
-    eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
     eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
      
     -- Selected fault fed back up pipeline
     rename_fault_o : out std_logic;
     rename_mask_o  : out std_logic_vector(f_opa_renamers  (g_config)-1 downto 0);
     rename_pc_o    : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
-    rename_pcf_o   : out std_logic_vector(f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    rename_pcf_o   : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
     rename_pcn_o   : out std_logic_vector(f_opa_adr_wide  (g_config)-1 downto c_op_align);
     
     -- Regfile needs to fetch these for EU
@@ -98,7 +98,7 @@ architecture rtl of opa_issue is
   constant c_ren_wide  : natural := f_opa_ren_wide (g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide (g_config);
-  constant c_fetch_wide: natural := f_opa_fetch_wide(g_config);
+  constant c_fetch_align: natural := f_opa_fetch_align(g_config);
   constant c_renamers  : natural := f_opa_renamers (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_fast0     : natural := f_opa_fast_index(g_config, 0);
@@ -279,13 +279,13 @@ architecture rtl of opa_issue is
   signal r_fault_pipe    : std_logic := '0'; -- lasts two cycles
   signal r_fault_mask    : std_logic_vector(c_renamers  -1 downto 0);
   signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_pcf     : std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal r_fault_pcf     : std_logic_vector(c_fetch_align-1 downto c_op_align);
   signal r_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
   signal r_fault_slow_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_slow_pcf: std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal r_fault_slow_pcf: std_logic_vector(c_fetch_align-1 downto c_op_align);
   signal r_fault_slow_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
   signal r_fault_fast_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_fast_pcf: std_logic_vector(c_fetch_wide-1 downto c_op_align);
+  signal r_fault_fast_pcf: std_logic_vector(c_fetch_align-1 downto c_op_align);
   signal r_fault_fast_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
   
   function f_decoder_labels(renamers : natural) return t_opa_matrix is

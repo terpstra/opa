@@ -49,7 +49,7 @@ entity opa_regfile is
     decode_arg_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
     decode_imm_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
     decode_pc_i  : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
-    decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
     decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
     -- Issue has dispatched these instructions to us
@@ -68,7 +68,7 @@ entity opa_regfile is
     eu_arg_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_arg_wide  (g_config)-1 downto 0);
     eu_imm_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_imm_wide  (g_config)-1 downto 0);
     eu_pc_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
-    eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_wide(g_config)-1 downto c_op_align);
+    eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
     eu_pcn_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide  (g_config)-1 downto c_op_align);
     
     -- Issue has indicated these EUs will write now
@@ -88,13 +88,13 @@ architecture rtl of opa_regfile is
   constant c_back_wide : natural := f_opa_back_wide (g_config);
   constant c_reg_wide  : natural := f_opa_reg_wide  (g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide  (g_config);
-  constant c_fetch_wide: natural := f_opa_fetch_wide(g_config);
+  constant c_fetch_align: natural := f_opa_fetch_align(g_config);
   constant c_arg_wide  : natural := f_opa_arg_wide  (g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide  (g_config);
   constant c_imm_wide  : natural := f_opa_imm_wide  (g_config);
   constant c_ren_wide  : natural := f_opa_ren_wide  (g_config);
   constant c_pc_wide   : natural := c_adr_wide   - c_op_align;
-  constant c_pcf_wide  : natural := c_fetch_wide - c_op_align;
+  constant c_pcf_wide  : natural := c_fetch_align - c_op_align;
   
   constant c_aux_num_arg   : natural := c_renamers;
   constant c_aux_num_imm   : natural := c_renamers;
@@ -271,7 +271,7 @@ architecture rtl of opa_regfile is
   signal s_imm         : t_opa_matrix(c_executers-1 downto 0, c_imm_wide-1 downto 0);
   signal s_pc          : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   signal s_pcn         : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal s_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fetch_wide-1 downto c_op_align);
+  signal s_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fetch_align-1 downto c_op_align);
   signal s_imm_pad     : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0) := (others => (others => '0'));
   signal s_pc_pad      : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0) := (others => (others => '0'));
   
