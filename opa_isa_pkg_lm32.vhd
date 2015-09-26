@@ -49,8 +49,8 @@ package body opa_isa_pkg is
   
   function f_parse_rtype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
-    constant c_zero2 : std_logic_vector(20 downto 16) := (others => '0');
-    constant c_zero1 : std_logic_vector(10 downto  0) := (others => '0');
+    constant c_zero1 : std_logic_vector(20 downto 16) := (others => '0');
+    constant c_zero2 : std_logic_vector(10 downto  0) := (others => '0');
   begin
     result.bad   := f_opa_bit(x(20 downto 16) /= c_zero1 or x(10 downto 0) /= c_zero2);
     result.jump  := '0';
