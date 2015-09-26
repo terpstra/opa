@@ -34,61 +34,253 @@ use work.opa_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
+library altera_mf;
+use altera_mf.altera_mf_components.all;
+
 entity opa_syn_tb is
   port(
-    clk_i     : in  std_logic;
-    rstn_i    : in  std_logic;
-    i_cyc_o   : out std_logic;
-    i_stb_o   : out std_logic;
-    i_stall_i : in  std_logic;
-    i_ack_i   : in  std_logic;
-    i_data_i  : in  std_logic_vector(31 downto 0);
-    d_cyc_o   : out std_logic; 
-    d_stb_o   : out std_logic;
-    d_we_o    : out std_logic;
-    d_stall_i : in  std_logic;
-    d_ack_i   : in  std_logic;
-    d_sel_o   : out std_logic_vector(3 downto 0);
-    d_data_o  : out std_logic_vector(31 downto 0);
-    x_addr_o  : out std_logic_vector(31 downto 0));
+    osc : in  std_logic_vector(1 to 3);
+    dip : in  std_logic_vector(1 to 3);
+    but : in  std_logic_vector(1 to 2);
+    led : out std_logic_vector(7 downto 0) := (others => 'Z'));
 end opa_syn_tb;
 
 architecture rtl of opa_syn_tb is
 
-  -- not enough pins to hook these up
-  signal i_addr_o : std_logic_vector(31 downto 0);
-  signal d_data_i : std_logic_vector(31 downto 0);
-  signal d_addr_o : std_logic_vector(31 downto 0);
+  -- A 'large' OPA does not fit into the bemicro. Use a two-way L1d to fit.
+  constant c_opa_bemicro : t_opa_config := (
+    log_width  =>  5, -- 32-bit CPU
+    adr_width  => 32, -- 32-bit address space
+    num_decode =>  4, -- rename 3 instructions per clock
+    num_stat   => 28, -- schedule 27 instructions at once
+    num_fast   =>  2, -- execute 2 fast instructions per clock
+    num_slow   =>  1, -- execute 1 slow instruction per clock
+    ieee_fp    => false, -- hell no
+    dc_ways    =>  2, -- keep the size down; only 2-way L1d
+    dtlb_ways  =>  1);-- direct mapped TLB
+
+  component pll is
+    port(
+      refclk   : in  std_logic := 'X'; -- clk
+      rst      : in  std_logic := 'X'; -- reset
+      outclk_0 : out std_logic;        -- clk
+      locked   : out std_logic);       -- export
+  end component pll;
+
+  -- Reset
+  signal clk_free : std_logic;
+  signal locked   : std_logic;
+  signal s_rstin  : std_logic;
+  signal r_rstin  : std_logic_vector(2 downto 0) := (others => '0');
+  signal r_rsth   : std_logic_vector(2 downto 0) := (others => '0');
+  signal r_rstc   : unsigned(19 downto 0) := (others => '1');
+  signal r_rstn   : std_logic := '0';
+  signal r_rsttg  : std_logic_vector(4 downto 0) := (others => '0');
+  signal rstn     : std_logic;
   
+  -- Clocking
+  signal clk_100m : std_logic;
+  signal r_dip2   : std_logic_vector(dip'range);
+  signal r_dip1   : std_logic_vector(dip'range);
+  signal r_dip    : std_logic_vector(dip'range);
+  signal r_ena    : std_logic;
+  signal r_div    : unsigned(27 downto 0);
+  signal r_cnt    : unsigned(27 downto 0);
+  signal r_gate   : std_logic;
+  signal clk      : std_logic;
+  
+  -- Memory
+  constant c_log_ram : natural := 13;
+  type word_t is array (3 downto 0) of std_logic_vector(7 downto 0);
+  type ram_t  is array (2**c_log_ram-1 downto 0) of word_t;
+  
+  signal ram   : ram_t;
+  signal i_idx : unsigned(c_log_ram-1 downto 0);
+  signal d_idx : unsigned(c_log_ram-1 downto 0);
+  
+  -- OPA signals
+  signal i_cyc  : std_logic;
+  signal i_stb  : std_logic;
+  signal i_ack  : std_logic;
+  signal i_addr : std_logic_vector(31 downto 0);
+  signal i_dat  : word_t;  
+  signal d_cyc  : std_logic;
+  signal d_stb  : std_logic;
+  signal d_we   : std_logic;
+  signal d_ack  : std_logic;
+  signal d_addr : std_logic_vector(31 downto 0);
+  signal d_sel  : std_logic_vector( 3 downto 0);
+  signal d_dati : word_t;
+  signal d_dato : word_t;
+
 begin
+
+  -- The free running external clock
+  clk_free <= osc(1);
+
+  -- Derive an on-chip clock
+  clockpll : pll
+    port map(
+      refclk   => clk_free,
+      rst      => r_rsth(0),
+      outclk_0 => clk_100m,
+      locked   => locked);
+  
+  -- Pulse extend any short/glitchy lock loss to at least one clock period
+  s_rstin <= locked and but(1);
+  reset_in : process(clk_free, s_rstin) is
+  begin
+    if s_rstin = '0' then
+      r_rstin <= (others => '0');
+    elsif rising_edge(clk_free) then
+      r_rstin <= '1' & r_rstin(r_rstin'high downto r_rstin'low+1);
+    end if;
+  end process;
+
+  -- Safely transfer reset signal into free-running clock domain (meta-stable)
+  reset_meta : process(clk_free) is
+  begin
+    if rising_edge(clk_free) then
+      r_rsth <= r_rstin(0) & r_rsth(r_rsth'high downto r_rsth'low+1);
+    end if;
+  end process;
+  
+  -- Derive a reasonable duration reset (debounce)
+  reset : process(clk_free, r_rsth(0)) is
+  begin
+    if r_rsth(0) = '0' then
+      r_rstn <= '0';
+      r_rstc <= (others => '1');
+    elsif rising_edge(clk_free) then
+      if r_rstc = 0 then
+        r_rstn <= '1';
+        r_rstc <= (others => '0');
+      else
+        r_rstn <= '0';
+        r_rstc <= r_rstc - 1;
+      end if;
+    end if;
+  end process;
+  
+  -- Select clock divider
+  clocksel : process(clk_free) is
+  begin
+    if rising_edge(clk_free) then
+      -- Eliminate any meta-stability (still bounces, but does not matter)
+      r_dip2 <= dip;
+      r_dip1 <= r_dip2;
+      r_dip  <= r_dip1;
+      
+      -- Decode the target clock rate
+      if    r_dip(1) = '0' then -- dip0 => 100MHz
+        r_ena <= '1';
+        r_div <= to_unsigned(1, r_div'length);
+      elsif r_dip(2) = '0' then -- dip1 => 10kHz
+        r_ena <= '1';
+        r_div <= to_unsigned(10000, r_div'length);
+      elsif r_dip(3) = '0' then -- dip2 => 1Hz
+        r_ena <= '1';
+        r_div <= to_unsigned(100000000, r_div'length);
+      else                      -- no dip => clock disabled
+        r_ena <= '0';
+        r_div <= (others => '-');
+      end if;
+      
+      -- Gate the clock
+      if r_cnt >= r_div then
+        r_gate <= r_ena;
+        r_cnt  <= to_unsigned(1, r_cnt'length);
+      else
+        r_gate <= '0';
+        r_cnt  <= r_cnt + 1;
+      end if;
+    end if;
+  end process;
+
+  -- Use a hardware clock gate at the clock network source
+  clockmux : altclkctrl
+    generic map(
+      number_of_clocks => 1)
+    port map(
+      ena       => r_gate,
+      inclk(0)  => clk_100m,
+      outclk    => clk);
+  
+  -- Inject reset from free running clock to target domain (remove meta-stability)
+  reset_target : process(clk) is
+  begin
+    if rising_edge(clk) then
+      r_rsttg <= r_rstn & r_rsttg(r_rsttg'high downto r_rsttg'low+1);
+    end if;
+  end process;
+  rstn <= r_rsttg(0);
 
   opa_core : opa
     generic map(
-      g_config => c_opa_large,
+      g_config => c_opa_bemicro,
       g_target => c_opa_cyclone_v)
     port map(
-      clk_i     => clk_i,
-      rst_n_i   => rstn_i,
-      i_cyc_o   => i_cyc_o,
-      i_stb_o   => i_stb_o,
-      i_stall_i => i_stall_i,
-      i_ack_i   => i_ack_i,
-      i_err_i   => '0',
-      i_addr_o  => i_addr_o,
-      i_data_i  => i_data_i,
-      d_cyc_o   => d_cyc_o,
-      d_stb_o   => d_stb_o,
-      d_we_o    => d_we_o,
-      d_stall_i => d_stall_i,
-      d_ack_i   => d_ack_i,
-      d_err_i   => '0',
-      d_addr_o  => d_addr_o,
-      d_sel_o   => d_sel_o,
-      d_data_o  => d_data_o,
-      d_data_i  => d_data_i);
+      clk_i                  => clk,
+      rst_n_i                => rstn,
+      i_cyc_o                => i_cyc,
+      i_stb_o                => i_stb,
+      i_stall_i              => '0',
+      i_ack_i                => i_ack,
+      i_err_i                => '0',
+      i_addr_o               => i_addr,
+      i_data_i(31 downto 24) => i_dat(3),
+      i_data_i(23 downto 16) => i_dat(2),
+      i_data_i(15 downto  8) => i_dat(1),
+      i_data_i( 7 downto  0) => i_dat(0),
+      d_cyc_o                => d_cyc,
+      d_stb_o                => d_stb,
+      d_we_o                 => d_we,
+      d_stall_i              => '0',
+      d_ack_i                => d_ack,
+      d_err_i                => '0',
+      d_addr_o               => d_addr,
+      d_sel_o                => d_sel,
+      d_data_o(31 downto 24) => d_dato(3),
+      d_data_o(23 downto 16) => d_dato(2),
+      d_data_o(15 downto  8) => d_dato(1),
+      d_data_o( 7 downto  0) => d_dato(0),
+      d_data_i(31 downto 24) => d_dati(3),
+      d_data_i(23 downto 16) => d_dati(2),
+      d_data_i(15 downto  8) => d_dati(1),
+      d_data_i( 7 downto  0) => d_dati(0),
+      "not"(status_o)        => led(2 downto 0));
 
-  -- pin reduction hack
-  d_data_i <= i_data_i;
-  x_addr_o <= i_addr_o xor d_addr_o;
-  
+   i_idx <= unsigned(i_addr(c_log_ram+1 downto 2));
+   ibus : process(clk) is
+   begin
+     if rising_edge(clk) then
+       i_dat <= ram(to_integer(i_idx));
+       i_ack <= i_cyc and i_stb;
+       -- !!! use the write port to fill memory from JTAG
+     end if;
+   end process;
+
+  d_idx <= unsigned(d_addr(c_log_ram+1 downto 2));
+  dbus : process(clk) is
+  begin
+    if rising_edge(clk) then
+      if (d_cyc and d_stb and d_we) = '1' then
+        if d_sel(0) = '1' then
+          ram(to_integer(d_idx))(0) <= d_dato(0);
+        end if;
+        if d_sel(1) = '1' then
+          ram(to_integer(d_idx))(1) <= d_dato(1);
+        end if;
+        if d_sel(2) = '1' then
+          ram(to_integer(d_idx))(2) <= d_dato(2);
+        end if;
+        if d_sel(3) = '1' then
+          ram(to_integer(d_idx))(3) <= d_dato(3);
+        end if;
+      end if;
+      d_dati <= ram(to_integer(d_idx));
+      d_ack  <= d_cyc and d_stb;
+    end if;
+  end process;
+   
 end rtl;
