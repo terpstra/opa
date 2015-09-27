@@ -132,7 +132,7 @@ begin
       decode_jump_o <= (others => '0');
       decode_hit_o  <= '0';
     elsif rising_edge(clk_i) then
-      if decode_fault_i = '1' then
+      if decode_fault_i = '1' and decode_return_i = '0' then
         r_loop_pc   <= unsigned(decode_source_i);
         r_loop_jump <= decode_jump_i;
         r_loop_pcn  <= unsigned(decode_target_i);
