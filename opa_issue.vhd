@@ -416,6 +416,11 @@ begin
       report "issue: scheduled operation is not issued!"
       severity failure;
       
+      -- If it's issued, it better be scheduled or final!
+      assert (f_opa_or(s_issued and not v_seen and not r_final) = '0')
+      report "issue: issued operation is not scheduled!"
+      severity failure;
+      
       -- If it's scheduled, it better not be final!
       assert (f_opa_or(v_seen and r_final) = '0')
       report "issue: scheduled operation is final!"
@@ -535,7 +540,7 @@ begin
   -- Let EUs know if they are the oldest incomplete operation
   -- ie: they can cause side effects
   s_pred_complete <= s_complete(s_complete'high-1 downto s_complete'low) & '1';
-  s_am_oldest <= f_opa_product(r_schedule3s, s_pred_complete);
+  s_am_oldest <= f_opa_product(r_schedule3s, s_pred_complete); -- !!! why no wipe?
   -- Only the 0th fast and slow EUs can actually be oldest; help the synthesis tool optimize
   s_am_oldest_trim(c_fast0) <= s_am_oldest(c_fast0);
   s_am_oldest_trim(c_slow0) <= s_am_oldest(c_slow0);
@@ -678,8 +683,8 @@ begin
   stations_0 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_alias_cam <= f_shift(s_alias_cam, s_shift);
-      r_alias     <= f_shift(s_alias,     s_shift);
+      r_alias_cam <= f_opa_transpose(f_shift(f_opa_transpose(s_alias_cam), s_shift));
+      r_alias     <= f_shift(s_alias, s_shift);
     end if;
   end process;
   
@@ -775,8 +780,12 @@ begin
   stations_1 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
+      -- These also need to consider all three sources of reissue as they feed s_issue
+      --   s_pending_{fast,slow} already covers s_nodep
+      --   both are just issued now, so s_retry is impossible (retry=>scheduled=>issued=>!not issued now)
+      --   fast cannot be affected by load aliasing ... but slow can
       r_fast_issue <= s_fast_issue and s_pending_fast;
-      r_slow_issue <= s_slow_issue and s_pending_slow;
+      r_slow_issue <= s_slow_issue and s_pending_slow and not r_alias;
     end if;
   end process;
   
