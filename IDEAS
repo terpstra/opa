@@ -1,5 +1,4 @@
 TODO:
-	implement load-alias detection CAM [0]			2 evenings
 	add peripheral bus					2 evenings
 	write suduko solver for LM32				2 evenings
 	write a proper n-way icache				2 evenings
@@ -32,3 +31,6 @@ other stuff:
 IDEAS for demo:
 	boost switch -- 100MHz and 10kHz, 1Hz
 	3 LEDs = the EU strobe lines
+
+BUGS:
+	fetch can miss new PC when icache is stalled during mispredict
