@@ -138,7 +138,6 @@ architecture rtl of opa_l1d is
   type t_mux   is array(natural range <>) of std_logic_vector(c_log_reg_bytes  downto 0);
   type t_size  is array(natural range <>) of std_logic_vector(1 downto 0);
   
-  signal s_random_idx : std_logic_vector(f_opa_log2(c_num_ways)-1 downto 0);
   signal s_random : std_logic_vector(c_num_ways-1 downto 0);
   signal s_size   : t_size(c_num_slow-1 downto 0);
   signal s_vtag   : t_tag (c_num_slow-1 downto 0);
@@ -223,19 +222,30 @@ architecture rtl of opa_l1d is
   
 begin
 
-  -- We use random way cache replacement policy
-  -- LRU is not possible b/c it requires modification on every access
-  lfsr : opa_lfsr
-    generic map(
-      g_bits   => f_opa_log2(c_num_ways))
-    port map(
-      clk_i    => clk_i,
-      rst_n_i  => rst_n_i,
-      random_o => s_random_idx);
+  -- Arbitrate the ways if we have more than one to pick
+  many_ways : if c_num_ways > 1 generate
+    random : block is
+      signal s_random_idx : std_logic_vector(f_opa_log2(c_num_ways)-1 downto 0);
+    begin
+      -- We use random way cache replacement policy
+      -- LRU is not possible b/c it requires modification on every access
+      lfsr : opa_lfsr
+        generic map(
+          g_bits   => f_opa_log2(c_num_ways))
+        port map(
+          clk_i    => clk_i,
+          rst_n_i  => rst_n_i,
+          random_o => s_random_idx);
+      -- 1-hot decode the entropy to a way
+      way : for w in 0 to c_num_ways-1 generate
+        s_random(w) <= f_opa_bit(unsigned(s_random_idx) = w);
+      end generate;
+    end block;
+  end generate;
   
-  -- 1-hot decode the entropy to a way
-  way : for w in 0 to c_num_ways-1 generate
-    s_random(w) <= f_opa_bit(unsigned(s_random_idx) = w);
+  -- If only one way, well, use it.
+  one_way : if c_num_ways = 1 generate
+    s_random(0) <= '1';
   end generate;
 
   rdports : for p in 0 to c_num_slow-1 generate
