@@ -57,7 +57,7 @@ architecture rtl of opa_syn_tb is
     num_fast   =>  2, -- execute 2 fast instructions per clock
     num_slow   =>  1, -- execute 1 slow instruction per clock
     ieee_fp    => false, -- hell no
-    dc_ways    =>  2, -- keep the size down; only 2-way L1d
+    dc_ways    =>  1, -- keep the size down; only 2-way L1d
     dtlb_ways  =>  1);-- direct mapped TLB
   
   -- How many words to run it with?
