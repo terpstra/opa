@@ -326,6 +326,7 @@ begin
       predict_pc_i    => predict_icache_pc,
       decode_stb_o    => icache_decode_stb,
       decode_stall_i  => decode_icache_stall,
+      decode_fault_i  => decode_predict_fault,
       decode_pc_o     => icache_decode_pc,
       decode_pcn_o    => icache_decode_pcn,
       decode_dat_o    => icache_decode_dat,

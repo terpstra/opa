@@ -137,8 +137,10 @@ begin
         r_loop_jump <= decode_jump_i;
         r_loop_pcn  <= unsigned(decode_target_i);
       end if;
-      if icache_stall_i = '0' then
-        r_pc          <= s_pc(r_pc'range);
+      if decode_fault_i = '1' then
+        r_pc <= s_pc(r_pc'range);
+      elsif icache_stall_i = '0' then
+        r_pc <= s_pc(r_pc'range);
         if r_pc = r_loop_pc then
           decode_jump_o <= r_loop_jump;
           decode_hit_o  <= '1';

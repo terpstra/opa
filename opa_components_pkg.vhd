@@ -168,6 +168,7 @@ package opa_components_pkg is
       
       decode_stb_o    : out std_logic;
       decode_stall_i  : in  std_logic;
+      decode_fault_i  : in  std_logic;
       decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       decode_dat_o    : out std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);

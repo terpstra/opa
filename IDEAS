@@ -33,4 +33,7 @@ IDEAS for demo:
 	3 LEDs = the EU strobe lines
 
 BUGS:
-	fetch can miss new PC when icache is stalled during mispredict
+	return stack gets pushed and popped speculatively
+	zeroing memory gets into a bad feedbak loop with gaps
+		... old ordered patch does not help
+		=> need to kill ALL ordered ops

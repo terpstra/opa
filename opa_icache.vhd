@@ -48,6 +48,7 @@ entity opa_icache is
     
     decode_stb_o    : out std_logic;
     decode_stall_i  : in  std_logic;
+    decode_fault_i  : in  std_logic;
     decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
     decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
     decode_dat_o    : out std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
@@ -139,7 +140,9 @@ begin
       r_pc1 <= std_logic_vector(c_increment);
       r_pc2 <= (others => '0');
     elsif rising_edge(clk_i) then
-      if s_stall = '0' then
+      if decode_fault_i = '1' then
+        r_pc1 <= predict_pc_i;
+      elsif s_stall = '0' then
         r_hit <= f_opa_bit(r_pc1(s_rtag'range) = s_rtag) or s_repeat;
         r_pc1 <= predict_pc_i;
         r_pc2 <= r_pc1;
