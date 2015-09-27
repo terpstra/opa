@@ -108,6 +108,7 @@ architecture rtl of opa_issue is
   constant c_fast_zeros    : std_logic_vector(c_num_fast -1 downto 0) := (others => '0');
   constant c_slow_ones     : std_logic_vector(c_num_slow -1 downto 0) := (others => '1');
   constant c_slow_only     : std_logic_vector(c_executers-1 downto 0) := c_slow_ones & c_fast_zeros;
+  constant c_executer_ones : std_logic_vector(c_executers-1 downto 0) := (others => '1');
   
   constant c_init_bak : t_opa_matrix := f_opa_labels(c_num_stat, c_back_wide, c_num_arch);
 
@@ -330,6 +331,13 @@ architecture rtl of opa_issue is
 begin
 
   invariants : process(clk_i, rst_n_i) is
+    variable v_schedule0s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+    variable v_schedule1s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+    variable v_schedule2s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+    variable v_schedule3s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+    variable v_schedule4s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+    variable v_schedule2p : std_logic_vector(c_num_stat-1 downto 0);
+    variable v_seen       : std_logic_vector(c_num_stat-1 downto 0);
   begin
     if rst_n_i = '0' then
       -- don't care
@@ -342,6 +350,51 @@ begin
       -- r_ready => r_issued (s_issued b/c issued is actually the union of three vectors)
       assert (f_opa_or(s_ready and not s_issued) = '0')
       report "issue: ready operation that is not issued!"
+      severity failure;
+      
+      -- r_issued => r_ready for fast ops
+      assert (f_opa_or(s_issued and r_fast and not s_ready) = '0')
+      report "issue: issued fast operation is not ready!"
+      severity failure;
+      
+      -- Start checking the schedule
+      v_schedule0s := not f_opa_dup_row(c_executers, r_wipe) and f_shift(r_schedule0, r_shift);
+      v_schedule1s := not f_opa_dup_row(c_executers, r_wipe) and r_schedule1s;
+      v_schedule2s := not f_opa_dup_row(c_executers, r_wipe) and f_shift(r_schedule2, r_shift);
+      v_schedule3s := not f_opa_dup_row(c_executers, r_wipe) and r_schedule3s; 
+      v_schedule4s := not f_opa_dup_row(c_executers, r_wipe) and r_schedule4s;
+      
+      -- r_schedule2+ => r_ready for all ops
+      v_schedule2p := f_opa_product(f_opa_transpose(v_schedule2s or v_schedule3s or v_schedule4s), c_executer_ones);
+      assert (f_opa_or(v_schedule2p and not s_ready) = '0')
+      report "issue: scheduled op older than 2 cycles is not ready!"
+      severity failure;
+      
+      -- An instruction can only be in-flight for one EU at one offset at a time
+      v_seen := (others => '0');
+      for u in 0 to c_executers-1 loop
+        for s in 0 to c_num_stat-1 loop
+          assert (v_seen(s) = '0' or v_schedule0s(u,s) = '0') report "issue: double-scheduled operation" severity failure;
+          v_seen(s) := v_seen(s) or v_schedule0s(u,s);
+          assert (v_seen(s) = '0' or v_schedule1s(u,s) = '0') report "issue: double-scheduled operation" severity failure;
+          v_seen(s) := v_seen(s) or v_schedule1s(u,s);
+          assert (v_seen(s) = '0' or v_schedule2s(u,s) = '0') report "issue: double-scheduled operation" severity failure;
+          v_seen(s) := v_seen(s) or v_schedule2s(u,s);
+          assert (v_seen(s) = '0' or v_schedule3s(u,s) = '0') report "issue: double-scheduled operation" severity failure;
+          v_seen(s) := v_seen(s) or v_schedule3s(u,s);
+          assert (v_seen(s) = '0' or v_schedule4s(u,s) = '0') report "issue: double-scheduled operation" severity failure;
+          v_seen(s) := v_seen(s) or v_schedule4s(u,s);
+        end loop;
+      end loop;
+      
+      -- If it's scheduled, it better be issued!
+      assert (f_opa_or(v_seen and not s_issued) = '0')
+      report "issue: scheduled operation is not issued!"
+      severity failure;
+      
+      -- If it's scheduled, it better not be final!
+      assert (f_opa_or(v_seen and r_final) = '0')
+      report "issue: scheduled operation is final!"
       severity failure;
     end if;
   end process;
