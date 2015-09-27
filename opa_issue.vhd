@@ -296,6 +296,7 @@ architecture rtl of opa_issue is
   signal s_fault_out     : std_logic;
   signal r_fault_out     : std_logic := '0'; -- lasts one cycle
   signal r_fault_out1    : std_logic := '0'; -- one cycle delayed
+  signal r_fault_pipe    : std_logic := '0'; -- lasts two cycles
   signal r_fault_mask    : std_logic_vector(c_renamers  -1 downto 0);
   signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
   signal r_fault_pcf     : std_logic_vector(c_fetch_align-1 downto c_op_align);
@@ -560,8 +561,10 @@ begin
       r_fault_pending <= '0';
       r_fault_out     <= '0';
       r_fault_out1    <= '0';
+      r_fault_pipe    <= '0';
     elsif rising_edge(clk_i) then
       r_fault_out1 <= r_fault_out;
+      r_fault_pipe <= s_fault_out or r_fault_out;
       if r_fault_out = '1' then
         r_fault_in      <= (others => '0');
         r_fault_pending <= '0';
@@ -660,7 +663,7 @@ begin
       r_final       <= (others => '1');
       r_alias_valid <= (others => '0');
     elsif rising_edge(clk_i) then
-      if r_fault_out = '1' then -- synchronous clear
+      if r_fault_pipe = '1' then -- synchronous clear
         r_issued      <= (others => '1');
         r_final       <= (others => '1');
         r_alias_valid <= (others => '0');
@@ -675,8 +678,8 @@ begin
   stations_0 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_alias_cam   <= f_shift(s_alias_cam,   s_shift);
-      r_alias       <= f_shift(s_alias,       s_shift);
+      r_alias_cam <= f_shift(s_alias_cam, s_shift);
+      r_alias     <= f_shift(s_alias,     s_shift);
     end if;
   end process;
   
@@ -735,7 +738,7 @@ begin
       r_schedule3s <= (others => (others => '0'));
       r_schedule4s <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
-      if r_fault_out = '1' then
+      if r_fault_pipe = '1' then
         r_retry      <= (others => '0');
         r_ready      <= (others => '1');
         r_wipe       <= (others => '0');
