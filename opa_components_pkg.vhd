@@ -337,7 +337,12 @@ package opa_components_pkg is
       
       -- Regfile should capture result from EU
       regfile_wstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-      regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
+      regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      
+      -- Gather information from L1d about aliased loads
+      l1d_store_i    : in  std_logic;
+      l1d_load_i     : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
+      l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config)));
   end component;
   
   component opa_regfile is
@@ -476,19 +481,24 @@ package opa_components_pkg is
       slow_retry_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
       slow_data_o   : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
       
-      -- L1d requests action
-      dbus_req_o   : out t_opa_dbus_request;
-      dbus_radr_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      dbus_way_o   : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-      dbus_wadr_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      dbus_dirty_o : out std_logic_vector(c_dline_size            -1 downto 0);
-      dbus_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0);
+      -- Share information about the addresses we are loading/storing
+      issue_store_o : out std_logic;
+      issue_load_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
+      issue_addr_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
       
-      dbus_busy_i  : in  std_logic; -- can accept a req_i
-      dbus_we_i    : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-      dbus_adr_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      dbus_valid_i : in  std_logic_vector(c_dline_size            -1 downto 0);
-      dbus_data_i  : in  std_logic_vector(c_dline_size*8          -1 downto 0));
+      -- L1d requests action
+      dbus_req_o    : out t_opa_dbus_request;
+      dbus_radr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      dbus_way_o    : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+      dbus_wadr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      dbus_dirty_o  : out std_logic_vector(c_dline_size            -1 downto 0);
+      dbus_data_o   : out std_logic_vector(c_dline_size*8          -1 downto 0);
+      
+      dbus_busy_i   : in  std_logic; -- can accept a req_i
+      dbus_we_i     : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+      dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      dbus_valid_i  : in  std_logic_vector(c_dline_size            -1 downto 0);
+      dbus_data_i   : in  std_logic_vector(c_dline_size*8          -1 downto 0));
   end component;
 
   component opa_dbus is

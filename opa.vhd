@@ -89,6 +89,8 @@ architecture rtl of opa is
   constant c_imm_wide  : natural := f_opa_imm_wide(g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide(g_config);
   constant c_ren_wide  : natural := f_opa_ren_wide(g_config);
+  constant c_alias_high: natural := f_opa_alias_high(g_config);
+  constant c_alias_low : natural := f_opa_alias_low (g_config);
   constant c_fetch_align : natural := f_opa_fetch_align(g_config);
   
   signal predict_icache_pc      : std_logic_vector(c_adr_wide-1 downto c_op_align);
@@ -188,6 +190,9 @@ architecture rtl of opa is
   
   signal l1d_slow_retry         : std_logic_vector(c_num_slow-1 downto 0);
   signal l1d_slow_data          : t_opa_matrix(c_num_slow-1 downto 0, c_reg_wide-1 downto 0);
+  signal l1d_issue_store        : std_logic;
+  signal l1d_issue_load         : std_logic_vector(c_num_slow-1 downto 0);
+  signal l1d_issue_addr         : t_opa_matrix(c_num_slow-1 downto 0, c_alias_high downto c_alias_low);
   signal l1d_dbus_req           : t_opa_dbus_request;
   signal l1d_dbus_radr          : std_logic_vector(c_adr_wide-1 downto 0);
   signal l1d_dbus_way           : std_logic_vector(c_num_dway-1 downto 0);
@@ -455,7 +460,10 @@ begin
       regfile_baka_o => issue_regfile_baka,
       regfile_bakb_o => issue_regfile_bakb,
       regfile_wstb_o => issue_regfile_wstb,
-      regfile_bakx_o => issue_regfile_bakx);
+      regfile_bakx_o => issue_regfile_bakx,
+      l1d_store_i    => l1d_issue_store,
+      l1d_load_i     => l1d_issue_load,
+      l1d_addr_i     => l1d_issue_addr);
   
   regfile : opa_regfile
     generic map(
@@ -601,6 +609,9 @@ begin
       slow_oldest_i => slow_l1d_oldest,
       slow_retry_o  => l1d_slow_retry,
       slow_data_o   => l1d_slow_data,
+      issue_store_o => l1d_issue_store,
+      issue_load_o  => l1d_issue_load,
+      issue_addr_o  => l1d_issue_addr,
       dbus_req_o    => l1d_dbus_req,
       dbus_radr_o   => l1d_dbus_radr,
       dbus_way_o    => l1d_dbus_way,

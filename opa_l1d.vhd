@@ -54,19 +54,24 @@ entity opa_l1d is
     slow_retry_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
     slow_data_o   : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
     
-    -- L1d requests action
-    dbus_req_o   : out t_opa_dbus_request;
-    dbus_radr_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    dbus_way_o   : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-    dbus_wadr_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    dbus_dirty_o : out std_logic_vector(c_dline_size            -1 downto 0);
-    dbus_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0);
+    -- Share information about the addresses we are loading/storing
+    issue_store_o : out std_logic;
+    issue_load_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
+    issue_addr_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
     
-    dbus_busy_i  : in  std_logic; -- can accept a req_i
-    dbus_we_i    : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-    dbus_adr_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    dbus_valid_i : in  std_logic_vector(c_dline_size            -1 downto 0);
-    dbus_data_i  : in  std_logic_vector(c_dline_size*8          -1 downto 0));
+    -- L1d requests action
+    dbus_req_o    : out t_opa_dbus_request;
+    dbus_radr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    dbus_way_o    : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+    dbus_wadr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    dbus_dirty_o  : out std_logic_vector(c_dline_size            -1 downto 0);
+    dbus_data_o   : out std_logic_vector(c_dline_size*8          -1 downto 0);
+    
+    dbus_busy_i   : in  std_logic; -- can accept a req_i
+    dbus_we_i     : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
+    dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    dbus_valid_i  : in  std_logic_vector(c_dline_size            -1 downto 0);
+    dbus_data_i   : in  std_logic_vector(c_dline_size*8          -1 downto 0));
 end opa_l1d;
 
 architecture rtl of opa_l1d is
@@ -107,6 +112,8 @@ architecture rtl of opa_l1d is
   constant c_reg_wide      : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide      : natural := f_opa_adr_wide(g_config);
   constant c_imm_wide      : natural := f_opa_imm_wide(g_config);
+  constant c_alias_low     : natural := f_opa_alias_low(g_config);
+  constant c_alias_high    : natural := f_opa_alias_high(g_config);
   constant c_reg_bytes     : natural := c_reg_wide/8;
   constant c_log_reg_wide  : natural := f_opa_log2(c_reg_wide);
   constant c_log_reg_bytes : natural := c_log_reg_wide - 3;
@@ -141,6 +148,7 @@ architecture rtl of opa_l1d is
   signal s_bmask  : t_valid(c_num_slow-1 downto 0);
   signal s_shift  : t_off (c_num_slow-1 downto 0);
   signal s_adr    : t_opa_matrix(c_num_slow-1 downto 0, c_adr_wide-1 downto 0) := (others => (others => '0'));
+  signal s_aliasat: t_opa_matrix(c_num_slow-1 downto 0, c_alias_high downto c_alias_low);
   signal s_rent   : t_ent (c_num_slow*c_num_ways-1 downto 0);
   signal s_rdirty : std_logic_vector(c_num_slow*c_num_ways-1 downto 0);
   signal s_rvalid : t_valid(c_num_slow*c_num_ways-1 downto 0);
@@ -185,14 +193,12 @@ architecture rtl of opa_l1d is
   signal s_rtag_m    : t_opa_matrix(c_adr_wide-1 downto c_idx_high, c_num_slow*c_num_ways-1 downto 0);
   signal s_rvalid_m  : t_opa_matrix(c_dline_size  -1 downto 0, c_num_slow*c_num_ways-1 downto 0);
   signal s_rdat_m    : t_opa_matrix(c_dline_size*8-1 downto 0, c_num_slow*c_num_ways-1 downto 0);
+  signal s_alias  : std_logic_vector(c_num_slow-1 downto 0);
   signal s_busy   : std_logic_vector(c_num_slow-1 downto 0);
-  
-  
-  -- for range only??
-  signal s_woff   : std_logic_vector(c_idx_low  -1 downto 0);
   
   signal r_stb    : std_logic_vector(c_num_slow-1 downto 0);
   signal r_we     : std_logic_vector(c_num_slow-1 downto 0);
+  signal r_re     : std_logic_vector(c_num_slow-1 downto 0);
   signal r_vtag   : t_tag(c_num_slow-1 downto 0);
   signal r_vidx   : t_idx(c_num_slow-1 downto 0);
   signal r_voff   : t_off(c_num_slow-1 downto 0);
@@ -237,7 +243,7 @@ begin
     s_size(p) <= f_opa_select_row(slow_size_i, p);
     s_vtag(p) <= f_opa_select_row(slow_addr_i, p)(s_wtag'range);
     s_vidx(p) <= f_opa_select_row(slow_addr_i, p)(s_widx'range);
-    s_voff(p) <= f_opa_select_row(slow_addr_i, p)(s_woff'range);
+    s_voff(p) <= f_opa_select_row(slow_addr_i, p)(c_idx_low-1 downto 0);
     
     -- 1-hot decode the size
     size : for s in 0 to c_idx_low-1 generate
@@ -274,6 +280,11 @@ begin
     end generate;
     off_bits : for b in c_idx_low-1 downto c_log_reg_bytes generate
       s_adr(p,b) <= r_voff(p)(b);
+    end generate;
+    
+    -- Extract the bits which tell us if a store and load alias
+    alias_bits : for b in s_aliasat'range(2) generate
+      s_aliasat(p,b) <= s_adr(p,b);
     end generate;
     
     -- The L1d ways
@@ -355,6 +366,13 @@ begin
     end generate;
   end generate;
   
+  
+  -- Share information about potential aliasing with the issue stage
+  -- It does not matter if the write succeeds => restart aliased loads anyways
+  issue_store_o <= r_we(0);
+  issue_load_o  <= r_re;
+  issue_addr_o  <= s_aliasat;
+  
   -- We will execute stores from port 0
   
   -- Turn ...B into BBBB ..Hh into HhHh and ABCD into ABCD
@@ -433,11 +451,18 @@ begin
   dbus_dirty_o <= f_opa_product(s_rvalid_m, s_grant_way);
   dbus_data_o  <= f_opa_product(s_rdat_m,   s_grant_way);
   
+  -- If this load aliased a store at port 0, retry it
+  -- !!! note: misaligned accesses can trick this test, but they are forbidden anyways
+  aliases : for p in 0 to c_num_slow-1 generate
+    s_alias(p) <= r_we(0) and r_re(p) and
+                  f_opa_bit(f_opa_select_row(s_aliasat, p) = f_opa_select_row(s_aliasat, 0));
+  end generate;
+  
   -- Restart if load misses cache or store unacceptable
   -- We only accept a store if it is the oldest and dbus is not busy
   s_busy <= (others => dbus_busy_i);
   retry : for p in 0 to c_num_slow-1 generate
-    slow_retry_o(p) <= s_ldreq(p) when r_we(p)='0' else 
+    slow_retry_o(p) <= (s_alias(p) or s_ldreq(p)) when r_we(p)='0' else 
                        (not slow_oldest_i(p) or s_busy(p));
   end generate;
   
@@ -445,7 +470,8 @@ begin
   begin
     if rising_edge(clk_i) then
       r_stb   <= slow_stb_i;
-      r_we    <= slow_we_i and slow_stb_i;
+      r_we    <= slow_stb_i and     slow_we_i;
+      r_re    <= slow_stb_i and not slow_we_i;
       r_vtag  <= s_vtag;
       r_vidx  <= s_vidx;
       r_voff  <= s_voff;

@@ -84,7 +84,12 @@ entity opa_issue is
     
     -- Regfile should capture result from EU
     regfile_wstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0));
+    regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    
+    -- Gather information from L1d about aliased loads
+    l1d_store_i    : in  std_logic;
+    l1d_load_i     : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
+    l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config)));
 end opa_issue;
 
 architecture rtl of opa_issue is

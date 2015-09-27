@@ -67,6 +67,8 @@ package opa_functions_pkg is
   function f_opa_fetch_align(conf : t_opa_config) return natural;
   function f_opa_fetch_bytes(conf : t_opa_config) return natural;
   function f_opa_fetch_bits (conf : t_opa_config) return natural;
+  function f_opa_alias_high (conf : t_opa_config) return natural;
+  function f_opa_alias_low  (conf : t_opa_config) return natural;
   
   -- Mapping of execution units
   function f_opa_support_fp(conf : t_opa_config) return boolean;
@@ -413,6 +415,16 @@ package body opa_functions_pkg is
   begin
     return conf.ieee_fp;
   end f_opa_support_fp;
+  
+  function f_opa_alias_high (conf : t_opa_config) return natural is
+  begin
+    return f_opa_log2(c_page_size)-1;
+  end f_opa_alias_high;
+  
+  function f_opa_alias_low  (conf : t_opa_config) return natural is
+  begin
+    return conf.log_width-3;
+  end f_opa_alias_low;
   
   function f_opa_fast_index(conf : t_opa_config; u : natural) return natural is
   begin
