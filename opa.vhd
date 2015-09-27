@@ -193,6 +193,7 @@ architecture rtl of opa is
   signal l1d_issue_store        : std_logic;
   signal l1d_issue_load         : std_logic_vector(c_num_slow-1 downto 0);
   signal l1d_issue_addr         : t_opa_matrix(c_num_slow-1 downto 0, c_alias_high downto c_alias_low);
+  signal l1d_issue_mask         : t_opa_matrix(c_num_slow-1 downto 0, c_reg_wide/8-1 downto 0);
   signal l1d_dbus_req           : t_opa_dbus_request;
   signal l1d_dbus_radr          : std_logic_vector(c_adr_wide-1 downto 0);
   signal l1d_dbus_way           : std_logic_vector(c_num_dway-1 downto 0);
@@ -463,7 +464,8 @@ begin
       regfile_bakx_o => issue_regfile_bakx,
       l1d_store_i    => l1d_issue_store,
       l1d_load_i     => l1d_issue_load,
-      l1d_addr_i     => l1d_issue_addr);
+      l1d_addr_i     => l1d_issue_addr,
+      l1d_mask_i     => l1d_issue_mask);
   
   regfile : opa_regfile
     generic map(
@@ -612,6 +614,7 @@ begin
       issue_store_o => l1d_issue_store,
       issue_load_o  => l1d_issue_load,
       issue_addr_o  => l1d_issue_addr,
+      issue_mask_o  => l1d_issue_mask,
       dbus_req_o    => l1d_dbus_req,
       dbus_radr_o   => l1d_dbus_radr,
       dbus_way_o    => l1d_dbus_way,

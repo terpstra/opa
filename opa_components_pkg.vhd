@@ -342,7 +342,8 @@ package opa_components_pkg is
       -- Gather information from L1d about aliased loads
       l1d_store_i    : in  std_logic;
       l1d_load_i     : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
-      l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config)));
+      l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
+      l1d_mask_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)/8-1 downto 0));
   end component;
   
   component opa_regfile is
@@ -485,6 +486,7 @@ package opa_components_pkg is
       issue_store_o : out std_logic;
       issue_load_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
       issue_addr_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
+      issue_mask_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)/8-1 downto 0);
       
       -- L1d requests action
       dbus_req_o    : out t_opa_dbus_request;

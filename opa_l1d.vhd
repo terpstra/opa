@@ -58,6 +58,7 @@ entity opa_l1d is
     issue_store_o : out std_logic;
     issue_load_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
     issue_addr_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
+    issue_mask_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)/8-1 downto 0);
     
     -- L1d requests action
     dbus_req_o    : out t_opa_dbus_request;
@@ -144,6 +145,7 @@ architecture rtl of opa_l1d is
   signal s_vidx   : t_idx (c_num_slow-1 downto 0);
   signal s_voff   : t_off (c_num_slow-1 downto 0);
   signal s_sizes  : t_off (c_num_slow-1 downto 0);
+  signal s_wmask  : t_opa_matrix(c_num_slow-1 downto 0, c_reg_bytes-1 downto 0);
   signal s_bmask  : t_valid(c_num_slow-1 downto 0);
   signal s_shift  : t_off (c_num_slow-1 downto 0);
   signal s_adr    : t_opa_matrix(c_num_slow-1 downto 0, c_adr_wide-1 downto 0) := (others => (others => '0'));
@@ -201,6 +203,7 @@ architecture rtl of opa_l1d is
   signal r_vtag   : t_tag(c_num_slow-1 downto 0);
   signal r_vidx   : t_idx(c_num_slow-1 downto 0);
   signal r_voff   : t_off(c_num_slow-1 downto 0);
+  signal r_wmask  : t_opa_matrix(c_num_slow-1 downto 0, c_reg_bytes-1 downto 0);
   signal r_bmask  : t_valid(c_num_slow-1 downto 0);
   signal r_size   : t_size(c_num_slow-1 downto 0);
   signal r_shift  : t_off(c_num_slow-1 downto 0);
@@ -260,6 +263,19 @@ begin
       s_sizes(p)(s) <= f_opa_bit(unsigned(s_size(p)) = s);
     end generate;
     
+    -- Derive the word byte-select mask for the operation (for alias detection)
+    wmask_little : if not c_big_endian generate
+      wmask : for b in 0 to c_reg_bytes-1 generate
+        s_wmask(p,b) <= f_opa_bit(b - unsigned(s_voff(p)(c_log_reg_bytes-1 downto 0)) <= unsigned(s_sizes(p))-1);
+      end generate;
+    end generate;
+    wmask_big : if c_big_endian generate
+      wmask : for b in 0 to c_reg_bytes-1 generate
+        s_wmask(p,c_reg_bytes-1-b) <= f_opa_bit(b - unsigned(s_voff(p)(c_log_reg_bytes-1 downto 0)) <= unsigned(s_sizes(p))-1);
+      end generate;
+    end generate;
+    
+    -- !!! modify this to stay within the word
     -- Which bytes of the line get accessed?
     bmask_little : if not c_big_endian generate
       bmask : for b in 0 to c_line_bytes-1 generate
@@ -293,6 +309,9 @@ begin
     end generate;
     
     -- Extract the bits which tell us if a store and load alias
+    -- I would love to use a hash over the whole address, but then I would be screwed
+    -- if someone maps two virtual pages to the same physical address. If I had the 
+    -- physical address, I could certainly hash that, but it's too slow. Hrm.
     alias_bits : for b in s_aliasat'range(2) generate
       s_aliasat(p,b) <= s_adr(p,b);
     end generate;
@@ -330,6 +349,7 @@ begin
       -- Would this way be the victim on a refill?
       s_victimw(p,w) <= s_matchw(p,w) when s_match(p)='1' else s_random(w);
       
+      -- !!! modify this to stay within the word => rotate intra-word, rotate inter-word, never cross.
       -- Rotate read line data to align with requested load
       big_rotate : if c_big_endian generate
         s_rot(f_idx(p,w)) <= std_logic_vector(rotate_left (unsigned(s_rdat(f_idx(p,w))), to_integer(unsigned(r_shift(p)))*8));
@@ -376,16 +396,17 @@ begin
     end generate;
   end generate;
   
-  
   -- Share information about potential aliasing with the issue stage
   -- It does not matter if the write succeeds => restart aliased loads anyways
   issue_store_o <= r_we(0);
   issue_load_o  <= r_re;
   issue_addr_o  <= s_aliasat;
+  issue_mask_o  <= r_wmask;
   
   -- We will execute stores from port 0
   
   -- Turn ...B into BBBB ..Hh into HhHh and ABCD into ABCD
+  -- !!! change this to a rotation to match above
   s_0dat <= f_opa_select_row(slow_data_i, 0);
   wb_mux : for m in 0 to c_log_reg_bytes generate
     bits : for b in 0 to c_reg_wide-1 generate
@@ -462,10 +483,10 @@ begin
   dbus_data_o  <= f_opa_product(s_rdat_m,   s_grant_way);
   
   -- If this load aliased a store at port 0, retry it
-  -- !!! note: misaligned accesses can trick this test, but they are forbidden anyways
   aliases : for p in 0 to c_num_slow-1 generate
-    s_alias(p) <= r_we(0) and r_re(p) and
-                  f_opa_bit(f_opa_select_row(s_aliasat, p) = f_opa_select_row(s_aliasat, 0));
+    s_alias(p) <= r_we(0) and r_re(p) 
+                  and f_opa_bit(f_opa_select_row(s_aliasat, p) = f_opa_select_row(s_aliasat, 0))
+                  and f_opa_or(f_opa_select_row(r_wmask, p) and f_opa_select_row(r_wmask, 0));
   end generate;
   
   -- Restart if load misses cache or store unacceptable
@@ -485,6 +506,7 @@ begin
       r_vtag  <= s_vtag;
       r_vidx  <= s_vidx;
       r_voff  <= s_voff;
+      r_wmask <= s_wmask;
       r_bmask <= s_bmask;
       r_size  <= s_size;
       r_shift <= s_shift;

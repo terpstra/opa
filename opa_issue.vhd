@@ -89,7 +89,8 @@ entity opa_issue is
     -- Gather information from L1d about aliased loads
     l1d_store_i    : in  std_logic;
     l1d_load_i     : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
-    l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config)));
+    l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
+    l1d_mask_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)/8-1 downto 0));
 end opa_issue;
 
 architecture rtl of opa_issue is
@@ -105,6 +106,7 @@ architecture rtl of opa_issue is
   constant c_adr_wide  : natural := f_opa_adr_wide (g_config);
   constant c_alias_low : natural := f_opa_alias_low(g_config);
   constant c_alias_high: natural := f_opa_alias_high(g_config);
+  constant c_reg_bytes : natural := f_opa_reg_wide(g_config)/8;
   constant c_fetch_align: natural := f_opa_fetch_align(g_config);
   constant c_renamers  : natural := f_opa_renamers (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
@@ -266,9 +268,12 @@ architecture rtl of opa_issue is
   signal s_alias_write     : std_logic_vector(c_num_stat-1 downto 0);
   signal s_alias_valid     : std_logic_vector(c_num_stat-1 downto 0);
   signal r_alias_valid     : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
-  signal s_alias_cam_new   : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
-  signal s_alias_cam       : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
-  signal r_alias_cam       : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
+  signal s_alias_addr_new  : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
+  signal s_alias_addr      : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
+  signal r_alias_addr      : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
+  signal s_alias_mask_new  : t_opa_matrix(c_num_stat-1 downto 0, c_reg_bytes-1 downto 0);
+  signal s_alias_mask      : t_opa_matrix(c_num_stat-1 downto 0, c_reg_bytes-1 downto 0);
+  signal r_alias_mask      : t_opa_matrix(c_num_stat-1 downto 0, c_reg_bytes-1 downto 0);
   signal s_alias           : std_logic_vector(c_num_stat-1 downto 0);
   
   -- Determine if side effects are allowed
@@ -628,15 +633,18 @@ begin
   s_after_store <= std_logic_vector(unsigned(not s_store_schedule3s) + 1);
   
   -- Add new loads to the CAM
-  s_alias_write   <= f_opa_product(s_slow_schedule3s, l1d_load_i) and not r_wipe;
-  s_alias_valid   <= s_alias_write or r_alias_valid;
-  s_alias_cam_new <= f_opa_product(s_slow_schedule3s, l1d_addr_i);
-  s_alias_cam     <= f_opa_mux(s_alias_write, s_alias_cam_new, r_alias_cam);
+  s_alias_write    <= f_opa_product(s_slow_schedule3s, l1d_load_i) and not r_wipe;
+  s_alias_valid    <= s_alias_write or r_alias_valid;
+  s_alias_addr_new <= f_opa_product(s_slow_schedule3s, l1d_addr_i);
+  s_alias_mask_new <= f_opa_product(s_slow_schedule3s, l1d_mask_i);
+  s_alias_addr     <= f_opa_mux(s_alias_write, s_alias_addr_new, r_alias_addr);
+  s_alias_mask     <= f_opa_mux(s_alias_write, s_alias_mask_new, r_alias_mask);
   
   -- Process the load alias CAM
   alias_check : for s in 0 to c_num_stat-1 generate
-    s_alias(s) <= l1d_store_i and r_alias_valid(s) and s_after_store(s) and f_opa_bit(
-                  f_opa_select_row(r_alias_cam, s) = f_opa_select_row(l1d_addr_i, 0));
+    s_alias(s) <= l1d_store_i and r_alias_valid(s) and s_after_store(s)
+                  and f_opa_bit(f_opa_select_row(r_alias_addr, s) = f_opa_select_row(l1d_addr_i, 0))
+                  and f_opa_or(f_opa_select_row(r_alias_mask, s) and f_opa_select_row(l1d_mask_i, 0));
   end generate;
   
   -- Prepare decremented versions of the station references
@@ -688,8 +696,9 @@ begin
   stations_0 : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_alias_cam <= f_opa_transpose(f_shift(f_opa_transpose(s_alias_cam), s_shift));
-      r_alias     <= f_shift(s_alias, s_shift);
+      r_alias_addr <= f_opa_transpose(f_shift(f_opa_transpose(s_alias_addr), s_shift));
+      r_alias_mask <= f_opa_transpose(f_shift(f_opa_transpose(s_alias_mask), s_shift));
+      r_alias      <= f_shift(s_alias, s_shift);
     end if;
   end process;
   
