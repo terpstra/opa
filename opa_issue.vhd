@@ -104,7 +104,6 @@ architecture rtl of opa_issue is
   constant c_fast0     : natural := f_opa_fast_index(g_config, 0);
   constant c_slow0     : natural := f_opa_slow_index(g_config, 0);
   
-  constant c_decoder_zeros : std_logic_vector(c_renamers -1 downto 0) := (others => '0');
   constant c_stat_ones     : std_logic_vector(c_num_stat -1 downto 0) := (others => '1');
   constant c_fast_zeros    : std_logic_vector(c_num_fast -1 downto 0) := (others => '0');
   constant c_slow_ones     : std_logic_vector(c_num_slow -1 downto 0) := (others => '1');
@@ -220,6 +219,7 @@ architecture rtl of opa_issue is
   signal r_statb      : t_opa_matrix(c_num_stat-1 downto 0, c_stat_wide-1 downto 0) := (others => (others => '1'));
   -- These have 1 latency indexes (fed by skidpad)
   signal s_ready      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_ready_slow : std_logic_vector(c_num_stat-1 downto 0);
   signal s_new_ready  : std_logic_vector(c_num_stat-1 downto 0);
   signal r_ready      : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
   signal r_geta       : std_logic_vector(c_num_stat-1 downto 0);
@@ -276,7 +276,7 @@ architecture rtl of opa_issue is
   signal r_fault_pending : std_logic := '0';
   signal s_fault_out     : std_logic;
   signal r_fault_out     : std_logic := '0'; -- lasts one cycle
-  signal r_fault_pipe    : std_logic := '0'; -- lasts two cycles
+  signal r_fault_out1    : std_logic := '0'; -- one cycle delayed
   signal r_fault_mask    : std_logic_vector(c_renamers  -1 downto 0);
   signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
   signal r_fault_pcf     : std_logic_vector(c_fetch_align-1 downto c_op_align);
@@ -302,12 +302,13 @@ architecture rtl of opa_issue is
   end f_decoder_labels;
   constant c_decoder_labels : t_opa_matrix := f_decoder_labels(c_renamers);
   
-  function f_shift(x : std_logic_vector; s : std_logic) return std_logic_vector is
+  function f_shift(x : std_logic_vector; s : std_logic; fill : std_logic := '0') return std_logic_vector is
     alias y : std_logic_vector(x'high downto x'low) is x;
     variable result : std_logic_vector(y'range) :=  y;
   begin
     if s = '1' then 
-      result := c_decoder_zeros & y(y'high downto y'low+c_renamers);
+      result := (others => fill);
+      result(y'high-c_renamers downto y'low) := y(y'high downto y'low+c_renamers);
     end if;
     return result;
   end f_shift;
@@ -328,6 +329,23 @@ architecture rtl of opa_issue is
   
 begin
 
+  invariants : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      -- don't care
+    elsif rising_edge(clk_i) then
+      -- r_final => r_ready (s_ready b/c r_ready has indexes one cycle late)
+      assert (f_opa_or(r_final and not s_ready) = '0')
+      report "issue: final operation that is not ready!"
+      severity warning;
+    
+      -- r_ready => r_issued (s_issued b/c issued is actually the union of three vectors)
+      assert (f_opa_or(s_ready and not s_issued) = '0')
+      report "issue: ready operation that is not issued!"
+      severity failure;
+    end if;
+  end process;
+  
   -- Which stations are already issued?
   s_issued <= f_shift(r_fast_issue or r_slow_issue, r_shift) or r_issued;
 
@@ -404,10 +422,11 @@ begin
   --    => s_nodep is already considered via s_pending_fast
   --    => s_alias does not apply to fast instructions, only slow ones (loads)
   --    => s_retry is impossible => it implies simultaneous execution
-  s_ready <= not (s_nodep or s_alias or s_retry) and
-    ((f_opa_product(f_opa_transpose(r_schedule1s), c_slow_only) and not r_wipe)
-     or f_shift(r_ready, r_shift));
-  s_new_ready <= (s_fast_issue and s_pending_fast) or s_ready;
+  s_ready <= f_shift(r_ready, r_shift, r_fault_out1);
+  s_ready_slow <= 
+    not (s_nodep or s_alias or s_retry) and
+    (s_ready or (f_opa_product(f_opa_transpose(r_schedule1s), c_slow_only) and not r_wipe));
+  s_new_ready <= (s_fast_issue and s_pending_fast) or s_ready_slow;
   
   -- final must go low in all three cases, however not all must be considered for completeness/shift
   --   => s_nodep is irrevelant to completeness, because the (older) input already blocks complete
@@ -464,8 +483,9 @@ begin
       r_fault_in      <= (others => '0');
       r_fault_pending <= '0';
       r_fault_out     <= '0';
-      r_fault_pipe    <= '0';
+      r_fault_out1    <= '0';
     elsif rising_edge(clk_i) then
+      r_fault_out1 <= r_fault_out;
       if r_fault_out = '1' then
         r_fault_in      <= (others => '0');
         r_fault_pending <= '0';
@@ -475,7 +495,6 @@ begin
         r_fault_pending <= r_fault_pending or s_fault_pending;
         r_fault_out     <= s_fault_out;
       end if;
-      r_fault_pipe <= r_fault_out or s_fault_out;
     end if;
   end process;
   
@@ -545,7 +564,7 @@ begin
       r_issued <= (others => '1');
       r_final  <= (others => '1');
     elsif rising_edge(clk_i) then
-      if r_fault_pipe = '1' then -- synchronous clear
+      if r_fault_out = '1' then -- synchronous clear
         r_issued <= (others => '1');
         r_final  <= (others => '1');
       else
@@ -610,7 +629,7 @@ begin
       r_schedule3s <= (others => (others => '0'));
       r_schedule4s <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
-      if r_fault_pipe = '1' then
+      if r_fault_out = '1' then
         r_retry      <= (others => '0');
         r_ready      <= (others => '1');
         r_wipe       <= (others => '0');
