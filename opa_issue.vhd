@@ -261,10 +261,11 @@ architecture rtl of opa_issue is
   
   -- Load buffer CAM
   signal s_slow_schedule3s : t_opa_matrix(c_num_stat-1 downto 0, c_num_slow-1 downto 0);
+  signal s_store_schedule3s: std_logic_vector(c_num_stat-1 downto 0);
+  signal s_after_store     : std_logic_vector(c_num_stat-1 downto 0);
   signal s_alias_write     : std_logic_vector(c_num_stat-1 downto 0);
   signal s_alias_valid     : std_logic_vector(c_num_stat-1 downto 0);
   signal r_alias_valid     : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
-  -- !!! signal r_alias_pred      : std_logic_vector(c_num_stat-1 downto 0);
   signal s_alias_cam_new   : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
   signal s_alias_cam       : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
   signal r_alias_cam       : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
@@ -616,11 +617,15 @@ begin
   end process;
   
   -- Extract the slow unit schedule
-  slow_sched3 : for i in 0 to c_num_slow-1 generate
-    stat : for j in 0 to c_num_stat-1 generate
+  slow_sched3 : for j in 0 to c_num_stat-1 generate
+    ldst : for i in 0 to c_num_slow-1 generate
       s_slow_schedule3s(j,i) <= r_schedule3s(i+c_num_fast,j);
     end generate;
+    s_store_schedule3s(j) <= r_schedule3s(c_num_fast,j);
   end generate;
+  
+  -- Which operations come AFTER the store?
+  s_after_store <= std_logic_vector(unsigned(not s_store_schedule3s) + 1);
   
   -- Add new loads to the CAM
   s_alias_write   <= f_opa_product(s_slow_schedule3s, l1d_load_i) and not r_wipe;
@@ -630,7 +635,7 @@ begin
   
   -- Process the load alias CAM
   alias_check : for s in 0 to c_num_stat-1 generate
-    s_alias(s) <= l1d_store_i and r_alias_valid(s) and f_opa_bit(
+    s_alias(s) <= l1d_store_i and r_alias_valid(s) and s_after_store(s) and f_opa_bit(
                   f_opa_select_row(r_alias_cam, s) = f_opa_select_row(l1d_addr_i, 0));
   end generate;
   
