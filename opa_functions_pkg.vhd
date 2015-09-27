@@ -95,6 +95,7 @@ package opa_functions_pkg is
   
   function f_opa_match(x, y : t_opa_matrix) return t_opa_matrix; -- do any rows match?
   function f_opa_match_index(n : natural; x : t_opa_matrix) return t_opa_matrix;
+  function f_opa_mux(c : std_logic_vector; x, y : t_opa_matrix) return t_opa_matrix;
   function f_opa_compose(x : std_logic_vector; y : t_opa_matrix) return std_logic_vector;
   function f_opa_compose(x, y : t_opa_matrix) return t_opa_matrix;
   function f_opa_1hot_dec(x : std_logic_vector) return std_logic_vector;
@@ -630,6 +631,28 @@ package body opa_functions_pkg is
   begin
     return f_opa_match(c_labels, x);
   end f_opa_match_index;
+  
+  function f_opa_mux(c : std_logic_vector; x, y : t_opa_matrix) return t_opa_matrix is
+    variable result : t_opa_matrix(x'range(1), x'range(2));
+  begin
+    assert (x'low(1)  = y'low(1))  report "matrix-matrix row mismatch" severity failure;
+    assert (x'low(2)  = y'low(2))  report "matrix-matrix row mismatch" severity failure;
+    assert (x'high(1) = y'high(1)) report "matrix-matrix row mismatch" severity failure;
+    assert (x'high(2) = y'high(2)) report "matrix-matrix row mismatch" severity failure;
+    assert (c'low     = x'low(1))  report "matrix-vector row mismatch" severity failure;
+    assert (c'high    = x'high(1)) report "matrix-vector row mismatch" severity failure;
+    
+    for i in x'range(1) loop
+      for j in x'range(2) loop
+        if c(i) = '1' then
+          result(i,j) := x(i,j);
+        else
+          result(i,j) := y(i,j);
+        end if;
+      end loop;
+    end loop;
+    return result;
+  end f_opa_mux;
   
   function f_opa_compose(x : std_logic_vector; y : t_opa_matrix) return std_logic_vector is
     variable result : std_logic_vector(y'range(1));

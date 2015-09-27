@@ -103,6 +103,8 @@ architecture rtl of opa_issue is
   constant c_ren_wide  : natural := f_opa_ren_wide (g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide (g_config);
+  constant c_alias_low : natural := f_opa_alias_low(g_config);
+  constant c_alias_high: natural := f_opa_alias_high(g_config);
   constant c_fetch_align: natural := f_opa_fetch_align(g_config);
   constant c_renamers  : natural := f_opa_renamers (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
@@ -249,13 +251,24 @@ architecture rtl of opa_issue is
   
   -- The three sources of reissue
   signal s_nodep           : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_alias           : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_alias           : std_logic_vector(c_num_stat-1 downto 0);
   signal s_retry           : std_logic_vector(c_num_stat-1 downto 0);
   
   signal r_retry           : std_logic_vector(c_executers-1 downto 0) := (others => '0');
   signal s_finalize        : std_logic_vector(c_executers-1 downto 0);
   signal r_wipe            : std_logic_vector(c_num_stat-1  downto 0) := (others => '0');
   signal s_wipe            : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
+  
+  -- Load buffer CAM
+  signal s_slow_schedule3s : t_opa_matrix(c_num_stat-1 downto 0, c_num_slow-1 downto 0);
+  signal s_alias_write     : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_alias_valid     : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_alias_valid     : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
+  -- !!! signal r_alias_pred      : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_alias_cam_new   : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
+  signal s_alias_cam       : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
+  signal r_alias_cam       : t_opa_matrix(c_num_stat-1 downto 0, c_alias_high downto c_alias_low);
+  signal s_alias           : std_logic_vector(c_num_stat-1 downto 0);
   
   -- Determine if side effects are allowed
   signal s_complete        : std_logic_vector(c_num_stat-1 downto 0);
@@ -362,6 +375,11 @@ begin
       report "issue: issued fast operation is not ready!"
       severity failure;
       
+      -- If the CAM has an entry, it better be a store
+      assert (f_opa_or(r_alias_valid and not r_slow) = '0')
+      report "issue: load alias for non-slow op!"
+      severity failure;
+      
       -- Start checking the schedule
       v_schedule0s := not f_opa_dup_row(c_executers, r_wipe) and f_shift(r_schedule0, r_shift);
       v_schedule1s := not f_opa_dup_row(c_executers, r_wipe) and r_schedule1s;
@@ -464,11 +482,11 @@ begin
   
   -- All the reasons we might have to reissue instructions
   s_nodep <= not s_readyab;
-  s_alias <= (others => '0'); -- !!! store reports loads must be reissued (registered like r_retry)
+  -- r_alias
   s_retry <= f_opa_product(f_opa_transpose(r_schedule4s), r_retry) and not r_wipe; -- EU wants to re-run
   
   -- issued must go low in all three cases
-  s_new_issued <= s_issued and not (s_nodep or s_alias or s_retry);
+  s_new_issued <= s_issued and not (s_nodep or r_alias or s_retry);
   
   -- ready must go low in all three cases, however there are three sources of readiness
   -- 1. old readiness / instructions where r_ready=1 already
@@ -482,7 +500,7 @@ begin
   --    => s_retry is impossible => it implies simultaneous execution
   s_ready <= f_shift(r_ready, r_shift, r_fault_out1);
   s_ready_slow <= 
-    not (s_nodep or s_alias or s_retry) and
+    not (s_nodep or r_alias or s_retry) and
     (s_ready or (f_opa_product(f_opa_transpose(r_schedule1s), c_slow_only) and not r_wipe));
   s_new_ready <= (s_fast_issue and s_pending_fast) or s_ready_slow;
   
@@ -491,7 +509,7 @@ begin
   --   => s_retry is actually the opposite here; we only go final if its false
   --   => s_alias must be considered, in order for store final=1 to be atomic with load final=0
   s_finalize <= not r_retry;
-  s_final <= (r_final and not s_alias) or (f_opa_product(f_opa_transpose(r_schedule4s), s_finalize) and not r_wipe);
+  s_final <= (r_final and not r_alias) or (f_opa_product(f_opa_transpose(r_schedule4s), s_finalize) and not r_wipe);
   s_complete <= s_final and not std_logic_vector(unsigned(s_final) + 1);
   s_new_final <= s_final and not s_nodep;
   
@@ -589,6 +607,25 @@ begin
     end if;
   end process;
   
+  -- Extract the slow unit schedule
+  slow_sched3 : for i in 0 to c_num_slow-1 generate
+    stat : for j in 0 to c_num_stat-1 generate
+      s_slow_schedule3s(j,i) <= r_schedule3s(i+c_num_fast,j);
+    end generate;
+  end generate;
+  
+  -- Add new loads to the CAM
+  s_alias_write   <= f_opa_product(s_slow_schedule3s, l1d_load_i) and not r_wipe;
+  s_alias_valid   <= s_alias_write or r_alias_valid;
+  s_alias_cam_new <= f_opa_product(s_slow_schedule3s, l1d_addr_i);
+  s_alias_cam     <= f_opa_mux(s_alias_write, s_alias_cam_new, r_alias_cam);
+  
+  -- Process the load alias CAM
+  alias_check : for s in 0 to c_num_stat-1 generate
+    s_alias(s) <= l1d_store_i and r_alias_valid(s) and f_opa_bit(
+                  f_opa_select_row(r_alias_cam, s) = f_opa_select_row(l1d_addr_i, 0));
+  end generate;
+  
   -- Prepare decremented versions of the station references
   s_stata <= f_opa_decrement(r_stata, c_renamers) when r_shift='1' else r_stata;
   s_statb <= f_opa_decrement(r_statb, c_renamers) when r_shift='1' else r_statb;
@@ -619,16 +656,27 @@ begin
   stations_0rs : process(rst_n_i, clk_i) is
   begin
     if rst_n_i = '0' then -- asynchronous clear
-      r_issued <= (others => '1');
-      r_final  <= (others => '1');
+      r_issued      <= (others => '1');
+      r_final       <= (others => '1');
+      r_alias_valid <= (others => '0');
     elsif rising_edge(clk_i) then
       if r_fault_out = '1' then -- synchronous clear
-        r_issued <= (others => '1');
-        r_final  <= (others => '1');
+        r_issued      <= (others => '1');
+        r_final       <= (others => '1');
+        r_alias_valid <= (others => '0');
       else
-        r_issued <= f_shift(s_new_issued, s_shift);
-        r_final  <= f_shift(s_new_final,  s_shift);
+        r_issued      <= f_shift(s_new_issued, s_shift);
+        r_final       <= f_shift(s_new_final,  s_shift);
+        r_alias_valid <= f_shift(s_alias_valid, s_shift);
       end if;
+    end if;
+  end process;
+
+  stations_0 : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      r_alias_cam   <= f_shift(s_alias_cam,   s_shift);
+      r_alias       <= f_shift(s_alias,       s_shift);
     end if;
   end process;
   
@@ -699,7 +747,7 @@ begin
       else
         r_retry      <= eu_retry_i;
         r_ready      <= s_new_ready;
-        r_wipe       <= f_shift(s_nodep or s_alias or s_retry, s_shift);
+        r_wipe       <= f_shift(s_nodep or r_alias or s_retry, s_shift);
         r_schedule0  <= f_opa_transpose(f_opa_concat(
           f_opa_transpose(s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow)), 
           f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
