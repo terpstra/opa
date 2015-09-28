@@ -554,6 +554,18 @@ begin
   --  s_nodep, should not matter; prior is also not final
   --  s_retry, this i will consider
   --  s_alias, this i must also consider
+  -- 
+  -- >>>> to avoid r_alias mattering, don't use r_alias if not final <<<<
+  -- also reduces complexity in other circuits (r_wipe for example)
+  --
+  -- prior cycle:
+  --   a load that gets reissued is either:
+  --     retried for same cycle => fine
+  --     wipe, which means !ready => fine
+  --   if i become last, then they WERE last
+  --     s_nodep is impossible
+  --     they were inflight => r_alias is impossible
+  --     r_retry ... we are considering this!
   
   -- Determine if the execution window should be shifted
   s_stall  <= not f_opa_and(s_final(c_renamers-1 downto 0));
