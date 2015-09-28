@@ -194,16 +194,9 @@ begin
   s_pre_dec_stat<= f_opa_decrement(r_pre_stat, c_renamers);
   s_pre_new_stat<= f_opa_product(s_pre_source, c_dec_stat_labels);
   s_pre_new_bak <= f_opa_product(s_pre_source, r_free_bak);
+  s_pre_mux_stat<= f_opa_mux(s_pre_mux, s_pre_new_stat, s_pre_dec_stat);
+  s_pre_mux_bak <= f_opa_mux(s_pre_mux, s_pre_new_bak,  r_pre_bak);
   
-  arch_predict : for i in 0 to c_num_arch-1 generate
-    stat : for b in 0 to c_stat_wide-1 generate
-      s_pre_mux_stat(i,b) <= s_pre_new_stat(i,b) when s_pre_mux(i)='1' else s_pre_dec_stat(i,b);
-    end generate;
-    bak : for b in 0 to c_back_wide-1 generate
-      s_pre_mux_bak(i,b)  <= s_pre_new_bak(i,b)  when s_pre_mux(i)='1' else r_pre_bak(i,b);
-    end generate;
-  end generate;
-
   s_com_setx <= r_q_setx(c_renamers-1 downto 0) and issue_mask_i;
   archx : for i in 0 to c_renamers-1 generate
     bits : for b in 0 to c_arch_wide-1 generate
@@ -216,23 +209,13 @@ begin
   s_com_mux     <= f_opa_product(s_com_writers, c_decode_ones);
   s_com_source  <= f_opa_pick_big(s_com_writers);
   s_com_new_bak <= f_opa_product(s_com_source, issue_bakx_i);
-  
-  arch_commit : for i in 0 to c_num_arch-1 generate
-    bak : for b in 0 to c_back_wide-1 generate
-      s_com_mux_bak(i,b) <= s_com_new_bak(i,b) when s_com_mux(i)='1' else r_com_bak(i,b);
-    end generate;
-  end generate;
+  s_com_mux_bak <= f_opa_mux(s_com_mux, s_com_new_bak, r_com_bak);
 
   -- Calculate which backing registers are freed by commit
   s_old_bakx   <= f_opa_compose(r_com_bak, s_com_archx);
   s_overwrites <= f_opa_match(s_com_archx, s_com_archx) and c_LL_triangle;
   s_useless    <= f_opa_product(s_overwrites, s_com_setx) or not s_com_setx;
-  
-  free : for i in 0 to c_renamers-1 generate
-    bits : for b in 0 to c_back_wide-1 generate
-      s_free_bak(i,b) <= issue_bakx_i(i,b) when s_useless(i)='1' else s_old_bakx(i,b);
-    end generate;
-  end generate;
+  s_free_bak   <= f_opa_mux(s_useless, issue_bakx_i, s_old_bakx);
   
   s_progress <= (decode_stb_i and not issue_stall_i) or issue_fault_i;
   main : process(rst_n_i, clk_i) is
