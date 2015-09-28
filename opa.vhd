@@ -284,6 +284,11 @@ begin
     assert (2**g_config.log_width <= c_dline_size*8)
     report "registers can not exceed the size of an L1d line"
     severity failure;
+  
+  check_dline_pow :
+    assert (2**f_opa_log2(c_dline_size) = c_dline_size)
+    report "L1d cache line size must be a power of two"
+    severity failure;
 
   check_iline :
     assert (2**g_config.log_width <= c_iline_size*8)

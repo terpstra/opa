@@ -10,6 +10,7 @@ TODO:
 other stuff:
 	move ISA selection to a generic parameter
 	distinguish two types of dbus_busy, dbus loading into L1 and dbus cannot accept
+	split L1d into tag+dirty+word_valid and word+byte_valid => deeper M20k
 	finalize optimization of fast adder equality
 	implement TLB [3]
 	add instruction and data prefetch?

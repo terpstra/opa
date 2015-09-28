@@ -105,8 +105,7 @@ architecture rtl of opa_l1d is
   --   3:0  cache line offset
   
   -- Each cache entry is laid out as follows:
-  --  [(physical-bits) (valid mask) (dirty mask) (line)] * ways
-  --  age for LRU is done using registers
+  --  [(dirty bit) (high-physical-bits) (valid mask) (line data)] * ways
   
   constant c_num_slow      : natural := f_opa_num_slow(g_config);
   constant c_num_ways      : natural := f_opa_num_dway(g_config);
@@ -119,23 +118,34 @@ architecture rtl of opa_l1d is
   constant c_log_reg_wide  : natural := f_opa_log2(c_reg_wide);
   constant c_log_reg_bytes : natural := c_log_reg_wide - 3;
   constant c_line_bytes    : natural := c_dline_size;
+  constant c_tag_high      : natural := c_adr_wide-1;
+  constant c_tag_low       : natural := f_opa_log2(c_page_size); 
+  constant c_idx_high      : natural := c_tag_low-1;
   constant c_idx_low       : natural := f_opa_log2(c_line_bytes);
-  constant c_idx_high      : natural := f_opa_log2(c_page_size);
-  constant c_idx_wide      : natural := c_idx_high - c_idx_low;
-  constant c_tag_wide      : natural := c_adr_wide - c_idx_high;
-  constant c_ent_wide      : natural := 1 + c_tag_wide + c_dline_size*9;
+  constant c_off_high      : natural := c_idx_low-1;
+  constant c_off_low       : natural := c_log_reg_bytes;
+  constant c_sub_high      : natural := c_log_reg_bytes-1;
+  constant c_sub_low       : natural := 0;
+  constant c_tag_wide      : natural := c_tag_high+1 - c_tag_low;
+  constant c_idx_wide      : natural := c_idx_high+1 - c_idx_low;
+  constant c_off_wide      : natural := c_off_high+1 - c_off_low;
+  constant c_sub_wide      : natural := c_sub_high+1 - c_sub_low;
+  constant c_off_high1     : natural := f_opa_choose(c_off_wide=0, c_off_low, c_off_high);
+  constant c_sub_high1     : natural := f_opa_choose(c_sub_wide=0, c_sub_low, c_sub_high);
+  constant c_ent_wide      : natural := 1 + c_tag_wide + c_line_bytes*9;
 
   constant c_way_ones  : std_logic_vector(c_num_ways-1 downto 0) := (others => '1');
-  constant c_off_zeros : std_logic_vector(c_idx_low -1 downto 0) := (others => '0'); 
   
-  type t_tag   is array(natural range <>) of std_logic_vector(c_adr_wide-1 downto c_idx_high);
-  type t_idx   is array(natural range <>) of std_logic_vector(c_idx_high-1 downto c_idx_low);
-  type t_off   is array(natural range <>) of std_logic_vector(c_idx_low -1 downto 0);
+  type t_tag   is array(natural range <>) of std_logic_vector(c_tag_high downto c_tag_low);
+  type t_idx   is array(natural range <>) of std_logic_vector(c_idx_high downto c_idx_low);
+  type t_off   is array(natural range <>) of std_logic_vector(c_off_high1 downto c_off_low);
+  type t_sub   is array(natural range <>) of std_logic_vector(c_sub_high1 downto c_sub_low);
   type t_ent   is array(natural range <>) of std_logic_vector(c_ent_wide-1 downto 0);
-  type t_reg   is array(natural range <>) of std_logic_vector(c_reg_wide-1 downto 0);
   type t_way   is array(natural range <>) of std_logic_vector(c_num_ways-1 downto 0);
-  type t_valid is array(natural range <>) of std_logic_vector(c_dline_size  -1 downto 0);
-  type t_line  is array(natural range <>) of std_logic_vector(c_dline_size*8-1 downto 0);
+  type t_sel   is array(natural range <>) of std_logic_vector(c_reg_bytes-1 downto 0);
+  type t_reg   is array(natural range <>) of std_logic_vector(c_reg_wide -1 downto 0);
+  type t_valid is array(natural range <>) of std_logic_vector(c_line_bytes  -1 downto 0);
+  type t_line  is array(natural range <>) of std_logic_vector(c_line_bytes*8-1 downto 0);
   type t_mux   is array(natural range <>) of std_logic_vector(c_log_reg_bytes  downto 0);
   type t_size  is array(natural range <>) of std_logic_vector(1 downto 0);
   
@@ -144,12 +154,11 @@ architecture rtl of opa_l1d is
   signal s_vtag   : t_tag (c_num_slow-1 downto 0);
   signal s_vidx   : t_idx (c_num_slow-1 downto 0);
   signal s_voff   : t_off (c_num_slow-1 downto 0);
-  signal s_sizes  : t_off (c_num_slow-1 downto 0);
-  signal s_wmask  : t_opa_matrix(c_num_slow-1 downto 0, c_reg_bytes-1 downto 0);
+  signal s_wmask  : t_sel (c_num_slow-1 downto 0);
   signal s_bmask  : t_valid(c_num_slow-1 downto 0);
-  signal s_shift  : t_off (c_num_slow-1 downto 0);
-  signal s_adr    : t_opa_matrix(c_num_slow-1 downto 0, c_adr_wide-1 downto 0) := (others => (others => '0'));
-  signal s_aliasat: t_opa_matrix(c_num_slow-1 downto 0, c_alias_high downto c_alias_low);
+  signal s_shoff  : t_off (c_num_slow-1 downto 0);
+  signal s_shsub  : t_sub (c_num_slow-1 downto 0);
+  signal s_adr    : t_opa_matrix(c_num_slow-1 downto 0, c_adr_wide-1 downto 0);
   signal s_rent   : t_ent (c_num_slow*c_num_ways-1 downto 0);
   signal s_rdirty : std_logic_vector(c_num_slow*c_num_ways-1 downto 0);
   signal s_rvalid : t_valid(c_num_slow*c_num_ways-1 downto 0);
@@ -160,23 +169,23 @@ architecture rtl of opa_l1d is
   signal s_matchw : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal s_donew  : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal s_victimw: t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
-  signal s_rot    : t_line(c_num_slow*c_num_ways-1 downto 0);
+  signal s_sel    : t_line(c_num_slow*c_num_ways-1 downto 0);
+  signal s_rot    : t_reg (c_num_slow*c_num_ways-1 downto 0);
   signal s_mux    : t_mux (c_num_slow*c_num_ways*c_reg_wide-1 downto 0);
   signal s_sext   : t_reg (c_num_slow*c_num_ways-1 downto 0);
   signal s_zext   : t_reg (c_num_slow*c_num_ways-1 downto 0);
   signal s_clear  : t_opa_matrix(c_num_slow-1 downto 0, c_log_reg_bytes downto 0);
   signal s_ways   : t_way (c_num_slow*c_reg_wide-1 downto 0);
   signal s_0dat   : std_logic_vector(c_reg_wide-1 downto 0);
-  signal s_wb_mux : t_reg(c_log_reg_bytes downto 0);
   signal s_wb_dat : std_logic_vector(c_reg_wide-1 downto 0);
   signal s_0we    : std_logic_vector(c_num_ways-1 downto 0);
   signal s_wb_we  : std_logic_vector(c_num_ways-1 downto 0);
   signal s_wb_line : t_line (c_num_ways-1 downto 0);
   signal s_was_valid: t_valid(c_num_ways-1 downto 0);
   signal s_wb_valid: t_valid(c_num_ways-1 downto 0);
-  signal s_widx   : std_logic_vector(c_idx_high -1 downto c_idx_low);
+  signal s_widx   : std_logic_vector(c_idx_high downto c_idx_low);
   signal s_wdirty : std_logic_vector(0 downto 0);
-  signal s_wtag   : std_logic_vector(c_adr_wide -1 downto c_idx_high);
+  signal s_wtag   : std_logic_vector(c_tag_high downto c_tag_low);
   signal s_we     : std_logic_vector(c_num_ways -1 downto 0);
   signal s_wvalid : t_valid(c_num_ways-1 downto 0);
   signal s_wdat   : t_line(c_num_ways-1 downto 0);
@@ -191,9 +200,9 @@ architecture rtl of opa_l1d is
   signal s_di_req : t_opa_dbus_request;
   signal s_ld_req : t_opa_dbus_request;
   signal s_grant_way : std_logic_vector(c_num_slow*c_num_ways-1 downto 0);
-  signal s_rtag_m    : t_opa_matrix(c_adr_wide-1 downto c_idx_high, c_num_slow*c_num_ways-1 downto 0);
-  signal s_rvalid_m  : t_opa_matrix(c_dline_size  -1 downto 0, c_num_slow*c_num_ways-1 downto 0);
-  signal s_rdat_m    : t_opa_matrix(c_dline_size*8-1 downto 0, c_num_slow*c_num_ways-1 downto 0);
+  signal s_rtag_m    : t_opa_matrix(c_tag_high downto c_tag_low, c_num_slow*c_num_ways-1 downto 0);
+  signal s_rvalid_m  : t_opa_matrix(c_line_bytes  -1 downto 0, c_num_slow*c_num_ways-1 downto 0);
+  signal s_rdat_m    : t_opa_matrix(c_line_bytes*8-1 downto 0, c_num_slow*c_num_ways-1 downto 0);
   signal s_alias  : std_logic_vector(c_num_slow-1 downto 0);
   signal s_busy   : std_logic_vector(c_num_slow-1 downto 0);
   
@@ -203,13 +212,14 @@ architecture rtl of opa_l1d is
   signal r_vtag   : t_tag(c_num_slow-1 downto 0);
   signal r_vidx   : t_idx(c_num_slow-1 downto 0);
   signal r_voff   : t_off(c_num_slow-1 downto 0);
-  signal r_wmask  : t_opa_matrix(c_num_slow-1 downto 0, c_reg_bytes-1 downto 0);
+  signal r_wmask  : t_sel (c_num_slow-1 downto 0);
   signal r_bmask  : t_valid(c_num_slow-1 downto 0);
   signal r_size   : t_size(c_num_slow-1 downto 0);
-  signal r_shift  : t_off(c_num_slow-1 downto 0);
+  signal r_shoff  : t_off (c_num_slow-1 downto 0);
+  signal r_shsub  : t_sub (c_num_slow-1 downto 0);
   signal r_clear  : t_opa_matrix(c_num_slow-1 downto 0, c_log_reg_bytes downto 0);
   signal r_wb_dat : std_logic_vector(c_reg_wide-1 downto 0);
-  signal r_vidx0  : std_logic_vector(c_idx_high-1 downto c_idx_low);
+  signal r_vidx0  : std_logic_vector(c_idx_high downto c_idx_low);
   signal r_random : std_logic_vector(c_num_ways-1 downto 0);
   signal r_rtag   : t_tag (c_num_slow*c_num_ways-1 downto 0);
   signal r_rvalid : t_valid(c_num_slow*c_num_ways-1 downto 0);
@@ -254,47 +264,64 @@ begin
   rdports : for p in 0 to c_num_slow-1 generate
     -- Select the address lines
     s_size(p) <= f_opa_select_row(slow_size_i, p);
-    s_vtag(p) <= f_opa_select_row(slow_addr_i, p)(s_wtag'range);
-    s_vidx(p) <= f_opa_select_row(slow_addr_i, p)(s_widx'range);
-    s_voff(p) <= f_opa_select_row(slow_addr_i, p)(c_idx_low-1 downto 0);
+    s_vtag(p) <= f_opa_select_row(slow_addr_i, p)(c_tag_high downto c_tag_low);
+    s_vidx(p) <= f_opa_select_row(slow_addr_i, p)(c_idx_high downto c_idx_low);
     
-    -- 1-hot decode the size
-    size : for s in 0 to c_idx_low-1 generate
-      s_sizes(p)(s) <= f_opa_bit(unsigned(s_size(p)) = s);
+    -- Calculate the sub-word byte-mask and rotation
+    sub : if c_sub_wide > 0 generate
+      subs : block is
+        signal s_vsub  : t_sub (c_num_slow-1 downto 0);
+        signal s_sizes : t_sub (c_num_slow-1 downto 0);
+      begin
+        s_vsub(p) <= f_opa_select_row(slow_addr_i, p)(c_sub_high downto c_sub_low);
+        
+        -- 1-hot decode the size (note: 0 = full size)
+        size : for s in c_sub_low to c_sub_high generate
+          s_sizes(p)(s) <= f_opa_bit(unsigned(s_size(p)) = s);
+        end generate;
+        
+        little : if not c_big_endian generate
+          -- Derive the word byte-select mask for the operation
+          wmask : for b in 0 to c_reg_bytes-1 generate
+            s_wmask(p)(b) <= f_opa_bit(b - unsigned(s_vsub(p)) <= unsigned(s_sizes(p))-1);
+          end generate;
+          -- Derive the sub-word rotation
+          s_shsub(p) <= s_vsub(p);
+        end generate;
+        
+        big : if c_big_endian generate
+          wmask : for b in 0 to c_reg_bytes-1 generate
+            s_wmask(p)(c_reg_bytes-1-b) <= f_opa_bit(b - unsigned(s_vsub(p)) <= unsigned(s_sizes(p))-1);
+          end generate;
+          s_shsub(p) <= std_logic_vector(unsigned(s_vsub(p)) + unsigned(s_sizes(p)));
+        end generate;
+      end block;
+    end generate;
+    nosub : if c_sub_wide = 0 generate
+      s_shsub(p) <= (others => '0');
+      s_wmask(p) <= (others => '1');
     end generate;
     
-    -- Derive the word byte-select mask for the operation (for alias detection)
-    wmask_little : if not c_big_endian generate
-      wmask : for b in 0 to c_reg_bytes-1 generate
-        s_wmask(p,b) <= f_opa_bit(b - unsigned(s_voff(p)(c_log_reg_bytes-1 downto 0)) <= unsigned(s_sizes(p))-1);
+    off : if c_off_wide > 0 generate
+      s_voff(p) <= f_opa_select_row(slow_addr_i, p)(c_off_high downto c_off_low);
+      
+      -- Which bytes of the line get accessed?
+      little : if not c_big_endian generate
+        s_shoff(p) <= s_voff(p);
       end generate;
-    end generate;
-    wmask_big : if c_big_endian generate
-      wmask : for b in 0 to c_reg_bytes-1 generate
-        s_wmask(p,c_reg_bytes-1-b) <= f_opa_bit(b - unsigned(s_voff(p)(c_log_reg_bytes-1 downto 0)) <= unsigned(s_sizes(p))-1);
+      big : if c_big_endian generate
+        s_shoff(p) <= std_logic_vector((c_line_bytes/c_reg_bytes-1)-unsigned(s_voff(p)));
       end generate;
-    end generate;
-    
-    -- !!! modify this to stay within the word
-    -- Which bytes of the line get accessed?
-    bmask_little : if not c_big_endian generate
+      
       bmask : for b in 0 to c_line_bytes-1 generate
-        -- Hopefully synthesis realizes this all fits into a 6:1 LUT
-        s_bmask(p)(b) <= f_opa_bit(b - unsigned(s_voff(p)) <= unsigned(s_sizes(p))-1);
+        s_bmask(p)(b) <= 
+          s_wmask(p)(b mod c_reg_bytes) when (b / c_reg_bytes) = unsigned(s_shoff(p)) else '0';
       end generate;
     end generate;
-    bmask_big : if c_big_endian generate
-      bmask : for b in 0 to c_line_bytes-1 generate
-        s_bmask(p)(c_line_bytes-1-b) <= f_opa_bit(b - unsigned(s_voff(p)) <= unsigned(s_sizes(p))-1);
-      end generate;
-    end generate;
-    
-    -- Compute the line data shift to satisfy load request
-    big_shift : if c_big_endian generate
-      s_shift(p) <= std_logic_vector(unsigned(s_voff(p)) + unsigned(s_sizes(p)));
-    end generate;
-    little_shift : if not c_big_endian generate
-      s_shift(p) <= s_voff(p);
+    nooff : if c_off_wide = 0 generate
+      s_voff (p) <= (others => '0');
+      s_shoff(p) <= (others => '0');
+      s_bmask(p) <= s_wmask(p);
     end generate;
     
     -- If we miss, which word to load first? (we wrap around within the line)
@@ -304,16 +331,15 @@ begin
     idx_bits : for b in s_widx'range generate
       s_adr(p,b) <= r_vidx(p)(b);
     end generate;
-    off_bits : for b in c_idx_low-1 downto c_log_reg_bytes generate
-      s_adr(p,b) <= r_voff(p)(b);
+    aoff : if c_off_wide > 0 generate
+      off_bits : for b in c_off_high downto c_off_low generate
+        s_adr(p,b) <= r_voff(p)(b);
+      end generate;
     end generate;
-    
-    -- Extract the bits which tell us if a store and load alias
-    -- I would love to use a hash over the whole address, but then I would be screwed
-    -- if someone maps two virtual pages to the same physical address. If I had the 
-    -- physical address, I could certainly hash that, but it's too slow. Hrm.
-    alias_bits : for b in s_aliasat'range(2) generate
-      s_aliasat(p,b) <= s_adr(p,b);
+    asub : if c_sub_wide > 0 generate
+      sub_bits : for b in c_sub_high downto c_sub_low generate
+        s_adr(p,b) <= '0';
+      end generate;
     end generate;
     
     -- The L1d ways
@@ -336,9 +362,9 @@ begin
       
       -- Split out the line contents (dirty, tag, valid, data)
       s_rdirty(f_idx(p,w)) <= s_rent(f_idx(p,w))(c_ent_wide-1);
-      s_rtag  (f_idx(p,w)) <= s_rent(f_idx(p,w))(c_ent_wide-2 downto 9*c_dline_size);
-      s_rvalid(f_idx(p,w)) <= s_rent(f_idx(p,w))(9*c_dline_size-1 downto 8*c_dline_size);
-      s_rdat  (f_idx(p,w)) <= s_rent(f_idx(p,w))(8*c_dline_size-1 downto 0);
+      s_rtag  (f_idx(p,w)) <= s_rent(f_idx(p,w))(c_ent_wide-2 downto 9*c_line_bytes);
+      s_rvalid(f_idx(p,w)) <= s_rent(f_idx(p,w))(9*c_line_bytes-1 downto 8*c_line_bytes);
+      s_rdat  (f_idx(p,w)) <= s_rent(f_idx(p,w))(8*c_line_bytes-1 downto 0);
       
       -- A load is done if the tag matches and the valid bits cover the request
       s_dirtyw(p,w) <= s_rdirty(f_idx(p,w));
@@ -349,13 +375,15 @@ begin
       -- Would this way be the victim on a refill?
       s_victimw(p,w) <= s_matchw(p,w) when s_match(p)='1' else s_random(w);
       
-      -- !!! modify this to stay within the word => rotate intra-word, rotate inter-word, never cross.
+      -- If there is more than one word in the line, pick the one we want
+      s_sel(f_idx(p,w)) <= std_logic_vector(rotate_right(unsigned(s_rdat(f_idx(p,w))), to_integer(unsigned(r_shoff(p)))*c_reg_wide));
+      
       -- Rotate read line data to align with requested load
       big_rotate : if c_big_endian generate
-        s_rot(f_idx(p,w)) <= std_logic_vector(rotate_left (unsigned(s_rdat(f_idx(p,w))), to_integer(unsigned(r_shift(p)))*8));
+        s_rot(f_idx(p,w)) <= std_logic_vector(rotate_left (unsigned(s_sel(f_idx(p,w))(c_reg_wide-1 downto 0)), to_integer(unsigned(r_shsub(p)))*8));
       end generate;
       little_rotate : if not c_big_endian generate
-        s_rot(f_idx(p,w)) <= std_logic_vector(rotate_right(unsigned(s_rdat(f_idx(p,w))), to_integer(unsigned(r_shift(p)))*8));
+        s_rot(f_idx(p,w)) <= std_logic_vector(rotate_right(unsigned(s_sel(f_idx(p,w))(c_reg_wide-1 downto 0)), to_integer(unsigned(r_shsub(p)))*8));
       end generate;
       
       -- Create the muxes for sign extension
@@ -400,20 +428,29 @@ begin
   -- It does not matter if the write succeeds => restart aliased loads anyways
   issue_store_o <= r_we(0);
   issue_load_o  <= r_re;
-  issue_addr_o  <= s_aliasat;
-  issue_mask_o  <= r_wmask;
+  issue_aliases : for u in 0 to c_num_slow-1 generate
+    -- Extract the bits which tell us if a store and load alias
+    -- I would love to use a hash over the whole address, but then I would be screwed
+    -- if someone maps two virtual pages to the same physical address. If I had the 
+    -- physical address, I could certainly hash that, but it's too slow. Hrm.
+    addr : for b in c_idx_high downto c_off_low generate
+      issue_addr_o(u,b) <= s_adr(u,b);
+    end generate;
+    mask : for b in 0 to c_reg_bytes-1 generate
+      issue_mask_o(u,b) <= r_wmask(u)(b);
+    end generate;
+  end generate;
   
   -- We will execute stores from port 0
   
-  -- Turn ...B into BBBB ..Hh into HhHh and ABCD into ABCD
-  -- !!! change this to a rotation to match above
+  -- Rotate write data to put target byte at write mask location
   s_0dat <= f_opa_select_row(slow_data_i, 0);
-  wb_mux : for m in 0 to c_log_reg_bytes generate
-    bits : for b in 0 to c_reg_wide-1 generate
-      s_wb_mux(m)(b) <= s_0dat(b mod f_pow(m));
-    end generate;
+  wb_big : if c_big_endian generate
+    s_wb_dat <= std_logic_vector(rotate_right(unsigned(s_0dat), to_integer(unsigned(s_shsub(0)))*8));
   end generate;
-  s_wb_dat <= s_wb_mux(to_integer(unsigned(s_size(0))));
+  wb_little : if not c_big_endian generate
+    s_wb_dat <= std_logic_vector(rotate_left (unsigned(s_0dat), to_integer(unsigned(s_shsub(0)))*8));
+  end generate;
   
   -- Which way gets written by port 0?
   -- Note: s_wb_we is ignored if dbus_busy_i=1
@@ -466,27 +503,32 @@ begin
   wbports : for p in 0 to c_num_slow-1 generate
     ways : for w in 0 to c_num_ways-1 generate
       s_grant_way(f_idx(p,w)) <= r_grant(p) and r_victimw(p,w);
-      tag : for b in c_adr_wide-1 downto c_idx_high generate
+      tag : for b in c_tag_high downto c_tag_low generate
         s_rtag_m  (b,f_idx(p,w)) <= r_rtag  (f_idx(p,w))(b);
       end generate;
-      valid : for b in 0 to c_dline_size-1 generate
+      valid : for b in 0 to c_line_bytes-1 generate
         s_rvalid_m(b,f_idx(p,w)) <= r_rvalid(f_idx(p,w))(b);
       end generate;
-      dat : for b in 0 to c_dline_size*8-1 generate
+      dat : for b in 0 to c_line_bytes*8-1 generate
         s_rdat_m  (b,f_idx(p,w)) <= r_rdat  (f_idx(p,w))(b);
       end generate;
     end generate;
   end generate;
   
-  dbus_wadr_o  <= f_opa_product(s_rtag_m,   s_grant_way) & r_vidx0 & c_off_zeros;
+  dbus_wadr_o(c_tag_high downto c_idx_low) <= f_opa_product(s_rtag_m, s_grant_way) & r_vidx0;
+  low_wadr : if c_idx_low > 0 generate
+    dbus_wadr_o(c_idx_low-1 downto 0) <= (others => '0');
+  end generate;
+  
   dbus_dirty_o <= f_opa_product(s_rvalid_m, s_grant_way);
   dbus_data_o  <= f_opa_product(s_rdat_m,   s_grant_way);
   
   -- If this load aliased a store at port 0, retry it
-  aliases : for p in 0 to c_num_slow-1 generate
-    s_alias(p) <= r_we(0) and r_re(p) 
-                  and f_opa_bit(f_opa_select_row(s_aliasat, p) = f_opa_select_row(s_aliasat, 0))
-                  and f_opa_or(f_opa_select_row(r_wmask, p) and f_opa_select_row(r_wmask, 0));
+  cross_aliases : for p in 0 to c_num_slow-1 generate
+    s_alias(p) <= r_re(p) and r_we(0)
+                  and f_opa_bit(r_vidx(p) = r_vidx(0))
+                  and f_opa_bit(r_voff(p) = r_voff(0))
+                  and f_opa_or(r_wmask(p) and r_wmask(0));
   end generate;
   
   -- Restart if load misses cache or store unacceptable
@@ -509,7 +551,8 @@ begin
       r_wmask <= s_wmask;
       r_bmask <= s_bmask;
       r_size  <= s_size;
-      r_shift <= s_shift;
+      r_shoff <= s_shoff;
+      r_shsub <= s_shsub;
       r_clear <= s_clear;
       r_wb_dat<= s_wb_dat;
       --

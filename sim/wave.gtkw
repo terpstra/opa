@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.62 (w)1999-2014 BSI
-[*] Sat Sep 19 13:00:27 2015
+[*] Mon Sep 28 12:11:33 2015
 [*]
-[dumpfile] "/home/terpstra/opa/sim/testbench.ghw"
-[dumpfile_mtime] "Sat Sep 19 12:59:41 2015"
-[dumpfile_size] 7415319
-[savefile] "/home/terpstra/opa/sim/wave.gtkw"
-[timestart] 1300000000
+[dumpfile] "/home/terpstra/idle/opa/sim/testbench.ghw"
+[dumpfile_mtime] "Mon Sep 28 12:08:35 2015"
+[dumpfile_size] 14373634
+[savefile] "/home/terpstra/idle/opa/sim/wave.gtkw"
+[timestart] 822000000
 [size] 1920 1134
 [pos] 0 0
-*-29.000000 2456000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-30.000000 6571000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.opa_sim_tb.
 [treeopen] top.opa_sim_tb.opa_core.
@@ -18,6 +18,7 @@
 [treeopen] top.opa_sim_tb.opa_core.decode.r_ops.[2].
 [treeopen] top.opa_sim_tb.opa_core.decode.r_ops.[3].
 [treeopen] top.opa_sim_tb.opa_core.fastx[0].fast.
+[treeopen] top.opa_sim_tb.opa_core.issue.
 [sst_width] 289
 [signals_width] 251
 [sst_expanded] 1
@@ -392,6 +393,39 @@ top.opa_sim_tb.opa_core.decode.rename_stb_o
 [color] 5
 top.opa_sim_tb.opa_core.decode.rename_stall_i
 top.opa_sim_tb.opa_core.decode.icache_stb_i
+@c00022
+[color] 2
+#{top.opa_sim_tb.opa_core.issue.r_alias[26:0]} top.opa_sim_tb.opa_core.issue.r_alias[26] top.opa_sim_tb.opa_core.issue.r_alias[25] top.opa_sim_tb.opa_core.issue.r_alias[24] top.opa_sim_tb.opa_core.issue.r_alias[23] top.opa_sim_tb.opa_core.issue.r_alias[22] top.opa_sim_tb.opa_core.issue.r_alias[21] top.opa_sim_tb.opa_core.issue.r_alias[20] top.opa_sim_tb.opa_core.issue.r_alias[19] top.opa_sim_tb.opa_core.issue.r_alias[18] top.opa_sim_tb.opa_core.issue.r_alias[17] top.opa_sim_tb.opa_core.issue.r_alias[16] top.opa_sim_tb.opa_core.issue.r_alias[15] top.opa_sim_tb.opa_core.issue.r_alias[14] top.opa_sim_tb.opa_core.issue.r_alias[13] top.opa_sim_tb.opa_core.issue.r_alias[12] top.opa_sim_tb.opa_core.issue.r_alias[11] top.opa_sim_tb.opa_core.issue.r_alias[10] top.opa_sim_tb.opa_core.issue.r_alias[9] top.opa_sim_tb.opa_core.issue.r_alias[8] top.opa_sim_tb.opa_core.issue.r_alias[7] top.opa_sim_tb.opa_core.issue.r_alias[6] top.opa_sim_tb.opa_core.issue.r_alias[5] top.opa_sim_tb.opa_core.issue.r_alias[4] top.opa_sim_tb.opa_core.issue.r_alias[3] top.opa_sim_tb.opa_core.issue.r_alias[2] top.opa_sim_tb.opa_core.issue.r_alias[1] top.opa_sim_tb.opa_core.issue.r_alias[0]
+@28
+top.opa_sim_tb.opa_core.issue.r_alias[26]
+top.opa_sim_tb.opa_core.issue.r_alias[25]
+top.opa_sim_tb.opa_core.issue.r_alias[24]
+top.opa_sim_tb.opa_core.issue.r_alias[23]
+top.opa_sim_tb.opa_core.issue.r_alias[22]
+top.opa_sim_tb.opa_core.issue.r_alias[21]
+top.opa_sim_tb.opa_core.issue.r_alias[20]
+top.opa_sim_tb.opa_core.issue.r_alias[19]
+top.opa_sim_tb.opa_core.issue.r_alias[18]
+top.opa_sim_tb.opa_core.issue.r_alias[17]
+top.opa_sim_tb.opa_core.issue.r_alias[16]
+top.opa_sim_tb.opa_core.issue.r_alias[15]
+top.opa_sim_tb.opa_core.issue.r_alias[14]
+top.opa_sim_tb.opa_core.issue.r_alias[13]
+top.opa_sim_tb.opa_core.issue.r_alias[12]
+top.opa_sim_tb.opa_core.issue.r_alias[11]
+top.opa_sim_tb.opa_core.issue.r_alias[10]
+top.opa_sim_tb.opa_core.issue.r_alias[9]
+top.opa_sim_tb.opa_core.issue.r_alias[8]
+top.opa_sim_tb.opa_core.issue.r_alias[7]
+top.opa_sim_tb.opa_core.issue.r_alias[6]
+top.opa_sim_tb.opa_core.issue.r_alias[5]
+top.opa_sim_tb.opa_core.issue.r_alias[4]
+top.opa_sim_tb.opa_core.issue.r_alias[3]
+top.opa_sim_tb.opa_core.issue.r_alias[2]
+top.opa_sim_tb.opa_core.issue.r_alias[1]
+top.opa_sim_tb.opa_core.issue.r_alias[0]
+@1401200
+-group_end
 @c00200
 -InstructionBus
 @28
@@ -405,7 +439,7 @@ top.opa_sim_tb.opa_core.icache.i_ack_i
 #{top.opa_sim_tb.opa_core.icache.i_data_i[63:0]} top.opa_sim_tb.opa_core.icache.i_data_i[31] top.opa_sim_tb.opa_core.icache.i_data_i[30] top.opa_sim_tb.opa_core.icache.i_data_i[29] top.opa_sim_tb.opa_core.icache.i_data_i[28] top.opa_sim_tb.opa_core.icache.i_data_i[27] top.opa_sim_tb.opa_core.icache.i_data_i[26] top.opa_sim_tb.opa_core.icache.i_data_i[25] top.opa_sim_tb.opa_core.icache.i_data_i[24] top.opa_sim_tb.opa_core.icache.i_data_i[23] top.opa_sim_tb.opa_core.icache.i_data_i[22] top.opa_sim_tb.opa_core.icache.i_data_i[21] top.opa_sim_tb.opa_core.icache.i_data_i[20] top.opa_sim_tb.opa_core.icache.i_data_i[19] top.opa_sim_tb.opa_core.icache.i_data_i[18] top.opa_sim_tb.opa_core.icache.i_data_i[17] top.opa_sim_tb.opa_core.icache.i_data_i[16] top.opa_sim_tb.opa_core.icache.i_data_i[15] top.opa_sim_tb.opa_core.icache.i_data_i[14] top.opa_sim_tb.opa_core.icache.i_data_i[13] top.opa_sim_tb.opa_core.icache.i_data_i[12] top.opa_sim_tb.opa_core.icache.i_data_i[11] top.opa_sim_tb.opa_core.icache.i_data_i[10] top.opa_sim_tb.opa_core.icache.i_data_i[9] top.opa_sim_tb.opa_core.icache.i_data_i[8] top.opa_sim_tb.opa_core.icache.i_data_i[7] top.opa_sim_tb.opa_core.icache.i_data_i[6] top.opa_sim_tb.opa_core.icache.i_data_i[5] top.opa_sim_tb.opa_core.icache.i_data_i[4] top.opa_sim_tb.opa_core.icache.i_data_i[3] top.opa_sim_tb.opa_core.icache.i_data_i[2] top.opa_sim_tb.opa_core.icache.i_data_i[1] top.opa_sim_tb.opa_core.icache.i_data_i[0]
 @1401200
 -InstructionBus
-@c00200
+@c00201
 -DataBus
 @28
 top.opa_sim_tb.opa_core.d_cyc_o
@@ -422,7 +456,7 @@ top.opa_sim_tb.opa_core.d_err_i
 #{top.opa_sim_tb.d_data_o[63:0]} top.opa_sim_tb.d_data_o[31] top.opa_sim_tb.d_data_o[30] top.opa_sim_tb.d_data_o[29] top.opa_sim_tb.d_data_o[28] top.opa_sim_tb.d_data_o[27] top.opa_sim_tb.d_data_o[26] top.opa_sim_tb.d_data_o[25] top.opa_sim_tb.d_data_o[24] top.opa_sim_tb.d_data_o[23] top.opa_sim_tb.d_data_o[22] top.opa_sim_tb.d_data_o[21] top.opa_sim_tb.d_data_o[20] top.opa_sim_tb.d_data_o[19] top.opa_sim_tb.d_data_o[18] top.opa_sim_tb.d_data_o[17] top.opa_sim_tb.d_data_o[16] top.opa_sim_tb.d_data_o[15] top.opa_sim_tb.d_data_o[14] top.opa_sim_tb.d_data_o[13] top.opa_sim_tb.d_data_o[12] top.opa_sim_tb.d_data_o[11] top.opa_sim_tb.d_data_o[10] top.opa_sim_tb.d_data_o[9] top.opa_sim_tb.d_data_o[8] top.opa_sim_tb.d_data_o[7] top.opa_sim_tb.d_data_o[6] top.opa_sim_tb.d_data_o[5] top.opa_sim_tb.d_data_o[4] top.opa_sim_tb.d_data_o[3] top.opa_sim_tb.d_data_o[2] top.opa_sim_tb.d_data_o[1] top.opa_sim_tb.d_data_o[0]
 @22
 #{top.opa_sim_tb.d_data_i[63:0]} top.opa_sim_tb.d_data_i[31] top.opa_sim_tb.d_data_i[30] top.opa_sim_tb.d_data_i[29] top.opa_sim_tb.d_data_i[28] top.opa_sim_tb.d_data_i[27] top.opa_sim_tb.d_data_i[26] top.opa_sim_tb.d_data_i[25] top.opa_sim_tb.d_data_i[24] top.opa_sim_tb.d_data_i[23] top.opa_sim_tb.d_data_i[22] top.opa_sim_tb.d_data_i[21] top.opa_sim_tb.d_data_i[20] top.opa_sim_tb.d_data_i[19] top.opa_sim_tb.d_data_i[18] top.opa_sim_tb.d_data_i[17] top.opa_sim_tb.d_data_i[16] top.opa_sim_tb.d_data_i[15] top.opa_sim_tb.d_data_i[14] top.opa_sim_tb.d_data_i[13] top.opa_sim_tb.d_data_i[12] top.opa_sim_tb.d_data_i[11] top.opa_sim_tb.d_data_i[10] top.opa_sim_tb.d_data_i[9] top.opa_sim_tb.d_data_i[8] top.opa_sim_tb.d_data_i[7] top.opa_sim_tb.d_data_i[6] top.opa_sim_tb.d_data_i[5] top.opa_sim_tb.d_data_i[4] top.opa_sim_tb.d_data_i[3] top.opa_sim_tb.d_data_i[2] top.opa_sim_tb.d_data_i[1] top.opa_sim_tb.d_data_i[0]
-@1401200
+@1401201
 -DataBus
 @c00200
 -Decode0
@@ -597,7 +631,7 @@ top.opa_sim_tb.opa_core.l1d.slow_data_i[0,30]
 top.opa_sim_tb.opa_core.l1d.slow_data_i[0,31]
 @1401200
 -group_end
-@25
+@24
 [color] 2
 #{top.opa_sim_tb.opa_core.l1d.s_wb_we[3:0]} top.opa_sim_tb.opa_core.l1d.s_wb_we[3] top.opa_sim_tb.opa_core.l1d.s_wb_we[2] top.opa_sim_tb.opa_core.l1d.s_wb_we[1] top.opa_sim_tb.opa_core.l1d.s_wb_we[0]
 [pattern_trace] 1
