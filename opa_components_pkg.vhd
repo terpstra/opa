@@ -152,7 +152,8 @@ package opa_components_pkg is
       decode_return_i : in  std_logic;
       decode_jump_i   : in  std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
       decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
+      decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      decode_return_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
   end component;
   
   component opa_icache is
@@ -204,6 +205,7 @@ package opa_components_pkg is
       predict_jump_o   : out std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
       predict_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
       predict_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      predict_return_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
       -- Instructions delivered from icache
       icache_stb_i     : in  std_logic;

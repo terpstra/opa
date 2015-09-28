@@ -96,6 +96,7 @@ architecture rtl of opa is
   signal predict_icache_pc      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal predict_decode_hit     : std_logic;
   signal predict_decode_jump    : std_logic_vector(c_fetchers-1 downto 0);
+  signal predict_decode_return  : std_logic_vector(c_adr_wide-1 downto c_op_align);
 
   signal icache_predict_stall   : std_logic;
   signal icache_decode_stb      : std_logic;
@@ -313,7 +314,8 @@ begin
       decode_return_i => decode_predict_return,
       decode_jump_i   => decode_predict_jump,
       decode_source_i => decode_predict_source,
-      decode_target_i => decode_predict_target);
+      decode_target_i => decode_predict_target,
+      decode_return_o => predict_decode_return);
   
   icache : opa_icache
     generic map(
@@ -354,6 +356,7 @@ begin
       predict_jump_o   => decode_predict_jump,
       predict_source_o => decode_predict_source,
       predict_target_o => decode_predict_target,
+      predict_return_i => predict_decode_return,
       icache_stb_i     => icache_decode_stb,
       icache_stall_o   => decode_icache_stall,
       icache_pc_i      => icache_decode_pc,

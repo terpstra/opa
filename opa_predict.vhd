@@ -58,7 +58,8 @@ entity opa_predict is
     decode_return_i : in  std_logic;
     decode_jump_i   : in  std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
     decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
+    decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    decode_return_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
 end opa_predict;
 
 architecture rtl of opa_predict is
@@ -117,6 +118,9 @@ begin
       r_rs_idx <= s_rs_idx;
     end if;
   end process;
+  
+  -- Decode needs to know where we return to
+  decode_return_o <= std_logic_vector(s_return);
 
   -- World's simplest branch predictor!
   s_pc <= 

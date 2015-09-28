@@ -58,6 +58,7 @@ entity opa_decode is
     predict_jump_o   : out std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
     predict_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
     predict_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    predict_return_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
 
     -- Instructions delivered from icache
     icache_stb_i     : in  std_logic;
@@ -219,8 +220,17 @@ begin
   end generate;
   s_static_target <= f_opa_product(f_opa_transpose(s_static_targets), s_static_jump);
 
-  s_jump_taken <= s_static_jump   when s_use_static='1' else predict_jump_i;
-  s_pcn_taken  <= s_static_target when s_use_static='1' else icache_pcn_i;
+  s_jump_taken <= s_static_jump when s_use_static='1' else predict_jump_i;
+  
+  -- pcn MUST be what gets loaded next, b/c instructions compare against it.
+  -- if issue faults, all this gets blown away, so that doesn't matter
+  -- if there is no fault, the usual prediction goes through the pipeline
+  -- if decode faults, then we need to pick whatever the predictor picks!
+  -- the predictor will always go where we tell it, except for a return.
+  s_pcn_taken  <= 
+    icache_pcn_i    when s_use_static='0' else
+    s_static_target when (s_pop and s_static_jump) = c_zeros else
+    predict_return_i;
   
   -- Decode renamer's fault information
   s_rename_source(c_adr_wide-1    downto c_fetch_align) <= rename_pc_i(c_adr_wide-1 downto c_fetch_align);
