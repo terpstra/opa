@@ -787,7 +787,7 @@ package body opa_isa_pkg is
     variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    op.arg.mul.sexta   := '-';
+    op.arg.mul.sexta   := '1';
     op.arg.mul.sextb   := '1';
     op.arg.mul.high    := '0';
     op.arg.mul.divide  := '1';
@@ -800,7 +800,7 @@ package body opa_isa_pkg is
     variable op : t_opa_op;
   begin
     op := f_parse_rrtype(x);
-    op.arg.mul.sexta   := '-';
+    op.arg.mul.sexta   := '0';
     op.arg.mul.sextb   := '0';
     op.arg.mul.high    := '0';
     op.arg.mul.divide  := '1';
@@ -809,6 +809,19 @@ package body opa_isa_pkg is
     return op;
   end f_decode_divu;
 
+  function f_decode_mod(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
+    variable op : t_opa_op;
+  begin
+    op := f_parse_rrtype(x);
+    op.arg.mul.sexta   := '1';
+    op.arg.mul.sextb   := '1';
+    op.arg.mul.high    := '1';
+    op.arg.mul.divide  := '1';
+    op.arg.smode       := c_opa_slow_mul;
+    op.fast            := '0';
+    return op;
+  end f_decode_mod;
+  
   function f_decode_modu(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable op : t_opa_op;
   begin
@@ -1050,6 +1063,7 @@ package body opa_isa_pkg is
       when "000111" => return f_decode_lh(x);
       when "001011" => return f_decode_lhu(x);
       when "001010" => return f_decode_lw(x);
+      when "110101" => return f_decode_mod(x);
       when "110001" => return f_decode_modu(x);
       when "100010" => return f_decode_mul(x);
       when "000010" => return f_decode_muli(x);
