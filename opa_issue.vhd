@@ -112,6 +112,7 @@ architecture rtl of opa_issue is
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_fast0     : natural := f_opa_fast_index(g_config, 0);
   constant c_slow0     : natural := f_opa_slow_index(g_config, 0);
+  constant c_mux_share : natural := 2;
   
   constant c_stat_ones     : std_logic_vector(c_num_stat -1 downto 0) := (others => '1');
   constant c_fast_zeros    : std_logic_vector(c_num_fast -1 downto 0) := (others => '0');
@@ -240,6 +241,8 @@ architecture rtl of opa_issue is
   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
   
   -- Calculation of what to issue
+  type t_ready_pad is array(natural range <>) of std_logic_vector(2**c_stat_wide-1 downto 0);
+  signal s_ready_pads      : t_ready_pad((c_num_stat+c_mux_share-1)/c_mux_share-1 downto 0);
   signal s_ready_pad       : std_logic_vector(2**c_stat_wide-1 downto 0) := (others => '0');
   signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
   signal s_readyb          : std_logic_vector(c_num_stat-1 downto 0);
@@ -439,11 +442,30 @@ begin
   s_issued <= f_shift(r_fast_issue or r_slow_issue, r_shift) or r_issued;
 
   -- Which stations have ready operands?
-  -- !!! use a sparse version of s_ready_pad to save half the muxes
-  s_ready_pad(s_ready_pad'high) <= '1';
-  s_ready_pad(r_ready'range) <= r_ready;
-  s_readya <= f_opa_compose(s_ready_pad, r_stata);
-  s_readyb <= f_opa_compose(s_ready_pad, r_statb);
+  -- 
+  -- What follows is a fancy way of doing this:
+  --   s_ready_pad(s_ready_pad'high) <= '1';
+  --   s_ready_pad(r_ready'range) <= r_ready;
+  --   s_readya <= f_opa_compose(s_ready_pad, r_stata);
+  --   s_readyb <= f_opa_compose(s_ready_pad, r_statb);
+  -- 
+  -- We know that r_stat[ab] never refer backwards, so there are wasted cases
+  -- in the mux. The ready muxes are the largest component in the critical path,
+  -- so this seeming small optimization does matter.
+  -- 
+  -- For this calculation, insert '-'s for backward references (impossible) to save area.
+  s_ready_pad(r_ready'range) <= r_ready; -- pad with 0s
+  pads : for i in 0 to ((c_num_stat+c_mux_share-1)/c_mux_share)-1 generate
+    s_ready_pads(i)(2**c_stat_wide-1) <= '1'; -- no-stat-dep means always ready
+    s_ready_pads(i)((i+1)*c_mux_share+c_renamers-2 downto 0) <= s_ready_pad((i+1)*c_mux_share+c_renamers-2 downto 0);
+    gap : if 2**c_stat_wide-2 >= (i+1)*c_mux_share+c_renamers-1 generate
+      s_ready_pads(i)(2**c_stat_wide-2 downto (i+1)*c_mux_share+c_renamers-1) <= (others => '-');
+    end generate;
+  end generate;
+  compose : for i in 0 to c_num_stat-1 generate
+    s_readya(i) <= s_ready_pads(i / c_mux_share)(to_integer(unsigned(f_opa_select_row(r_stata, i))));
+    s_readyb(i) <= s_ready_pads(i / c_mux_share)(to_integer(unsigned(f_opa_select_row(r_statb, i))));
+  end generate;
   
   -- Which stations are pending issue?
   s_readyab <= s_readya and s_readyb; -- 3 levels (for stat_wide <= 5)
