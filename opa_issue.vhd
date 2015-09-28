@@ -279,6 +279,7 @@ architecture rtl of opa_issue is
   -- Determine if side effects are allowed
   signal s_complete        : std_logic_vector(c_num_stat-1 downto 0);
   signal s_pred_complete   : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_oldest_mask     : std_logic_vector(c_num_stat-1 downto 0);
   signal s_am_oldest       : std_logic_vector(c_executers-1 downto 0);
   signal s_am_oldest_trim  : std_logic_vector(c_executers-1 downto 0) := (others => '0');
   
@@ -537,16 +538,17 @@ begin
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
   
-  -- BUG?! s_complete above is correct
-  -- BUT: just because all priors are complete does not mean
-  --      that i myself am still run! i might have been wiped from r_schedule3?
-  --      check also: s_nodep and s_alias ... might these mean i break?
-  --      we need oldest_i to mean not only you are the oldest, but also you are alive!
-  
-  -- Let EUs know if they are the oldest incomplete operation
-  -- ie: they can cause side effects
+  -- Let EUs know if they are the oldest incomplete operation, ie: they can cause side effects
+  -- We cannot let an operation that gets reissued run with oldest state; double effects are bad!
+  -- Consider the three causes of reissue:
+  --   s_nodep => an earlier op is !ready => an earlier op is !final => we are not oldest => impossible
+  --   s_retry => scheduled at stage 4 => not at stage 3 => contradiction
+  --   r_alias => this could happen if just completed op was a store and now oldest is a load
+  --              ... even though we are actually safe to run (after store), we can't because
+  --                  issued/ready will be cleared.
   s_pred_complete <= s_complete(s_complete'high-1 downto s_complete'low) & '1';
-  s_am_oldest <= f_opa_product(r_schedule3s, s_pred_complete); -- !!! why no wipe?
+  s_oldest_mask   <= s_pred_complete and not (r_wipe or r_alias);
+  s_am_oldest <= f_opa_product(r_schedule3s, s_oldest_mask);
   -- Only the 0th fast and slow EUs can actually be oldest; help the synthesis tool optimize
   s_am_oldest_trim(c_fast0) <= s_am_oldest(c_fast0);
   s_am_oldest_trim(c_slow0) <= s_am_oldest(c_slow0);
@@ -641,6 +643,9 @@ begin
   s_alias_mask     <= f_opa_mux(s_alias_write, s_alias_mask_new, r_alias_mask);
   
   -- Process the load alias CAM
+  -- Note: l1d_store_i might strobe even though it was wiped.
+  --       This is harmless. If it was wiped, it can't be final or complete.
+  --       Therefore, anything we restart (which is newer) is safe to reissue.
   alias_check : for s in 0 to c_num_stat-1 generate
     s_alias(s) <= l1d_store_i and r_alias_valid(s) and s_after_store(s)
                   and f_opa_bit(f_opa_select_row(r_alias_addr, s) = f_opa_select_row(l1d_addr_i, 0))
