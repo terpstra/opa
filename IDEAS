@@ -34,6 +34,7 @@ IDEAS for demo:
 	3 LEDs = the EU strobe lines
 
 BUGS:
+	simulation warnings when dline_size = reg_size
 	return stack gets pushed and popped speculatively
 	zeroing memory gets into a bad feedbak loop with gaps
 		... old ordered patch does not help

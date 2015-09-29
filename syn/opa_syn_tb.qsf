@@ -24,6 +24,7 @@ set_global_assignment -name VHDL_FILE ../opa_fast.vhd
 set_global_assignment -name VHDL_FILE ../opa_slow.vhd
 set_global_assignment -name VHDL_FILE ../opa_l1d.vhd
 set_global_assignment -name VHDL_FILE ../opa_dbus.vhd
+set_global_assignment -name VHDL_FILE ../opa_pbus.vhd
 set_global_assignment -name VHDL_FILE ../opa.vhd
 set_global_assignment -name VHDL_FILE ../opa_syn_tb.vhd
 set_global_assignment -name VERILOG_FILE pll.v

@@ -32,6 +32,7 @@ for i in 				\
 	opa_slow.vhd			\
 	opa_l1d.vhd			\
 	opa_dbus.vhd			\
+	opa_pbus.vhd			\
 	opa.vhd				\
 	demo/$arch.vhd			\
 	opa_sim_tb.vhd;			\
