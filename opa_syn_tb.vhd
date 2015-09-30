@@ -57,7 +57,7 @@ architecture rtl of opa_syn_tb is
     num_fast   =>  2, -- execute 2 fast instructions per clock
     num_slow   =>  1, -- execute 1 slow instruction per clock
     ieee_fp    => false, -- hell no
-    dc_ways    =>  1, -- keep the size down; only 2-way L1d
+    dc_ways    =>  2, -- keep the size down; only 2-way L1d
     dtlb_ways  =>  1);-- direct mapped TLB
   
   -- How many words to run it with?
@@ -107,6 +107,14 @@ architecture rtl of opa_syn_tb is
   signal d_sel  : std_logic_vector( 3 downto 0);
   signal d_dati : std_logic_vector(31 downto 0);
   signal d_dato : std_logic_vector(31 downto 0);
+  signal p_cyc  : std_logic;
+  signal p_stb  : std_logic;
+  signal p_we   : std_logic;
+  signal p_ack  : std_logic;
+  signal p_addr : std_logic_vector(31 downto 0);
+  signal p_sel  : std_logic_vector( 3 downto 0);
+  signal p_dati : std_logic_vector(31 downto 0);
+  signal p_dato : std_logic_vector(31 downto 0);
   signal s_led  : std_logic_vector( 2 downto 0);
   signal d_wem  : std_logic;
 
@@ -236,6 +244,16 @@ begin
       d_sel_o   => d_sel,
       d_data_o  => d_dato,
       d_data_i  => d_dati,
+      p_cyc_o   => p_cyc,
+      p_stb_o   => p_stb,
+      p_we_o    => p_we,
+      p_stall_i => '0',
+      p_ack_i   => p_ack,
+      p_err_i   => '0',
+      p_addr_o  => p_addr,
+      p_sel_o   => p_sel,
+      p_data_o  => p_dato,
+      p_data_i  => p_dati,
       status_o  => s_led);
   
   led(2) <= '0' when s_led(2)='1' else 'Z';
@@ -261,12 +279,16 @@ begin
       b_data_i => d_dato,
       b_data_o => d_dati);
 
-  idbus : process(clk) is
+  idpbus : process(clk) is
   begin
     if rising_edge(clk) then
       i_ack <= i_cyc and i_stb;
       d_ack <= d_cyc and d_stb;
+      p_ack <= p_cyc and p_stb;
     end if;
   end process;
+  
+  -- !!! attach to something interesting
+  p_dati <= (others => '0');
    
 end rtl;

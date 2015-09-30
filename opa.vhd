@@ -43,7 +43,7 @@ entity opa is
     clk_i          : in  std_logic;
     rst_n_i        : in  std_logic;
 
-    -- Incoming data
+    -- Wishbone instruction bus
     i_cyc_o   : out std_logic;
     i_stb_o   : out std_logic;
     i_stall_i : in  std_logic;
@@ -63,6 +63,18 @@ entity opa is
     d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
     d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
     d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      
+    -- Wishbone peripheral bus
+    p_cyc_o   : out std_logic;
+    p_stb_o   : out std_logic;
+    p_we_o    : out std_logic;
+    p_stall_i : in  std_logic;
+    p_ack_i   : in  std_logic;
+    p_err_i   : in  std_logic;
+    p_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+    p_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
+    p_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+    p_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
       
     -- Execution unit acitivity indication
     status_o  : out std_logic_vector(g_config.num_fast+g_config.num_slow-1 downto 0));
@@ -201,12 +213,23 @@ architecture rtl of opa is
   signal l1d_dbus_wadr          : std_logic_vector(c_adr_wide-1 downto 0);
   signal l1d_dbus_dirty         : std_logic_vector(c_dline_size  -1 downto 0);
   signal l1d_dbus_data          : std_logic_vector(c_dline_size*8-1 downto 0);
+  signal l1d_pbus_req           : std_logic;
+  signal l1d_pbus_we            : std_logic;
+  signal l1d_pbus_addr          : std_logic_vector(c_adr_wide  -1 downto 0);
+  signal l1d_pbus_sel           : std_logic_vector(c_reg_wide/8-1 downto 0);
+  signal l1d_pbus_dat           : std_logic_vector(c_reg_wide  -1 downto 0);
+  signal l1d_pbus_pop           : std_logic;
   
   signal dbus_l1d_busy          : std_logic;
   signal dbus_l1d_we            : std_logic_vector(c_num_dway-1 downto 0);
   signal dbus_l1d_adr           : std_logic_vector(c_adr_wide-1 downto 0);
   signal dbus_l1d_valid         : std_logic_vector(c_dline_size  -1 downto 0);
   signal dbus_l1d_data          : std_logic_vector(c_dline_size*8-1 downto 0);
+  
+  signal pbus_l1d_stall         : std_logic;
+  signal pbus_l1d_full          : std_logic;
+  signal pbus_l1d_err           : std_logic;
+  signal pbus_l1d_dat           : std_logic_vector(c_reg_wide-1 downto 0);
   
   type t_reg  is array (c_executers-1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
   type t_arg  is array (c_executers-1 downto 0) of std_logic_vector(c_arg_wide -1 downto 0);
@@ -634,7 +657,17 @@ begin
       dbus_we_i     => dbus_l1d_we,
       dbus_adr_i    => dbus_l1d_adr,
       dbus_valid_i  => dbus_l1d_valid,
-      dbus_data_i   => dbus_l1d_data);
+      dbus_data_i   => dbus_l1d_data,
+      pbus_stall_i  => pbus_l1d_stall,
+      pbus_req_o    => l1d_pbus_req,
+      pbus_we_o     => l1d_pbus_we,
+      pbus_addr_o   => l1d_pbus_addr,
+      pbus_sel_o    => l1d_pbus_sel,
+      pbus_dat_o    => l1d_pbus_dat,
+      pbus_pop_o    => l1d_pbus_pop,
+      pbus_full_i   => pbus_l1d_full,
+      pbus_err_i    => pbus_l1d_err,
+      pbus_dat_i    => pbus_l1d_dat);
   
   dbus : opa_dbus
     generic map(
@@ -664,6 +697,34 @@ begin
       l1d_adr_o   => dbus_l1d_adr,
       l1d_valid_o => dbus_l1d_valid,
       l1d_data_o  => dbus_l1d_data);
+  
+  pbus : opa_pbus
+    generic map(
+      g_config => g_config,
+      g_target => g_target)
+    port map(
+      clk_i       => clk_i,
+      rst_n_i     => rst_n_i,
+      p_cyc_o     => p_cyc_o,
+      p_stb_o     => p_stb_o,
+      p_we_o      => p_we_o,
+      p_stall_i   => p_stall_i,
+      p_ack_i     => p_ack_i,
+      p_err_i     => p_err_i,
+      p_addr_o    => p_addr_o,
+      p_sel_o     => p_sel_o,
+      p_data_o    => p_data_o,
+      p_data_i    => p_data_i,
+      l1d_stall_o => pbus_l1d_stall,
+      l1d_req_i   => l1d_pbus_req,
+      l1d_we_i    => l1d_pbus_we,
+      l1d_addr_i  => l1d_pbus_addr,
+      l1d_sel_i   => l1d_pbus_sel,
+      l1d_dat_i   => l1d_pbus_dat,
+      l1d_pop_i   => l1d_pbus_pop,
+      l1d_full_o  => pbus_l1d_full,
+      l1d_err_o   => pbus_l1d_err,
+      l1d_dat_o   => pbus_l1d_dat);
   
   status_o <= issue_regfile_rstb;
 

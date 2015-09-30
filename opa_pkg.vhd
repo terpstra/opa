@@ -100,6 +100,18 @@ package opa_pkg is
       d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
       d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
       
+      -- Wishbone peripheral bus
+      p_cyc_o   : out std_logic;
+      p_stb_o   : out std_logic;
+      p_we_o    : out std_logic;
+      p_stall_i : in  std_logic;
+      p_ack_i   : in  std_logic;
+      p_err_i   : in  std_logic;
+      p_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+      p_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
+      p_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+      p_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      
       -- Execution unit acitivity indication
       status_o  : out std_logic_vector(g_config.num_fast+g_config.num_slow-1 downto 0));
   end component;

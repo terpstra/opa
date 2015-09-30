@@ -59,8 +59,8 @@ entity opa_pbus is
     l1d_req_i   : in  std_logic;
     l1d_we_i    : in  std_logic;
     l1d_addr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    l1d_sel_i   : in  std_logic_vector(2**g_config.log_width/8-1 downto 0);
-    l1d_dat_i   : in  std_logic_vector(2**g_config.log_width/8-1 downto 0);
+    l1d_sel_i   : in  std_logic_vector(2**g_config.log_width/8 -1 downto 0);
+    l1d_dat_i   : in  std_logic_vector(2**g_config.log_width   -1 downto 0);
     
     l1d_pop_i   : in  std_logic;
     l1d_full_o  : out std_logic;
@@ -194,7 +194,7 @@ begin
           r_dat <= l1d_dat_i;
         else
           r_we  <= r_we_q(to_integer(unsigned(r_ridx)));
-          r_adr <= s_fifo_out(s_fifo_out'high downto s_fifo_out'high-c_adr_wide);
+          r_adr <= s_fifo_out(s_fifo_out'high downto s_fifo_out'high-c_adr_wide+1);
           r_sel <= s_fifo_out(c_reg_wide/8*9-1 downto c_reg_wide);
           r_dat <= s_fifo_out(c_reg_wide-1 downto 0);
         end if;

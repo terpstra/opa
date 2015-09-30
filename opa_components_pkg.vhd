@@ -503,7 +503,19 @@ package opa_components_pkg is
       dbus_we_i     : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
       dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
       dbus_valid_i  : in  std_logic_vector(c_dline_size            -1 downto 0);
-      dbus_data_i   : in  std_logic_vector(c_dline_size*8          -1 downto 0));
+      dbus_data_i   : in  std_logic_vector(c_dline_size*8          -1 downto 0);
+      
+      pbus_stall_i  : in  std_logic;
+      pbus_req_o    : out std_logic;
+      pbus_we_o     : out std_logic;
+      pbus_addr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      pbus_sel_o    : out std_logic_vector(2**g_config.log_width/8 -1 downto 0);
+      pbus_dat_o    : out std_logic_vector(2**g_config.log_width   -1 downto 0);
+      
+      pbus_pop_o    : out std_logic;
+      pbus_full_i   : in  std_logic;
+      pbus_err_i    : in  std_logic;
+      pbus_dat_i    : in  std_logic_vector(2**g_config.log_width-1 downto 0));
   end component;
 
   component opa_dbus is
@@ -540,4 +552,37 @@ package opa_components_pkg is
       l1d_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0));
   end component;
   
+  component opa_pbus is
+    generic(
+      g_config : t_opa_config;
+      g_target : t_opa_target);
+    port(
+      clk_i       : in  std_logic;
+      rst_n_i     : in  std_logic;
+      
+      p_cyc_o     : out std_logic;
+      p_stb_o     : out std_logic;
+      p_we_o      : out std_logic;
+      p_stall_i   : in  std_logic;
+      p_ack_i     : in  std_logic;
+      p_err_i     : in  std_logic;
+      p_addr_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+      p_sel_o     : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
+      p_data_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
+      p_data_i    : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      
+      -- L1d requests action
+      l1d_stall_o : out std_logic; -- stall has an async dep on addr
+      l1d_req_i   : in  std_logic;
+      l1d_we_i    : in  std_logic;
+      l1d_addr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+      l1d_sel_i   : in  std_logic_vector(2**g_config.log_width/8 -1 downto 0);
+      l1d_dat_i   : in  std_logic_vector(2**g_config.log_width   -1 downto 0);
+      
+      l1d_pop_i   : in  std_logic;
+      l1d_full_o  : out std_logic;
+      l1d_err_o   : out std_logic;
+      l1d_dat_o   : out std_logic_vector(2**g_config.log_width-1 downto 0));
+  end component;
+
 end package;

@@ -72,7 +72,19 @@ entity opa_l1d is
     dbus_we_i     : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
     dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
     dbus_valid_i  : in  std_logic_vector(c_dline_size            -1 downto 0);
-    dbus_data_i   : in  std_logic_vector(c_dline_size*8          -1 downto 0));
+    dbus_data_i   : in  std_logic_vector(c_dline_size*8          -1 downto 0);
+    
+    pbus_stall_i  : in  std_logic;
+    pbus_req_o    : out std_logic;
+    pbus_we_o     : out std_logic;
+    pbus_addr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
+    pbus_sel_o    : out std_logic_vector(2**g_config.log_width/8 -1 downto 0);
+    pbus_dat_o    : out std_logic_vector(2**g_config.log_width   -1 downto 0);
+    
+    pbus_pop_o    : out std_logic;
+    pbus_full_i   : in  std_logic;
+    pbus_err_i    : in  std_logic;
+    pbus_dat_i    : in  std_logic_vector(2**g_config.log_width-1 downto 0));
 end opa_l1d;
 
 architecture rtl of opa_l1d is

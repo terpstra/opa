@@ -62,6 +62,17 @@ architecture rtl of opa_sim_tb is
   signal d_data_o : std_logic_vector(2**c_config.log_width  -1 downto 0);
   signal d_data_i : std_logic_vector(2**c_config.log_width  -1 downto 0);
   
+  signal p_cyc    : std_logic;
+  signal p_stb    : std_logic;
+  signal p_we     : std_logic;
+  signal p_stall  : std_logic;
+  signal p_ack    : std_logic;
+  signal p_err    : std_logic;
+  signal p_addr   : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal p_sel    : std_logic_vector(2**c_config.log_width/8-1 downto 0);
+  signal p_data_o : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal p_data_i : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  
   signal ram : t_word_array(demo'range) := demo;
   
 begin
@@ -107,9 +118,20 @@ begin
       d_addr_o  => d_addr,
       d_sel_o   => d_sel,
       d_data_o  => d_data_o,
-      d_data_i  => d_data_i);
+      d_data_i  => d_data_i,
+      
+      p_cyc_o   => p_cyc,
+      p_stb_o   => p_stb,
+      p_we_o    => p_we,
+      p_stall_i => p_stall,
+      p_ack_i   => p_ack,
+      p_err_i   => p_err,
+      p_addr_o  => p_addr,
+      p_sel_o   => p_sel,
+      p_data_o  => p_data_o,
+      p_data_i  => p_data_i);
   
-  test : process(clk, rstn) is
+  memory : process(clk, rstn) is
     variable da, ia : integer;
   begin
     if rstn = '0' then
@@ -157,10 +179,23 @@ begin
     end if;
   end process;
   
+  pbus : process(clk) is
+  begin
+    if rising_edge(clk) then
+      if (p_cyc and p_stb and p_we) = '1' then
+        report "" & character'val(to_integer(unsigned(p_data_i(7 downto 0))));
+      end if;
+      p_ack <= p_cyc and p_stb;
+      p_data_i <= (others => '0'); -- read from console?
+    end if;
+  end process;
+  
   -- for now:
   i_stall <= '0';
   d_stall <= '0';
+  p_stall <= '0';
   i_err   <= '0';
   d_err   <= '0';
+  p_err   <= '0';
 
 end rtl;
