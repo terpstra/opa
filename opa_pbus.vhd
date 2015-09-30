@@ -117,7 +117,7 @@ begin
   -- OR the user has explicitly requested the cycle line stay up (r_lock).
   s_stall <= 
     r_stall or not
-    (r_lock or f_opa_bit(r_adr(r_adr'high downto c_device_align) = l1d_addr_i(r_adr'high downto c_device_align)));
+    (r_lock or not r_cyc or f_opa_bit(r_adr(r_adr'high downto c_device_align) = l1d_addr_i(r_adr'high downto c_device_align)));
   
   s_push  <= l1d_req_i and not s_stall;
   s_full  <= r_stb and p_stall_i;
@@ -186,7 +186,7 @@ begin
   pbus : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      if p_stall_i = '0' then
+      if s_pop = '1' then
         if r_ridx = r_widx then
           r_we  <= l1d_we_i;
           r_adr <= l1d_addr_i;

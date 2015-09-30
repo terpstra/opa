@@ -28,6 +28,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use std.textio.all;
 
 library work;
 use work.opa_pkg.all;
@@ -180,10 +181,17 @@ begin
   end process;
   
   pbus : process(clk) is
+    variable buf : line;
+    variable ch : integer;
   begin
     if rising_edge(clk) then
       if (p_cyc and p_stb and p_we) = '1' then
-        report "" & character'val(to_integer(unsigned(p_data_i(7 downto 0))));
+        ch := to_integer(unsigned(p_data_o(7 downto 0)));
+        if ch = 10 then
+          writeline(output, buf);
+        else
+          write(buf, character'val(ch));
+        end if;
       end if;
       p_ack <= p_cyc and p_stb;
       p_data_i <= (others => '0'); -- read from console?

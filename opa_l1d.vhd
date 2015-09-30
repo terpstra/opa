@@ -170,6 +170,7 @@ architecture rtl of opa_l1d is
   signal s_bmask  : t_valid(c_num_slow-1 downto 0);
   signal s_shoff  : t_off (c_num_slow-1 downto 0);
   signal s_shsub  : t_sub (c_num_slow-1 downto 0);
+  signal s_pbus   : std_logic_vector(c_num_slow-1 downto 0);
   signal s_adr    : t_opa_matrix(c_num_slow-1 downto 0, c_adr_wide-1 downto 0);
   signal s_rent   : t_ent (c_num_slow*c_num_ways-1 downto 0);
   signal s_rdirty : std_logic_vector(c_num_slow*c_num_ways-1 downto 0);
@@ -216,7 +217,10 @@ architecture rtl of opa_l1d is
   signal s_rvalid_m  : t_opa_matrix(c_line_bytes  -1 downto 0, c_num_slow*c_num_ways-1 downto 0);
   signal s_rdat_m    : t_opa_matrix(c_line_bytes*8-1 downto 0, c_num_slow*c_num_ways-1 downto 0);
   signal s_alias  : std_logic_vector(c_num_slow-1 downto 0);
-  signal s_busy   : std_logic_vector(c_num_slow-1 downto 0);
+  signal s_dbusy  : std_logic_vector(c_num_slow-1 downto 0);
+  signal s_pbusy  : std_logic_vector(c_num_slow-1 downto 0);
+  signal s_dretry : std_logic_vector(c_num_slow-1 downto 0);
+  signal s_pretry : std_logic_vector(c_num_slow-1 downto 0);
   
   signal r_stb    : std_logic_vector(c_num_slow-1 downto 0);
   signal r_we     : std_logic_vector(c_num_slow-1 downto 0);
@@ -354,6 +358,9 @@ begin
       end generate;
     end generate;
     
+    -- Highest physical bit indicates if this is for dbus or pbus
+    s_pbus(p) <= s_adr(p,c_adr_wide-1);
+    
     -- The L1d ways
     ways : for w in 0 to c_num_ways-1 generate
       l1d : opa_dpram
@@ -466,7 +473,7 @@ begin
   
   -- Which way gets written by port 0?
   -- Note: s_wb_we is ignored if dbus_busy_i=1
-  s_0we   <= (others => r_we(0) and slow_oldest_i(0)); -- only the oldest write is allowed
+  s_0we   <= (others => r_we(0) and slow_oldest_i(0) and not s_pbus(0)); -- only the oldest write is allowed
   s_wb_we <= s_0we and f_opa_select_row(s_victimw, 0);
   
   -- Construct the per-way data we would like to write
@@ -496,8 +503,8 @@ begin
   -- Note: streq=1 => ldreq(0)=1 ... b/c load s_donew => s_matchw
   s_match <= f_opa_product(s_matchw, c_way_ones); -- a way tag matched?
   s_dirty <= f_opa_product(s_dirtyw and s_victimw, c_way_ones); -- dirty line?
-  s_streq <= not s_match(0) and r_we(0); -- store0 has priority over all loads
-  s_ldreq <= r_stb and not f_opa_product(s_donew, c_way_ones); -- which port?
+  s_streq <= not s_pbus(0) and not s_match(0) and r_we(0); -- store0 has priority over all loads
+  s_ldreq <= not s_pbus and r_stb and not f_opa_product(s_donew, c_way_ones); -- which port?
   s_grant <= f_opa_pick_small(s_ldreq); -- if streq=1 then grant(0)=1
   
   -- To prevent later stores starving the oldest store, only do it for oldest
@@ -545,11 +552,24 @@ begin
   
   -- Restart if load misses cache or store unacceptable
   -- We only accept a store if it is the oldest and dbus is not busy
-  s_busy <= (others => dbus_busy_i);
+  s_dbusy <= (others => dbus_busy_i);
+  s_pbusy <= (others => pbus_stall_i);
+  s_pretry <= not slow_oldest_i or s_pbusy;
   retry : for p in 0 to c_num_slow-1 generate
-    slow_retry_o(p) <= (s_alias(p) or s_ldreq(p)) when r_we(p)='0' else 
-                       (not slow_oldest_i(p) or s_busy(p));
+    s_dretry(p) <= (s_alias(p) or s_ldreq(p)) when r_we(p)='0' else 
+                   (not slow_oldest_i(p) or s_dbusy(p));
+    slow_retry_o(p) <= s_pretry(p) when s_pbus(p)='1' else s_dretry(p);
   end generate;
+  
+  -- Peripheral bus writes are comparatievly easy. They come from port 0.
+  pbus_req_o  <= slow_oldest_i(0) and r_stb(0) and s_pbus(0);
+  pbus_we_o   <= r_we(0);
+  pbus_addr_o <= f_opa_select_row(s_adr, 0);
+  pbus_sel_o  <= r_wmask(0);
+  pbus_dat_o  <= r_wb_dat;
+  
+  -- !!! add loads
+  pbus_pop_o  <= '0';
   
   main : process(clk_i) is
   begin
