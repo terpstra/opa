@@ -33,6 +33,7 @@ use std.textio.all;
 library work;
 use work.opa_pkg.all;
 use work.demo_pkg.all;
+use work.opa_components_pkg.all; -- for opa_lfsr
 
 entity opa_sim_tb is
 end opa_sim_tb;
@@ -141,8 +142,8 @@ begin
       d_ack    <= '0';
       d_data_i <= (others => '0');
     elsif rising_edge(clk) then
-      i_ack    <= i_cyc and i_stb;
-      d_ack    <= d_cyc and d_stb;
+      i_ack    <= i_cyc and i_stb and not i_stall;
+      d_ack    <= d_cyc and d_stb and not d_stall;
       
       ia := to_integer(unsigned(i_addr(i_addr'left downto (c_config.log_width-3))));
       da := to_integer(unsigned(d_addr(d_addr'left downto (c_config.log_width-3))));
@@ -185,7 +186,7 @@ begin
     variable ch : integer;
   begin
     if rising_edge(clk) then
-      if (p_cyc and p_stb and p_we) = '1' then
+      if (p_cyc and p_stb and not p_stall and p_we) = '1' then
         ch := to_integer(unsigned(p_data_o(7 downto 0)));
         if ch = 10 then
           writeline(output, buf);
@@ -193,15 +194,21 @@ begin
           write(buf, character'val(ch));
         end if;
       end if;
-      p_ack <= p_cyc and p_stb;
+      p_ack <= p_cyc and p_stb and not p_stall;
       p_data_i <= (others => '0'); -- read from console?
     end if;
   end process;
   
+  lsfr : opa_lfsr
+    generic map(g_bits => 3)
+    port map(
+      clk_i       => clk,
+      rst_n_i     => rstn,
+      random_o(0) => i_stall,
+      random_o(1) => d_stall,
+      random_o(2) => p_stall);
+  
   -- for now:
-  i_stall <= '0';
-  d_stall <= '0';
-  p_stall <= '0';
   i_err   <= '0';
   d_err   <= '0';
   p_err   <= '0';
