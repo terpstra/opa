@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "bb.h"
+#include "jtag.h"
 
 #define USE_BURST 1
 // #define DEBUG_FTDI 1

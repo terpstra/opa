@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "bb.h"
+#include "jtag.h"
 
 static const uint64_t user1 = 0xe;
 static const uint64_t user0 = 0xc;
@@ -35,7 +35,13 @@ void vir(uint64_t vir)
   bb_shIR64(user0, ir_width);
 }
 
-void vread(uint64_t address)
+void opa_gpio(uint8_t data)
+{
+  vir(ir_gpio);
+  bb_shDR64(data, 6);
+}
+
+void opa_read(uint64_t address)
 {
   vir(ir_addr);
   bb_shDR64(address, 32);
@@ -43,7 +49,7 @@ void vread(uint64_t address)
   bb_shDR64(0, 32, 1);
 }
 
-void vwrite(uint64_t address, uint64_t value, int old = 0)
+void opa_write(uint64_t address, uint64_t value, int old)
 {
   static int leds = 1;
   
@@ -59,11 +65,7 @@ void vwrite(uint64_t address, uint64_t value, int old = 0)
   if (leds == 0x10) leds = 1;
 }
 
-int main(int argc, const char** argv) {
-  int seek_inst_id = 99;
-
-  bb_open(0x9fb, 0x6001);
-
+void opa_probe(int seek_inst_id) {
   bb_reset();
   bb_execute();
   
@@ -72,14 +74,14 @@ int main(int argc, const char** argv) {
   
   if ((idcode >> 32) != 0xdeadbeefU) {
     fprintf(stderr, "More than one JTAG device attached to chain is not supported\n");
-    return 1;
+    exit(1);
   }
   idcode &= 0xffffffffU;
   
   switch (idcode) {
   case 0x02a010ddU: fprintf(stderr, "Arria V detected\n"); break;
   case 0x02b150ddU: fprintf(stderr, "Cyclone V detected\n"); break;
-  default: fprintf(stderr, "Unknown device; idcode = 0x%08x\n", (int)idcode); return 1;
+  default: fprintf(stderr, "Unknown device; idcode = 0x%08x\n", (int)idcode); exit(1);
   }
 
   // Scan the HUB_INFO
@@ -97,7 +99,7 @@ int main(int argc, const char** argv) {
   
   if (hub_mfg != 0x6e || hub_ver != 1) {
     fprintf(stderr, "Unsupported SLD hub\n");
-    return 1;
+    exit(1);
   }
   fprintf(stderr, "SLD hub located\n");
   
@@ -120,7 +122,7 @@ int main(int argc, const char** argv) {
   
   if (devid == -1) {
     fprintf(stderr, "Could not find SLD node %d\n", seek_inst_id);
-    return 1;
+    exit(1);
   }
   
   uint32_t n = ceil_log2(N+1); // USER1 DR width = (n, m)-bit tuple
@@ -131,19 +133,4 @@ int main(int argc, const char** argv) {
   ir_gpio = ((uint64_t)devid << m) | 0;
   ir_addr = ((uint64_t)devid << m) | 2;
   ir_data = ((uint64_t)devid << m) | 3;
-  
-  uint32_t address = 0, data = 0;
-  if (argc > 1) address = strtoul(argv[1], 0, 0);
-  if (argc > 2) data    = strtoul(argv[2], 0, 0);
-  
-  if (argc == 2) {
-    vread(address);
-    printf("read(0x%x) = 0x%x\n", address, (uint32_t)bb_execute64());
-  } else if (argc == 3) {
-    vwrite(address, data, 1);
-    printf("write(0x%x) = 0x%x (was 0x%x)\n", address, data, (uint32_t)bb_execute64());
-  }
-  
-  bb_close();
-  return 0;
 }
