@@ -56,7 +56,7 @@ end opa_dpram;
 
 architecture syn of opa_dpram is
 
-  constant c_m10k      : boolean := (g_regin and g_size > 32) or (g_equal = OPA_OLD);
+  constant c_m10k      : boolean := g_regin; -- (g_regin and g_size > 32) or (g_equal = OPA_OLD);
   constant c_mlab_cin  : string  := f_opa_choose(g_regin,  "OUTCLOCK", "UNREGISTERED");
   constant c_mlab_cout : string  := f_opa_choose(g_regout, "OUTCLOCK", "UNREGISTERED");
   constant c_m10k_cout : string  := f_opa_choose(g_regout, "CLOCK0",   "UNREGISTERED");
