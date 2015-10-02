@@ -102,6 +102,7 @@ architecture rtl of opa_syn_tb is
   signal r_cnt    : unsigned(27 downto 0);
   signal r_gate   : std_logic;
   signal clk      : std_logic;
+  signal r_clk    : std_logic; -- pretty clock output (1/2 clk)
   
   -- OPA signals
   signal i_cyc  : std_logic;
@@ -150,10 +151,10 @@ begin
   clockpll : pll
     port map(
       refclk   => clk_free,
-      rst      => r_rsth(r_rsth'low),
+      rst      => '0', -- !!! find the proper way to reset this
       outclk_0 => clk_100m,
       locked   => locked);
-  
+      
   -- Pulse extend any short/glitchy lock loss to at least one clock period
   s_rstin <= locked and but(1) and jtag_rstn;
   reset_in : process(clk_free, s_rstin) is
@@ -169,12 +170,12 @@ begin
   reset_meta : process(clk_free) is
   begin
     if rising_edge(clk_free) then
-      r_rsth <= r_rstin(0) & r_rsth(r_rsth'high downto r_rsth'low+1);
+      r_rsth <= r_rstin(r_rstin'low) & r_rsth(r_rsth'high downto r_rsth'low+1);
     end if;
   end process;
   
   -- Derive a reasonable duration reset (debounce)
-  reset : process(clk_free, r_rsth(0)) is
+  reset : process(clk_free, r_rsth(r_rsth'low)) is
   begin
     if r_rsth(r_rsth'low) = '0' then
       r_rstn <= '0';
@@ -283,7 +284,7 @@ begin
   led(6) <= '0' when gpio(2) ='1' else 'Z';
   led(5) <= '0' when gpio(1) ='1' else 'Z';
   led(4) <= '0' when gpio(0) ='1' else 'Z';
-  led(3) <= '0' when clk     ='1' else 'Z';
+  led(3) <= '0' when r_clk   ='1' else 'Z';
   led(2) <= '0' when s_led(2)='1' else 'Z';
   led(1) <= '0' when s_led(1)='1' else 'Z';
   led(0) <= '0' when s_led(0)='1' else 'Z';
@@ -334,6 +335,7 @@ begin
       i_ack <= i_cyc and i_stb;
       d_ack <= d_cyc and d_stb;
       p_ack <= p_cyc and p_stb;
+      r_clk <= not r_clk;
     end if;
   end process;
   
