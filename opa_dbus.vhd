@@ -78,9 +78,7 @@ architecture rtl of opa_dbus is
   
   constant c_idx_low    : natural := f_opa_log2(c_reg_wide/8);
   constant c_idx_high   : natural := f_opa_log2(c_dline_size);
-  constant c_idx_high1  : natural := f_opa_choose(c_idx_low=c_idx_high,1,c_idx_high);
   constant c_idx_wide   : natural := c_idx_high - c_idx_low;
-  constant c_idx_wide1  : natural := c_idx_high1- c_idx_low;
   constant c_line_words : natural := 2**c_idx_wide;
   constant c_page_high  : natural := f_opa_log2(c_page_size);
   
@@ -92,8 +90,6 @@ architecture rtl of opa_dbus is
   signal r_we       : std_logic := '1'; -- May only be '0' if r_cyc='1'
   signal r_idle1    : std_logic; -- was idle last cycle?
   signal r_sel      : std_logic_vector(c_reg_wide/8-1 downto 0);
-  signal r_out      : unsigned(c_idx_wide1-1 downto 0);
-  signal r_in       : unsigned(c_idx_wide1-1 downto 0);
   signal r_radr     : std_logic_vector(c_adr_wide-1 downto 0) := (others => '0');
   signal s_way_en   : std_logic_vector(c_num_dway-1 downto 0);
   signal r_way      : std_logic_vector(c_num_dway-1 downto 0);
@@ -148,25 +144,36 @@ begin
     end if;
   end process;
   
-  counters : process(clk_i) is
-  begin
-    if rising_edge(clk_i) then
-      if r_stb = '0' then
-        r_out <= (others => '0');
-      elsif d_stall_i = '0' then
-        r_out <= r_out + 1;
-      end if;
+  count : if c_line_words > 1 generate
+    b : block is
+      signal r_out : unsigned(c_idx_wide-1 downto 0);
+      signal r_in  : unsigned(c_idx_wide-1 downto 0);
+    begin
+      counters : process(clk_i) is
+      begin
+        if rising_edge(clk_i) then
+          if r_stb = '0' then
+            r_out <= (others => '0');
+          elsif d_stall_i = '0' then
+            r_out <= r_out + 1;
+          end if;
+          
+          if r_cyc = '0' then
+            r_in <= (others => '0');
+          elsif d_ack_i = '1' then
+            r_in <= r_in + 1;
+          end if;
+        end if;
+      end process;
       
-      if r_cyc = '0' then
-        r_in <= (others => '0');
-      elsif d_ack_i = '1' then
-        r_in <= r_in + 1;
-      end if;
-    end if;
-  end process;
-  
-  s_last_ack <= d_ack_i       and f_opa_bit(r_in  = c_line_words-1);
-  s_last_stb <= not d_stall_i and f_opa_bit(r_out = c_line_words-1);
+      s_last_ack <= d_ack_i       and f_opa_bit(r_in  = c_line_words-1);
+      s_last_stb <= not d_stall_i and f_opa_bit(r_out = c_line_words-1);
+    end block;
+  end generate;
+  nocount : if c_line_words = 1 generate
+    s_last_ack <= d_ack_i;
+    s_last_stb <= not d_stall_i;
+  end generate;
   
   fsm : process(clk_i, rst_n_i) is
   begin
@@ -283,17 +290,23 @@ begin
     end if;
   end process;
   
-  load_big : if c_big_endian generate
-    s_loadat <= std_logic_vector(rotate_right(unsigned(r_loadat), 1));
-    onehot : for i in 0 to c_line_words-1 generate
-      s_loadat_in(i) <= f_opa_bit(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)) = (c_line_words-1)-i);
+  endian : if c_line_words > 1 generate
+    load_big : if c_big_endian generate
+      s_loadat <= std_logic_vector(rotate_right(unsigned(r_loadat), 1));
+      onehot : for i in 0 to c_line_words-1 generate
+        s_loadat_in(i) <= f_opa_bit(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)) = (c_line_words-1)-i);
+      end generate;
+    end generate;
+    load_small : if not c_big_endian generate
+      s_loadat <= std_logic_vector(rotate_left(unsigned(r_loadat), 1));
+      onehot : for i in 0 to c_line_words-1 generate
+        s_loadat_in(i) <= f_opa_bit(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)) = i);
+      end generate;
     end generate;
   end generate;
-  load_small : if not c_big_endian generate
-    s_loadat <= std_logic_vector(rotate_left(unsigned(r_loadat), 1));
-    onehot : for i in 0 to c_line_words-1 generate
-      s_loadat_in(i) <= f_opa_bit(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)) = i);
-    end generate;
+  noendian : if c_line_words = 1 generate
+    s_loadat    <= (others => '1');
+    s_loadat_in <= (others => '1');
   end generate;
   
   datin : for i in 0 to c_line_words-1 generate
@@ -355,9 +368,9 @@ begin
           r_adr(r_radr'range) <= r_radr;
         when OPA_DBUS_STORE_LOAD | OPA_DBUS_LOAD_STORE | OPA_DBUS_LOAD | OPA_DBUS_STORE =>
           r_adr <= r_adr;
-          if d_stall_i = '0' then -- next output address
-            r_adr(c_idx_high1-1 downto c_idx_low) <= 
-              std_logic_vector(unsigned(r_adr(c_idx_high1-1 downto c_idx_low)) + 1);
+          if d_stall_i = '0' and c_line_words > 1 then -- next output address
+            r_adr(c_idx_high-1 downto c_idx_low) <= 
+              std_logic_vector(unsigned(r_adr(c_idx_high-1 downto c_idx_low)) + 1);
           end if;
       end case;
     end if;
