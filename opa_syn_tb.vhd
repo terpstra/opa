@@ -61,7 +61,7 @@ architecture rtl of opa_syn_tb is
     dtlb_ways  =>  1);-- direct mapped TLB
   
   -- How many words to run it with?
-  constant c_log_ram : natural := 13;
+  constant c_log_ram : natural := 14; -- 4*2^14 = 64kB of memory
 
   component pll is
     port(
@@ -70,6 +70,16 @@ architecture rtl of opa_syn_tb is
       outclk_0 : out std_logic;        -- clk
       locked   : out std_logic);       -- export
   end component pll;
+  
+  component jtag is
+    port(
+      addr_o   : out std_logic_vector(31 downto 0);
+      data_o   : out std_logic_vector(31 downto 0);
+      data_i   : in  std_logic_vector(31 downto 0);
+      gpio_o   : out std_logic_vector( 3 downto 0);
+      we_xor_o : out std_logic;
+      rstn_o   : out std_logic);
+  end component jtag;
 
   -- Reset
   signal clk_free : std_logic;
@@ -117,6 +127,19 @@ architecture rtl of opa_syn_tb is
   signal p_dato : std_logic_vector(31 downto 0);
   signal s_led  : std_logic_vector( 2 downto 0);
   signal d_wem  : std_logic;
+  
+  -- JTAG connection
+  signal jtag_addr : std_logic_vector(31 downto 0);
+  signal jtag_data : std_logic_vector(31 downto 0);
+  signal gpio      : std_logic_vector( 3 downto 0);
+  signal s_we_xor  : std_logic;
+  signal jtag_rstn : std_logic;
+  signal s_a_addr  : std_logic_vector(31 downto 0);
+  
+  signal r_we_xor2 : std_logic;
+  signal r_we_xor1 : std_logic;
+  signal r_we_xor0 : std_logic;
+  signal r_we      : std_logic;
 
 begin
 
@@ -127,12 +150,12 @@ begin
   clockpll : pll
     port map(
       refclk   => clk_free,
-      rst      => r_rsth(0),
+      rst      => r_rsth(r_rsth'low),
       outclk_0 => clk_100m,
       locked   => locked);
   
   -- Pulse extend any short/glitchy lock loss to at least one clock period
-  s_rstin <= locked and but(1);
+  s_rstin <= locked and but(1) and jtag_rstn;
   reset_in : process(clk_free, s_rstin) is
   begin
     if s_rstin = '0' then
@@ -153,7 +176,7 @@ begin
   -- Derive a reasonable duration reset (debounce)
   reset : process(clk_free, r_rsth(0)) is
   begin
-    if r_rsth(0) = '0' then
+    if r_rsth(r_rsth'low) = '0' then
       r_rstn <= '0';
       r_rstc <= (others => '1');
     elsif rising_edge(clk_free) then
@@ -191,7 +214,7 @@ begin
         r_div <= (others => '-');
       end if;
       
-      -- Gate the clock
+      -- Gate the clock !!! in 100m domain surely?
       if r_cnt >= r_div then
         r_gate <= r_ena;
         r_cnt  <= to_unsigned(1, r_cnt'length);
@@ -256,10 +279,35 @@ begin
       p_data_i  => p_dati,
       status_o  => s_led);
   
+  led(7) <= '0' when gpio(3) ='1' else 'Z';
+  led(6) <= '0' when gpio(2) ='1' else 'Z';
+  led(5) <= '0' when gpio(1) ='1' else 'Z';
+  led(4) <= '0' when gpio(0) ='1' else 'Z';
+  led(3) <= '0' when clk     ='1' else 'Z';
   led(2) <= '0' when s_led(2)='1' else 'Z';
   led(1) <= '0' when s_led(1)='1' else 'Z';
   led(0) <= '0' when s_led(0)='1' else 'Z';
   d_wem <= d_cyc and d_stb and d_we;
+  
+  ext : jtag
+    port map(
+      addr_o   => jtag_addr,
+      data_o   => jtag_data,
+      data_i   => i_dat,
+      gpio_o   => gpio,
+      we_xor_o => s_we_xor,
+      rstn_o   => jtag_rstn);
+  
+  a_we : process(clk) is
+  begin
+    if rising_edge(clk) then
+      r_we_xor0 <= s_we_xor;
+      r_we_xor1 <= r_we_xor0;
+      r_we_xor2 <= r_we_xor1;
+      r_we <= r_we_xor1 xor r_we_xor2;
+    end if;
+  end process;
+  s_a_addr <= jtag_addr when jtag_rstn='0' else i_addr;
   
   ram : opa_tdpram
     generic map(
@@ -268,10 +316,11 @@ begin
       g_hunks => 4)
     port map(
       clk_i    => clk,
-      rst_n_i  => rstn,
-      a_wen_i  => '0',
-      a_addr_i => i_addr(c_log_ram+1 downto 2),
-      a_data_i => (others => '0'),
+      rst_n_i  => '1', -- run even while CPU reset
+      a_wen_i  => r_we,
+      a_sel_i  => (others => '1'),
+      a_addr_i => s_a_addr(c_log_ram+1 downto 2),
+      a_data_i => jtag_data,
       a_data_o => i_dat,
       b_wen_i  => d_wem,
       b_sel_i  => d_sel,
@@ -290,5 +339,5 @@ begin
   
   -- !!! attach to something interesting
   p_dati <= (others => '0');
-   
+  
 end rtl;
