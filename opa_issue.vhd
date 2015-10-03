@@ -375,7 +375,7 @@ begin
       -- r_final => r_ready (s_ready b/c r_ready has indexes one cycle late)
       assert (f_opa_or(r_final and not s_ready) = '0')
       report "issue: final operation that is not ready!"
-      severity warning;
+      severity failure;
     
       -- r_ready => r_issued (s_issued b/c issued is actually the union of three vectors)
       assert (f_opa_or(s_ready and not s_issued) = '0')
