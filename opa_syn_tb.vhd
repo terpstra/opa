@@ -322,11 +322,11 @@ begin
       p_data_i  => p_dati,
       status_o  => s_led);
   
-  led(7) <= '0' when gpio(3) ='1' else 'Z';
-  led(6) <= '0' when gpio(2) ='1' else 'Z';
-  led(5) <= '0' when gpio(1) ='1' else 'Z';
-  led(4) <= '0' when gpio(0) ='1' else 'Z';
-  led(3) <= '0' when r_clk   ='1' else 'Z';
+  led(7) <= '0' when r_clk   ='1' else 'Z';
+  led(6) <= '0' when gpio(3) ='1' else 'Z';
+  led(5) <= '0' when gpio(2) ='1' else 'Z';
+  led(4) <= '0' when gpio(1) ='1' else 'Z';
+  led(3) <= '0' when gpio(0) ='1' else 'Z';
   led(2) <= '0' when s_led(2)='1' else 'Z';
   led(1) <= '0' when s_led(1)='1' else 'Z';
   led(0) <= '0' when s_led(0)='1' else 'Z';
