@@ -362,6 +362,9 @@ begin
     s_pbus(p) <= s_adr(p,c_adr_wide-1);
     
     -- The L1d ways
+    -- Note: the OPA_NEW bypass is indeed necessary.
+    -- If you have back-to-back writes to cache, you will lose data
+    -- if the second write does not see the result of the first.
     ways : for w in 0 to c_num_ways-1 generate
       l1d : opa_dpram
         generic map(
