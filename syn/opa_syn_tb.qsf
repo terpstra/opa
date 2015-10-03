@@ -28,6 +28,7 @@ set_global_assignment -name VHDL_FILE ../opa_pbus.vhd
 set_global_assignment -name VHDL_FILE ../opa.vhd
 set_global_assignment -name VHDL_FILE ../opa_syn_tb.vhd
 set_global_assignment -name VHDL_FILE jtag.vhd
+set_global_assignment -name VHDL_FILE uart.vhd
 set_global_assignment -name VERILOG_FILE pll.v
 set_global_assignment -name SDC_FILE opa_syn_tb.sdc
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"

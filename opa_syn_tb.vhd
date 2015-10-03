@@ -81,6 +81,21 @@ architecture rtl of opa_syn_tb is
       rstn_o   : out std_logic);
   end component jtag;
 
+  component uart is
+    generic(
+      g_wide : natural := 8;
+      g_deep : natural := 10);
+    port(
+      clk_i    : in  std_logic;
+      rst_n_i  : in  std_logic;
+      stb_i    : in  std_logic;
+      stall_o  : out std_logic;
+      dat_i    : in  std_logic_vector(g_wide-1 downto 0);
+      stb_o    : out std_logic;
+      stall_i  : in  std_logic;
+      dat_o    : out std_logic_vector(g_wide-1 downto 0));
+  end component uart;
+
   -- Reset
   signal clk_free : std_logic;
   signal locked   : std_logic;
@@ -107,11 +122,13 @@ architecture rtl of opa_syn_tb is
   -- OPA signals
   signal i_cyc  : std_logic;
   signal i_stb  : std_logic;
+  signal i_stall: std_logic;
   signal i_ack  : std_logic;
   signal i_addr : std_logic_vector(31 downto 0);
   signal i_dat  : std_logic_vector(31 downto 0); 
   signal d_cyc  : std_logic;
   signal d_stb  : std_logic;
+  signal d_stall: std_logic;
   signal d_we   : std_logic;
   signal d_ack  : std_logic;
   signal d_addr : std_logic_vector(31 downto 0);
@@ -120,6 +137,7 @@ architecture rtl of opa_syn_tb is
   signal d_dato : std_logic_vector(31 downto 0);
   signal p_cyc  : std_logic;
   signal p_stb  : std_logic;
+  signal p_stall: std_logic;
   signal p_we   : std_logic;
   signal p_ack  : std_logic;
   signal p_addr : std_logic_vector(31 downto 0);
@@ -141,6 +159,11 @@ architecture rtl of opa_syn_tb is
   signal r_we_xor1 : std_logic;
   signal r_we_xor0 : std_logic;
   signal r_we      : std_logic;
+  
+  -- UART flow control
+  signal s_uart_we : std_logic;
+  signal s_uart_re : std_logic;
+  signal s_uart_stall : std_logic;
 
 begin
 
@@ -253,7 +276,7 @@ begin
       rst_n_i   => rstn,
       i_cyc_o   => i_cyc,
       i_stb_o   => i_stb,
-      i_stall_i => '0',
+      i_stall_i => i_stall,
       i_ack_i   => i_ack,
       i_err_i   => '0',
       i_addr_o  => i_addr,
@@ -261,7 +284,7 @@ begin
       d_cyc_o   => d_cyc,
       d_stb_o   => d_stb,
       d_we_o    => d_we,
-      d_stall_i => '0',
+      d_stall_i => d_stall,
       d_ack_i   => d_ack,
       d_err_i   => '0',
       d_addr_o  => d_addr,
@@ -271,7 +294,7 @@ begin
       p_cyc_o   => p_cyc,
       p_stb_o   => p_stb,
       p_we_o    => p_we,
-      p_stall_i => '0',
+      p_stall_i => p_stall,
       p_ack_i   => p_ack,
       p_err_i   => '0',
       p_addr_o  => p_addr,
@@ -310,6 +333,9 @@ begin
   end process;
   s_a_addr <= jtag_addr when jtag_rstn='0' else i_addr;
   
+  i_stall <= '0';
+  d_stall <= '0';
+  
   ram : opa_tdpram
     generic map(
       g_width => 8,
@@ -332,14 +358,28 @@ begin
   idpbus : process(clk) is
   begin
     if rising_edge(clk) then
-      i_ack <= i_cyc and i_stb;
-      d_ack <= d_cyc and d_stb;
-      p_ack <= p_cyc and p_stb;
+      i_ack <= i_cyc and i_stb and not i_stall;
+      d_ack <= d_cyc and d_stb and not d_stall;
+      p_ack <= p_cyc and p_stb and not p_stall;
       r_clk <= not r_clk;
     end if;
   end process;
   
-  -- !!! attach to something interesting
-  p_dati <= (others => '0');
+  s_uart_we <= p_cyc and p_stb and p_we and p_sel(0);
+  s_uart_re <= p_cyc and p_stb and not p_we;
+  p_stall   <= s_uart_stall and p_we;
+  
+  io : uart
+    port map(
+      clk_i   => clk,
+      rst_n_i => rstn,
+      stb_i   => s_uart_we,
+      stall_o => s_uart_stall,
+      dat_i   => p_dato(7 downto 0),
+      stb_o   => p_dati(8),
+      stall_i => "not"(s_uart_re),
+      dat_o   => p_dati(7 downto 0));
+  
+  p_dati(31 downto 9) <= (others => '0');
   
 end rtl;
