@@ -39,7 +39,7 @@ use altera_mf.altera_mf_components.all;
 
 entity opa_syn_tb is
   port(
-    osc : in  std_logic_vector(1 to 3);
+    osc : in  std_logic;
     dip : in  std_logic_vector(1 to 3);
     but : in  std_logic_vector(1 to 2);
     led : out std_logic_vector(7 downto 0) := (others => 'Z'));
@@ -99,6 +99,7 @@ architecture rtl of opa_syn_tb is
   -- Reset
   signal clk_free : std_logic;
   signal locked   : std_logic;
+  signal r_delock : std_logic := '1';
   signal s_rstin  : std_logic;
   signal r_rstin  : std_logic_vector(2 downto 0) := (others => '0');
   signal r_rsth   : std_logic_vector(2 downto 0) := (others => '0');
@@ -164,19 +165,32 @@ architecture rtl of opa_syn_tb is
   signal s_uart_we : std_logic;
   signal s_uart_re : std_logic;
   signal s_uart_stall : std_logic;
+  
+  -- User button presed?
+  signal r_but2 : std_logic;
+  signal r_but1 : std_logic;
+  signal r_but0 : std_logic;
 
 begin
 
   -- The free running external clock
-  clk_free <= osc(1);
+  clk_free <= osc;
 
   -- Derive an on-chip clock
   clockpll : pll
     port map(
       refclk   => clk_free,
-      rst      => '0', -- !!! find the proper way to reset this
+      rst      => r_delock,
       outclk_0 => clk_100m,
       locked   => locked);
+  
+  -- If we lose lock, assert r_delock
+  delock : process(clk_free) is
+  begin
+    if rising_edge(clk_free) then
+      r_delock <= not locked and r_rstn;
+    end if;
+  end process;
       
   -- Pulse extend any short/glitchy lock loss to at least one clock period
   s_rstin <= locked and but(1) and jtag_rstn;
@@ -380,6 +394,16 @@ begin
       stall_i => "not"(s_uart_re),
       dat_o   => p_dati(7 downto 0));
   
-  p_dati(31 downto 9) <= (others => '0');
+  p_dati(30 downto 9) <= (others => '0');
+  
+  button : process(clk) is
+  begin
+    if rising_edge(clk) then
+      r_but2 <= but(2);
+      r_but1 <= r_but2;
+      r_but0 <= r_but1;
+    end if;
+  end process;
+  p_dati(31) <= r_but0;
   
 end rtl;
