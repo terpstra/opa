@@ -4,6 +4,7 @@ db/
 incremental_db/
 greybox_tmp/
 hc_output/
+PLLJ_PLLSPE_INFO.txt
 opa_syn_tb.asm.rpt
 opa_syn_tb.done
 opa_syn_tb.fit.rpt
@@ -20,3 +21,5 @@ opa_syn_tb.sta.summary
 opa_syn_tb_assignment_defaults.qdf
 opa_syn_tb.qws
 opa_syn_tb.sld
+opa_syn_tb.map.smsg
+opa_syn_tb.pof
