@@ -87,7 +87,7 @@ architecture rtl of opa_icache is
   signal r_wen   : std_logic := '0';
   signal r_icyc  : std_logic := '0';
   signal r_istb  : std_logic := '0';
-  signal s_raddr : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal s_pc1   : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal s_rtag  : std_logic_vector(c_adr_wide-1 downto c_page_wide);
   signal s_rdata : std_logic_vector(c_fetch_bits-1 downto 0);
   signal r_rdata : std_logic_vector(c_fetch_bits-1 downto 0);
@@ -102,8 +102,7 @@ architecture rtl of opa_icache is
 
 begin
 
-  -- !!! figure out a way get a read address stall in dpram
-  s_raddr <= predict_pc_i when s_stall='0' else r_pc1;
+  s_pc1 <= predict_pc_i when (s_stall = '0' or decode_fault_i = '1') else r_pc1;
   
   -- !!! increase number of ways
   cache : opa_dpram
@@ -116,7 +115,7 @@ begin
     port map(
       clk_i    => clk_i,
       rst_n_i  => rst_n_i,
-      r_addr_i => s_raddr(c_page_wide-1 downto c_fetch_align),
+      r_addr_i => s_pc1(c_page_wide-1 downto c_fetch_align),
       r_data_o => s_rraw,
       w_en_i   => s_wen,
       w_addr_i => r_pc2 (c_page_wide-1 downto c_fetch_align),
@@ -140,11 +139,9 @@ begin
       r_pc1 <= std_logic_vector(c_increment);
       r_pc2 <= (others => '0');
     elsif rising_edge(clk_i) then
-      if decode_fault_i = '1' then
-        r_pc1 <= predict_pc_i;
-      elsif s_stall = '0' then
+      r_pc1 <= s_pc1;
+      if s_stall = '0' then
         r_hit <= f_opa_bit(r_pc1(s_rtag'range) = s_rtag) or s_repeat;
-        r_pc1 <= predict_pc_i;
         r_pc2 <= r_pc1;
       end if;
     end if;
