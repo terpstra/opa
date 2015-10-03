@@ -75,6 +75,7 @@ package body opa_isa_pkg is
     result.geta  := '1'; -- use both input registers
     result.getb  := '1';
     result.setx  := not f_zero(result.archx);
+    result.order := '0';
     return result;
   end f_parse_rtype;
   
@@ -90,6 +91,7 @@ package body opa_isa_pkg is
     result.getb  := '0'; -- immediate
     result.geta  := '1';
     result.setx  := not f_zero(result.archx);
+    result.order := '0';
     result.imm := (others => x(31));
     result.imm(10 downto 0) := x(30 downto 20);
     return result;
@@ -107,6 +109,7 @@ package body opa_isa_pkg is
     result.getb  := '1';
     result.geta  := '1';
     result.setx  := '0';
+    result.order := '1';
     result.imm := (others => x(31));
     result.imm(10 downto 5) := x(30 downto 25);
     result.imm( 4 downto 0) := x(11 downto 7);
@@ -124,6 +127,7 @@ package body opa_isa_pkg is
     result.geta  := '0';
     result.getb  := '0';
     result.setx  := not f_zero(result.archx);
+    result.order := '0';
     result.imm(31 downto 12) := x(31 downto 12);
     result.imm(11 downto  0) := (others => '0');
     return result;
@@ -143,6 +147,7 @@ package body opa_isa_pkg is
     result.getb  := '1';
     result.geta  := '1';
     result.setx  := '0';
+    result.order := '0';
     result.imm := (others => x(31));
     result.imm(11)          := x(7);
     result.imm(10 downto 5) := x(30 downto 25);
@@ -164,6 +169,7 @@ package body opa_isa_pkg is
     op.getb     := '0'; -- imm
     op.geta     := '0'; -- PC
     op.setx     := not f_zero(op.archx);
+    op.order    := '0';
     op.pop      := '0';
     op.push     := f_one(op.archx);
     -- a very strange immediate format:

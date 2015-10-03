@@ -127,6 +127,7 @@ architecture rtl of opa is
   signal decode_rename_stb      : std_logic;
   signal decode_rename_fast     : std_logic_vector(c_renamers-1 downto 0);
   signal decode_rename_slow     : std_logic_vector(c_renamers-1 downto 0);
+  signal decode_rename_order    : std_logic_vector(c_renamers-1 downto 0);
   signal decode_rename_setx     : std_logic_vector(c_renamers-1 downto 0);
   signal decode_rename_geta     : std_logic_vector(c_renamers-1 downto 0);
   signal decode_rename_getb     : std_logic_vector(c_renamers-1 downto 0);
@@ -150,6 +151,7 @@ architecture rtl of opa is
   signal rename_issue_stb       : std_logic;
   signal rename_issue_fast      : std_logic_vector(c_renamers-1 downto 0);
   signal rename_issue_slow      : std_logic_vector(c_renamers-1 downto 0);
+  signal rename_issue_order     : std_logic_vector(c_renamers-1 downto 0);
   signal rename_issue_geta      : std_logic_vector(c_renamers-1 downto 0);
   signal rename_issue_getb      : std_logic_vector(c_renamers-1 downto 0);
   signal rename_issue_aux       : std_logic_vector(c_aux_wide-1 downto 0);
@@ -394,6 +396,7 @@ begin
       rename_stall_i   => rename_decode_stall,
       rename_fast_o    => decode_rename_fast,
       rename_slow_o    => decode_rename_slow,
+      rename_order_o   => decode_rename_order,
       rename_setx_o    => decode_rename_setx,
       rename_geta_o    => decode_rename_geta,
       rename_getb_o    => decode_rename_getb,
@@ -424,6 +427,7 @@ begin
       decode_stall_o => rename_decode_stall,
       decode_fast_i  => decode_rename_fast,
       decode_slow_i  => decode_rename_slow,
+      decode_order_i => decode_rename_order,
       decode_setx_i  => decode_rename_setx,
       decode_geta_i  => decode_rename_geta,
       decode_getb_i  => decode_rename_getb,
@@ -435,6 +439,7 @@ begin
       issue_stall_i  => issue_rename_stall,
       issue_fast_o   => rename_issue_fast,
       issue_slow_o   => rename_issue_slow,
+      issue_order_o  => rename_issue_order,
       issue_geta_o   => rename_issue_geta,
       issue_getb_o   => rename_issue_getb,
       issue_aux_o    => rename_issue_aux,
@@ -465,6 +470,7 @@ begin
       rename_stall_o => issue_rename_stall,
       rename_fast_i  => rename_issue_fast,
       rename_slow_i  => rename_issue_slow,
+      rename_order_i => rename_issue_order,
       rename_geta_i  => rename_issue_geta,
       rename_getb_i  => rename_issue_getb,
       rename_aux_i   => rename_issue_aux,

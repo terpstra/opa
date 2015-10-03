@@ -219,6 +219,7 @@ package opa_components_pkg is
       rename_stall_i : in  std_logic;
       rename_fast_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_slow_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_order_o : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_setx_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_geta_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_getb_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
@@ -256,6 +257,7 @@ package opa_components_pkg is
       decode_stall_o : out std_logic;
       decode_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       decode_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      decode_order_i : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       decode_setx_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       decode_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       decode_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
@@ -269,6 +271,7 @@ package opa_components_pkg is
       issue_stall_i  : in  std_logic;
       issue_fast_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       issue_slow_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      issue_order_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       issue_geta_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       issue_getb_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       issue_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
@@ -304,6 +307,7 @@ package opa_components_pkg is
       rename_stall_o : out std_logic;
       rename_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_order_i : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);

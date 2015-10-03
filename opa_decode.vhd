@@ -72,6 +72,7 @@ entity opa_decode is
     rename_stall_i   : in  std_logic;
     rename_fast_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_slow_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_order_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_setx_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_geta_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_getb_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
@@ -350,11 +351,12 @@ begin
   rename_stb_o <= s_stb;
   rename_aux_o <= std_logic_vector(r_aux);
   ops_out : for d in 0 to c_renamers-1 generate
-    rename_fast_o(d) <= r_ops(d).fast;
-    rename_slow_o(d) <= not r_ops(d).fast;
-    rename_setx_o(d) <= r_ops(d).setx;
-    rename_geta_o(d) <= r_ops(d).geta;
-    rename_getb_o(d) <= r_ops(d).getb;
+    rename_fast_o (d) <= r_ops(d).fast;
+    rename_slow_o (d) <= not r_ops(d).fast;
+    rename_order_o(d) <= r_ops(d).order;
+    rename_setx_o (d) <= r_ops(d).setx;
+    rename_geta_o (d) <= r_ops(d).geta;
+    rename_getb_o (d) <= r_ops(d).getb;
     bits : for b in 0 to c_log_arch-1 generate
       rename_archx_o(d,b) <= r_ops(d).archx(b);
       rename_archa_o(d,b) <= r_ops(d).archa(b);

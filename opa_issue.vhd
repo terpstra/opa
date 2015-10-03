@@ -48,6 +48,7 @@ entity opa_issue is
     rename_stall_o : out std_logic;
     rename_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_order_i : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);

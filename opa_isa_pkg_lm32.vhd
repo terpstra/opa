@@ -61,6 +61,7 @@ package body opa_isa_pkg is
     result.getb  := '0';
     result.geta  := '1';
     result.setx  := '1';
+    result.order := '0';
     return result;
   end f_parse_rtype;
   
@@ -78,6 +79,7 @@ package body opa_isa_pkg is
     result.getb  := '1';
     result.geta  := '1';
     result.setx  := '1';
+    result.order := '0';
     return result;
   end f_parse_rrtype;
   
@@ -93,6 +95,7 @@ package body opa_isa_pkg is
     result.getb  := '1';
     result.geta  := '1';
     result.setx  := '0';
+    result.order := '1';
     result.imm := (others => x(15));
     result.imm(14 downto 0) := x(14 downto 0);
     return result;
@@ -109,6 +112,7 @@ package body opa_isa_pkg is
     result.getb  := '0'; -- immediate
     result.geta  := '1';
     result.setx  := '1';
+    result.order := '0';
     -- parsing of immediate done in si(gned), lo(w), hi(gh), in(dex)
     return result;
   end f_parse_ritype;
@@ -164,6 +168,7 @@ package body opa_isa_pkg is
     result.getb  := '1';
     result.geta  := '1';
     result.setx  := '0';
+    result.order := '0';
     result.imm := (others => x(15));
     result.imm(16 downto 2) := x(14 downto 0);
     result.imm( 1 downto 0) := (others => '0');
@@ -180,6 +185,7 @@ package body opa_isa_pkg is
     result.force := '1';
     result.getb  := '0';
     result.geta  := '0';
+    result.order := '0';
     -- NOTE: caller must assign setx and push+pop
     result.imm := (others => x(25));
     result.imm(26 downto 2) := x(24 downto 0);
@@ -199,6 +205,7 @@ package body opa_isa_pkg is
     result.archa := x(25 downto 21);
     result.getb  := '0';
     result.geta  := '1';
+    result.order := '0';
     -- NOTE: caller must assign setx and push+pop
     result.imm := (others => '0'); -- necessary as it is added to PC/reg
     -- immb can stay as don't care, because we can't statically predict anyway

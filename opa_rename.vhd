@@ -48,6 +48,7 @@ entity opa_rename is
     decode_stall_o : out std_logic;
     decode_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     decode_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    decode_order_i : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     decode_setx_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     decode_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     decode_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
@@ -61,6 +62,7 @@ entity opa_rename is
     issue_stall_i  : in  std_logic;
     issue_fast_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     issue_slow_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    issue_order_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     issue_geta_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     issue_getb_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     issue_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
@@ -299,6 +301,7 @@ begin
   issue_stb_o    <= decode_stb_i;
   issue_fast_o   <= decode_fast_i;
   issue_slow_o   <= decode_slow_i;
+  issue_order_o  <= decode_order_i;
   issue_geta_o   <= decode_geta_i;
   issue_getb_o   <= decode_getb_i;
   issue_aux_o    <= decode_aux_i;

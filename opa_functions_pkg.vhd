@@ -204,6 +204,7 @@ package opa_functions_pkg is
     archx : std_logic_vector(c_log_arch-1 downto 0);
     -- Information for the issue stage
     fast  : std_logic; -- goes to fast/slow EU
+    order : std_logic; -- don't issue it unless it is last
     -- Information for the execute stage
     imm   : std_logic_vector(c_imm_wide-1 downto 0);
     arg   : t_opa_arg;
@@ -224,6 +225,7 @@ package opa_functions_pkg is
     archb => (others => '-'),
     archx => (others => '-'),
     fast  => '-',
+    order => '-',
     imm   => (others => '-'),
     arg   => (
       fmode => (others => '-'),
