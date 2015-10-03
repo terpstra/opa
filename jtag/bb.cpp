@@ -134,18 +134,26 @@ std::vector<unsigned char> parse(const unsigned char* buf)
     }
 #endif    
     
-    while (1) {
+    do {
       unsigned char dat = *buf++ << 7;
       last = last | dat;
       if (i % 8 == 0) result.push_back(last);
-      if (++i == bits) break;
       last >>= 1;
-    }
+    } while (++i != bits);
     
-    if (i % 8 != 0) {
-      // !!! not 100% sure about this:
-      result.push_back(last >> ((bits-1) % 8));
-    }
+    // 8 - must shift >> 0
+    // 7 - must shift >> 1
+    // 6 - must shift >> 2
+    // 5 - must shift >> 3
+    // 4 - must shift >> 4
+    // 3 - must shift >> 5
+    // 2 - must shift >> 6
+    // 1 - just pushed; done
+    
+    //printf("Tail %d: %x >> %d = %x\n",
+    //  bits, last, (6 - (bits+6)%8), last >> (6 - (bits+6)%8));
+    if (bits % 8 != 1)
+      result.push_back(last >> (6 - (bits+6)%8));
     
     // kill padding bit
     result.erase(result.begin() + kill);
