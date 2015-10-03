@@ -251,8 +251,13 @@ begin
         r_ena <= '0';
         r_div <= (others => '-');
       end if;
-      
-      -- Gate the clock !!! in 100m domain surely?
+    end if;
+  end process;
+  
+  -- Gate the clock
+  gate : process(clk_100m) is
+  begin
+    if rising_edge(clk_100m) then
       if r_cnt >= r_div then
         r_gate <= r_ena;
         r_cnt  <= to_unsigned(1, r_cnt'length);
