@@ -9,9 +9,10 @@ static const uint64_t user1 = 0xe;
 static const uint64_t user0 = 0xc;
 static const int ir_width = 10;
 
-static uint64_t ir_gpio;
-static uint64_t ir_addr;
-static uint64_t ir_data;
+static uint64_t ir_uart = 0;
+static uint64_t ir_gpio = 0;
+static uint64_t ir_addr = 0;
+static uint64_t ir_data = 0;
 static int vir_width;
 
 // 1 -> 0
@@ -35,14 +36,32 @@ void vir(uint64_t vir)
   bb_shIR64(user0, ir_width);
 }
 
+void opa_uart(uint32_t dat)
+{
+  if (!ir_uart) {
+    fprintf(stderr, "no gpio JTAG core in target device\n");
+    exit(1);
+  }
+  vir(ir_uart);
+  bb_shDR64(dat, 9, 1);
+}
+
 void opa_gpio(uint8_t data)
 {
+  if (!ir_gpio) {
+    fprintf(stderr, "no gpio JTAG core in target device\n");
+    exit(1);
+  }
   vir(ir_gpio);
   bb_shDR64(data, 6);
 }
 
 void opa_read(uint64_t address)
 {
+  if (!ir_addr) {
+    fprintf(stderr, "no loader JTAG core in target device\n");
+    exit(1);
+  }
   vir(ir_addr);
   bb_shDR64(address, 32);
   vir(ir_data);
@@ -51,6 +70,10 @@ void opa_read(uint64_t address)
 
 void opa_write(uint64_t address, uint64_t value, int old)
 {
+  if (!ir_addr) {
+    fprintf(stderr, "no loader JTAG core in target device\n");
+    exit(1);
+  }
   static int leds = 1;
   
   vir(ir_addr);
@@ -65,7 +88,7 @@ void opa_write(uint64_t address, uint64_t value, int old)
   if (leds == 0x10) leds = 1;
 }
 
-void opa_probe(int seek_inst_id) {
+void opa_probe(int loader_id, int uart_id) {
   bb_reset();
   bb_execute();
   
@@ -104,7 +127,8 @@ void opa_probe(int seek_inst_id) {
   fprintf(stderr, "SLD hub located\n");
   
   // Scan all the SLD nodes
-  int devid = -1;
+  int loaderdev = -1;
+  int uartdev = -1;
   for (int dev = 1; dev <= N; ++dev) {
     for (int i = 0; i < 8; ++i) bb_shDR64(0, 4, 1);
     std::vector<unsigned char> nodevec = bb_execute();
@@ -116,21 +140,22 @@ void opa_probe(int seek_inst_id) {
     
     // printf("ver = %d, mfg = %x, id = %d, inst_id = %d\n", node_ver, node_mfg, node_id, inst_id);
     if (node_mfg == 0x6e && node_ver == 0 && node_id == 8) {
-      if (inst_id == seek_inst_id) devid = dev;
+      if (inst_id == loader_id) loaderdev = dev;
+      if (inst_id == uart_id) uartdev = dev;
     }
-  }
-  
-  if (devid == -1) {
-    fprintf(stderr, "Could not find SLD node %d\n", seek_inst_id);
-    exit(1);
   }
   
   uint32_t n = ceil_log2(N+1); // USER1 DR width = (n, m)-bit tuple
   vir_width = n + m;
-  fprintf(stderr, "SLD device (%d) at address %d in %d-sized VIR\n", seek_inst_id, devid, vir_width);
   
   vir_width = n + m;
-  ir_gpio = ((uint64_t)devid << m) | 0;
-  ir_addr = ((uint64_t)devid << m) | 2;
-  ir_data = ((uint64_t)devid << m) | 3;
+  
+  if (loaderdev != -1) {
+    ir_gpio = ((uint64_t)loaderdev << m) | 0;
+    ir_addr = ((uint64_t)loaderdev << m) | 2;
+    ir_data = ((uint64_t)loaderdev << m) | 3;
+  }
+  if (uartdev != -1) {
+    ir_uart = ((uint64_t)uartdev << m) | 0;
+  }
 }

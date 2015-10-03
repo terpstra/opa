@@ -10,8 +10,8 @@ int main(int argc, const char** argv) {
   unsigned char buf[4];
   uint32_t address = 0, data;
   
-  bb_open(0x9fb, 0x6001);
-  opa_probe(99);
+  bb_open();
+  opa_probe();
   
   if (argc != 2) {
     fprintf(stderr, "Must specify a file to load\n");
