@@ -1,270 +1,59 @@
-diff --git a/opa.vhd b/opa.vhd
-index 772e6ff..f41d894 100644
---- a/opa.vhd
-+++ b/opa.vhd
-@@ -112,6 +112,7 @@ architecture rtl of opa is
-   signal decode_rename_stb      : std_logic;
-   signal decode_rename_fast     : std_logic_vector(c_renamers-1 downto 0);
-   signal decode_rename_slow     : std_logic_vector(c_renamers-1 downto 0);
-+  signal decode_rename_last     : std_logic_vector(c_renamers-1 downto 0);
-   signal decode_rename_setx     : std_logic_vector(c_renamers-1 downto 0);
-   signal decode_rename_geta     : std_logic_vector(c_renamers-1 downto 0);
-   signal decode_rename_getb     : std_logic_vector(c_renamers-1 downto 0);
-@@ -135,6 +136,7 @@ architecture rtl of opa is
-   signal rename_issue_stb       : std_logic;
-   signal rename_issue_fast      : std_logic_vector(c_renamers-1 downto 0);
-   signal rename_issue_slow      : std_logic_vector(c_renamers-1 downto 0);
-+  signal rename_issue_last      : std_logic_vector(c_renamers-1 downto 0);
-   signal rename_issue_geta      : std_logic_vector(c_renamers-1 downto 0);
-   signal rename_issue_getb      : std_logic_vector(c_renamers-1 downto 0);
-   signal rename_issue_aux       : std_logic_vector(c_aux_wide-1 downto 0);
-@@ -356,6 +358,7 @@ begin
-       rename_stall_i   => rename_decode_stall,
-       rename_fast_o    => decode_rename_fast,
-       rename_slow_o    => decode_rename_slow,
-+      rename_last_o    => decode_rename_last,
-       rename_setx_o    => decode_rename_setx,
-       rename_geta_o    => decode_rename_geta,
-       rename_getb_o    => decode_rename_getb,
-@@ -386,6 +389,7 @@ begin
-       decode_stall_o => rename_decode_stall,
-       decode_fast_i  => decode_rename_fast,
-       decode_slow_i  => decode_rename_slow,
-+      decode_last_i  => decode_rename_last,
-       decode_setx_i  => decode_rename_setx,
-       decode_geta_i  => decode_rename_geta,
-       decode_getb_i  => decode_rename_getb,
-@@ -397,6 +401,7 @@ begin
-       issue_stall_i  => issue_rename_stall,
-       issue_fast_o   => rename_issue_fast,
-       issue_slow_o   => rename_issue_slow,
-+      issue_last_o   => rename_issue_last,
-       issue_geta_o   => rename_issue_geta,
-       issue_getb_o   => rename_issue_getb,
-       issue_aux_o    => rename_issue_aux,
-@@ -427,6 +432,7 @@ begin
-       rename_stall_o => issue_rename_stall,
-       rename_fast_i  => rename_issue_fast,
-       rename_slow_i  => rename_issue_slow,
-+      rename_last_i  => rename_issue_last,
-       rename_geta_i  => rename_issue_geta,
-       rename_getb_i  => rename_issue_getb,
-       rename_aux_i   => rename_issue_aux,
-diff --git a/opa_components_pkg.vhd b/opa_components_pkg.vhd
-index 9439ede..7f2c879 100644
---- a/opa_components_pkg.vhd
-+++ b/opa_components_pkg.vhd
-@@ -192,6 +192,7 @@ package opa_components_pkg is
-       rename_stall_i : in  std_logic;
-       rename_fast_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       rename_slow_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-+      rename_last_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       rename_setx_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       rename_geta_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       rename_getb_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-@@ -229,6 +230,7 @@ package opa_components_pkg is
-       decode_stall_o : out std_logic;
-       decode_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       decode_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-+      decode_last_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       decode_setx_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       decode_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       decode_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-@@ -242,6 +244,7 @@ package opa_components_pkg is
-       issue_stall_i  : in  std_logic;
-       issue_fast_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       issue_slow_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-+      issue_last_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       issue_geta_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       issue_getb_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       issue_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-@@ -277,6 +280,7 @@ package opa_components_pkg is
-       rename_stall_o : out std_logic;
-       rename_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       rename_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-+      rename_last_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       rename_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       rename_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-       rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-diff --git a/opa_decode.vhd b/opa_decode.vhd
-index d476a7b..9985744 100644
---- a/opa_decode.vhd
-+++ b/opa_decode.vhd
-@@ -71,6 +71,7 @@ entity opa_decode is
-     rename_stall_i   : in  std_logic;
-     rename_fast_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     rename_slow_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-+    rename_last_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     rename_setx_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     rename_geta_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     rename_getb_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-@@ -341,7 +342,8 @@ begin
-   rename_aux_o <= std_logic_vector(r_aux);
-   ops_out : for d in 0 to c_renamers-1 generate
-     rename_fast_o(d) <= r_ops(d).fast;
--    rename_slow_o(d) <= not r_ops(d).fast;
-+    rename_slow_o(d) <= not r_ops(d).fast and not r_ops(d).last;
-+    rename_last_o(d) <= r_ops(d).last;
-     rename_setx_o(d) <= r_ops(d).setx;
-     rename_geta_o(d) <= r_ops(d).geta;
-     rename_getb_o(d) <= r_ops(d).getb;
-diff --git a/opa_functions_pkg.vhd b/opa_functions_pkg.vhd
-index 39508ee..3adbf46 100644
---- a/opa_functions_pkg.vhd
-+++ b/opa_functions_pkg.vhd
-@@ -126,6 +126,7 @@ package opa_functions_pkg is
-     archx : std_logic_vector(c_log_arch-1 downto 0);
-     -- Information for the issue stage
-     fast  : std_logic; -- goes to fast/slow EU
-+    last  : std_logic; -- must be issued last
-     -- Information for the execute stage
-     imm   : std_logic_vector(c_imm_wide-1 downto 0);
-     immb  : std_logic_vector(c_imm_wide-1 downto 0); -- branch immediates; less cases than imm.
-@@ -146,6 +147,7 @@ package opa_functions_pkg is
-     archb => (others => '-'),
-     archx => (others => '-'),
-     fast  => '-',
-+    last  => '-',
-     imm   => (others => '-'),
-     immb  => (others => '-'),
-     arg   => (others => '-'));
-diff --git a/opa_isa_pkg_riscv.vhd b/opa_isa_pkg_riscv.vhd
-index f70e91a..b59dc84 100644
---- a/opa_isa_pkg_riscv.vhd
-+++ b/opa_isa_pkg_riscv.vhd
-@@ -75,6 +75,7 @@ package body opa_isa_pkg is
-     result.geta  := '1'; -- use both input registers
-     result.getb  := '1';
-     result.setx  := not f_zero(result.archx);
-+    result.last  := '0';
-     return result;
-   end f_parse_rtype;
-   
-@@ -90,6 +91,7 @@ package body opa_isa_pkg is
-     result.getb  := '0'; -- immediate
-     result.geta  := '1';
-     result.setx  := not f_zero(result.archx);
-+    result.last  := '0';
-     result.imm := (others => x(31));
-     result.imm(10 downto 0) := x(30 downto 20);
-     return result;
-@@ -107,6 +109,7 @@ package body opa_isa_pkg is
-     result.getb  := '1';
-     result.geta  := '1';
-     result.setx  := '0';
-+    result.last  := '1';
-     result.imm := (others => x(31));
-     result.imm(10 downto 5) := x(30 downto 25);
-     result.imm( 4 downto 0) := x(11 downto 7);
-@@ -124,6 +127,7 @@ package body opa_isa_pkg is
-     result.geta  := '0';
-     result.getb  := '0';
-     result.setx  := not f_zero(result.archx);
-+    result.last  := '0';
-     result.imm(31 downto 12) := x(31 downto 12);
-     result.imm(11 downto  0) := (others => '0');
-     return result;
-@@ -143,6 +147,7 @@ package body opa_isa_pkg is
-     result.getb  := '1';
-     result.geta  := '1';
-     result.setx  := '0';
-+    result.last  := '0';
-     result.imm := (others => x(31));
-     result.imm(11)          := x(7);
-     result.imm(10 downto 5) := x(30 downto 25);
-@@ -177,6 +182,7 @@ package body opa_isa_pkg is
-     op.pop      := '0';
-     op.push     := f_one(op.archx);
-     op.fast     := '1';
-+    op.last     := '0';
-     op.arg      := f_opa_arg_from_fast(fast);
-     -- a very strange immediate format:
-     op.imm := (others => x(31));
 diff --git a/opa_issue.vhd b/opa_issue.vhd
-index 37998ea..3f06cb6 100644
+index 9edd3ff..fbf49d8 100644
 --- a/opa_issue.vhd
 +++ b/opa_issue.vhd
-@@ -48,6 +48,7 @@ entity opa_issue is
-     rename_stall_o : out std_logic;
-     rename_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     rename_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-+    rename_last_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     rename_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     rename_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-@@ -207,6 +208,7 @@ architecture rtl of opa_issue is
+@@ -218,6 +218,7 @@ architecture rtl of opa_issue is
    -- These have 0 latency indexes (fed directly)
    signal r_fast       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
    signal r_slow       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
-+  signal r_last       : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
++  signal r_order      : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
    signal s_issued     : std_logic_vector(c_num_stat-1 downto 0);
    signal s_new_issued : std_logic_vector(c_num_stat-1 downto 0);
    signal r_issued     : std_logic_vector(c_num_stat-1 downto 0) := (others => '1');
-@@ -230,6 +232,8 @@ architecture rtl of opa_issue is
-   signal r_bakb       : t_opa_matrix(c_num_stat-1 downto 0, c_back_wide-1 downto 0);
+@@ -243,6 +244,8 @@ architecture rtl of opa_issue is
    
    -- Calculation of what to issue
+   type t_ready_pad is array(natural range <>) of std_logic_vector(2**c_stat_wide-1 downto 0);
 +  signal s_all_issued      : std_logic_vector(c_num_stat-1 downto 0);
 +  signal s_pred_issued     : std_logic_vector(c_num_stat-1 downto 0);
+   signal s_ready_pads      : t_ready_pad((c_num_stat+c_mux_share-1)/c_mux_share-1 downto 0);
    signal s_ready_pad       : std_logic_vector(2**c_stat_wide-1 downto 0) := (others => '0');
    signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
-   signal s_readyb          : std_logic_vector(c_num_stat-1 downto 0);
-@@ -330,6 +334,8 @@ begin
- 
+@@ -441,6 +444,9 @@ begin
+   
    -- Which stations are already issued?
    s_issued <= f_shift(r_fast_issue or r_slow_issue, r_shift) or r_issued;
 +  s_all_issued <= s_issued and not std_logic_vector(unsigned(s_issued) + 1);
 +  s_pred_issued <= s_all_issued(s_all_issued'high-1 downto s_all_issued'low) & '1';
++
  
    -- Which stations have ready operands?
-   -- !!! use a sparse version of s_ready_pad to save half the muxes
-@@ -341,7 +347,7 @@ begin
+   -- 
+@@ -471,7 +477,7 @@ begin
    -- Which stations are pending issue?
    s_readyab <= s_readya and s_readyb; -- 3 levels (for stat_wide <= 5)
    s_pending_fast <= s_readyab and not s_issued and r_fast;
 -  s_pending_slow <= s_readyab and not s_issued and r_slow;
-+  s_pending_slow <= s_readyab and not s_issued and (r_slow or (r_last and s_pred_issued));
++  s_pending_slow <= s_readyab and not s_issued and r_slow and not (r_order and not s_pred_issued);
    
    -- Derive the schedule from the pending instructions
    fast : opa_prefixsum
-@@ -588,10 +594,12 @@ begin
+@@ -773,12 +779,14 @@ begin
+   stations_0rc : process(rst_n_i, clk_i) is
+   begin
      if rst_n_i = '0' then
-       r_fast <= (others => '0');
-       r_slow <= (others => '0');
-+      r_last <= (others => '0');
+-      r_fast <= (others => '0');
+-      r_slow <= (others => '0');
++      r_fast  <= (others => '0');
++      r_slow  <= (others => '0');
++      r_order <= (others => '0');
      elsif rising_edge(clk_i) then
        if s_shift = '1' then
-         r_fast <= rename_fast_i & r_fast(c_num_stat-1 downto c_renamers);
-         r_slow <= rename_slow_i & r_slow(c_num_stat-1 downto c_renamers);
-+        r_last <= rename_last_i & r_last(c_num_stat-1 downto c_renamers);
+-        r_fast <= rename_fast_i & r_fast(c_num_stat-1 downto c_renamers);
+-        r_slow <= rename_slow_i & r_slow(c_num_stat-1 downto c_renamers);
++        r_fast  <= rename_fast_i  & r_fast (c_num_stat-1 downto c_renamers);
++        r_slow  <= rename_slow_i  & r_slow (c_num_stat-1 downto c_renamers);
++        r_order <= rename_order_i & r_order(c_num_stat-1 downto c_renamers);
        end if;
      end if;
    end process;
-diff --git a/opa_rename.vhd b/opa_rename.vhd
-index d0316ea..dd3b415 100644
---- a/opa_rename.vhd
-+++ b/opa_rename.vhd
-@@ -48,6 +48,7 @@ entity opa_rename is
-     decode_stall_o : out std_logic;
-     decode_fast_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     decode_slow_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-+    decode_last_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     decode_setx_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     decode_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     decode_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-@@ -61,6 +62,7 @@ entity opa_rename is
-     issue_stall_i  : in  std_logic;
-     issue_fast_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     issue_slow_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-+    issue_last_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     issue_geta_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     issue_getb_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-     issue_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-@@ -316,6 +318,7 @@ begin
-   issue_stb_o    <= decode_stb_i;
-   issue_fast_o   <= decode_fast_i;
-   issue_slow_o   <= decode_slow_i;
-+  issue_last_o   <= decode_last_i;
-   issue_geta_o   <= decode_geta_i;
-   issue_getb_o   <= decode_getb_i;
-   issue_aux_o    <= decode_aux_i;
