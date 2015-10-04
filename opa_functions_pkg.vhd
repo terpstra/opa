@@ -746,11 +746,11 @@ package body opa_functions_pkg is
     
     for i in x'range(1) loop
       for j in x'range(2) loop
-        if c(i) = '1' then
-          result(i,j) := x(i,j);
-        else
-          result(i,j) := y(i,j);
-        end if;
+        case c(i) is
+          when '1'    => result(i,j) := x(i,j);
+          when '0'    => result(i,j) := y(i,j);
+          when others => result(i,j) := 'X';
+        end case;
       end loop;
     end loop;
     return result;

@@ -283,18 +283,10 @@ begin
   s_new_bakb <= f_opa_product(s_source_b, r_free_bak);
   s_new_stata<= f_opa_product(s_source_a, c_stat_labels);
   s_new_statb<= f_opa_product(s_source_b, c_stat_labels);
-  
-  -- Pick between old arch register or cross-dependency
-  mux : for i in 0 to c_renamers-1 generate
-    bak : for j in 0 to c_back_wide-1 generate
-      s_baka(i,j) <= s_old_baka(i,j) when s_mux_a(i) = '0' else s_new_baka(i,j);
-      s_bakb(i,j) <= s_old_bakb(i,j) when s_mux_b(i) = '0' else s_new_bakb(i,j);
-    end generate;
-    stat : for j in 0 to c_stat_wide-1 generate
-      s_stata(i,j)<= s_old_stata(i,j)when s_mux_a(i) = '0' else s_new_stata(i,j);
-      s_statb(i,j)<= s_old_statb(i,j)when s_mux_b(i) = '0' else s_new_statb(i,j);
-    end generate;
-  end generate;
+  s_baka     <= f_opa_mux(s_mux_a, s_new_baka,  s_old_baka);
+  s_bakb     <= f_opa_mux(s_mux_b, s_new_bakb,  s_old_bakb);
+  s_stata    <= f_opa_mux(s_mux_a, s_new_stata, s_old_stata);
+  s_statb    <= f_opa_mux(s_mux_b, s_new_statb, s_old_statb);
   
   -- Forward result to issue stage
   decode_stall_o <= issue_stall_i;
