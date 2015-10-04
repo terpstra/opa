@@ -683,7 +683,7 @@ begin
   --       Therefore, anything we restart (which is newer) is safe to reissue.
   alias_check : for s in 0 to c_num_stat-1 generate
     s_alias(s) <= l1d_store_i and r_alias_valid(s) and s_after_store(s)
-                  and f_opa_bit(f_opa_select_row(r_alias_addr, s) = f_opa_select_row(l1d_addr_i, 0))
+                  and f_opa_eq(f_opa_select_row(r_alias_addr, s), f_opa_select_row(l1d_addr_i, 0))
                   and f_opa_or(f_opa_select_row(r_alias_mask, s) and f_opa_select_row(l1d_mask_i, 0));
   end generate;
   

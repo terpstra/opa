@@ -267,7 +267,7 @@ begin
           random_o => s_random_idx);
       -- 1-hot decode the entropy to a way
       way : for w in 0 to c_num_ways-1 generate
-        s_random(w) <= f_opa_bit(unsigned(s_random_idx) = w);
+        s_random(w) <= f_opa_eq(unsigned(s_random_idx), w);
       end generate;
     end block;
   end generate;
@@ -293,13 +293,13 @@ begin
         
         -- 1-hot decode the size (note: 0 = full size)
         size : for s in c_sub_low to c_sub_high generate
-          s_sizes(p)(s) <= f_opa_bit(unsigned(s_size(p)) = s);
+          s_sizes(p)(s) <= f_opa_eq(unsigned(s_size(p)), s);
         end generate;
         
         little : if not c_big_endian generate
           -- Derive the word byte-select mask for the operation
           wmask : for b in 0 to c_reg_bytes-1 generate
-            s_wmask(p)(b) <= f_opa_bit(b - unsigned(s_vsub(p)) <= unsigned(s_sizes(p))-1);
+            s_wmask(p)(b) <= not f_opa_lt(unsigned(s_sizes(p))-1, b - unsigned(s_vsub(p)));
           end generate;
           -- Derive the sub-word rotation
           s_shsub(p) <= s_vsub(p);
@@ -307,7 +307,7 @@ begin
         
         big : if c_big_endian generate
           wmask : for b in 0 to c_reg_bytes-1 generate
-            s_wmask(p)(c_reg_bytes-1-b) <= f_opa_bit(b - unsigned(s_vsub(p)) <= unsigned(s_sizes(p))-1);
+            s_wmask(p)(c_reg_bytes-1-b) <= not f_opa_lt(unsigned(s_sizes(p))-1, b - unsigned(s_vsub(p)));
           end generate;
           s_shsub(p) <= std_logic_vector(unsigned(s_vsub(p)) + unsigned(s_sizes(p)));
         end generate;
@@ -391,7 +391,7 @@ begin
       -- A load is done if the tag matches and the valid bits cover the request
       s_dirtyw(p,w) <= s_rdirty(f_idx(p,w));
       s_validw(p,w) <= f_opa_and(not r_bmask(p) or s_rvalid(f_idx(p,w)));
-      s_matchw(p,w) <= f_opa_bit(r_vtag(p) = s_rtag(f_idx(p,w)));
+      s_matchw(p,w) <= f_opa_eq(r_vtag(p), s_rtag(f_idx(p,w)));
       s_donew (p,w) <= s_matchw(p,w) and (r_we(p) or s_validw(p,w));
       
       -- Would this way be the victim on a refill?
@@ -549,8 +549,8 @@ begin
   -- If this load aliased a store at port 0, retry it
   cross_aliases : for p in 0 to c_num_slow-1 generate
     s_alias(p) <= r_re(p) and r_we(0)
-                  and f_opa_bit(r_vidx(p) = r_vidx(0))
-                  and f_opa_bit(r_voff(p) = r_voff(0))
+                  and f_opa_eq(r_vidx(p), r_vidx(0))
+                  and f_opa_eq(r_voff(p), r_voff(0))
                   and f_opa_or(r_wmask(p) and r_wmask(0));
   end generate;
   

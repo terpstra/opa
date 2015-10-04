@@ -117,11 +117,11 @@ begin
   -- OR the user has explicitly requested the cycle line stay up (r_lock).
   s_stall <= 
     r_stall or not
-    (r_lock or not r_cyc or f_opa_bit(r_adr(r_adr'high downto c_device_align) = l1d_addr_i(r_adr'high downto c_device_align)));
+    (r_lock or not r_cyc or f_opa_eq(r_adr(r_adr'high downto c_device_align), l1d_addr_i(r_adr'high downto c_device_align)));
   
   s_push  <= l1d_req_i and not s_stall;
   s_full  <= r_stb and p_stall_i;
-  s_exist <= f_opa_bit(r_widx /= r_ridx) or s_push;
+  s_exist <= not f_opa_eq(r_widx, r_ridx) or s_push;
   s_pop   <= not s_full and s_exist;
   s_fin   <= r_cyc and (p_ack_i or p_err_i);
   
@@ -170,8 +170,8 @@ begin
       r_ridx  <= s_ridx;
       r_widx  <= s_widx;
       r_fidx  <= s_fidx;
-      r_stall <= f_opa_bit(r_widx - r_fidx >= 2**c_fifo_deep-2);
-      r_cyc   <= f_opa_bit(s_widx /= s_fidx) or r_lock;
+      r_stall <= not f_opa_lt(r_widx - r_fidx, 2**c_fifo_deep-2);
+      r_cyc   <= not f_opa_eq(s_widx, s_fidx) or r_lock;
       r_stb   <= s_exist or s_full;
     end if;
   end process;
