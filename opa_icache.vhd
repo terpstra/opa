@@ -109,7 +109,7 @@ begin
     generic map(
       g_width  => s_rtag'length + s_rdata'length,
       g_size   => c_size,
-      g_equal  => OPA_UNDEF,
+      g_equal  => OPA_OLD,
       g_regin  => true,
       g_regout => false)
     port map(
@@ -127,10 +127,18 @@ begin
   s_wraw(s_wraw'left downto s_wdata'length) <= not r_pc2(s_rtag'range);
   s_wraw(s_wdata'range) <= s_wdata;
 
-  -- The r_pc[12] comparison ensures that if we just wrote to the cache,
-  -- and there were two back-to-back fetches of the same address, we get
-  -- the new data as output.
-  s_repeat <= f_opa_bit(r_pc1 = r_pc2);
+  -- The r_pc[12] comparison optimizes the case where we just wrote to the
+  -- cache, and there were two back-to-back fetches of the same address.
+  --
+  -- If s_repeat were ALWAYS 0, we would get the old data from icache and
+  -- conclude that there is no hit and then reload the same line again.
+  -- Slow, but safe. This is why the memory cannot be OPA_UNDEF.
+  -- 
+  -- However, in the case that the r_pc1 and r_pc2 really refer to the same
+  -- PHYSICAL address lines, we can use this optimization to avoid a cache 
+  -- refill without the need for OPA_NEW.
+  s_repeat <= f_opa_eq(r_pc1(r_pc1'high downto c_fetch_align),
+                       r_pc2(r_pc2'high downto c_fetch_align));
   
   pc : process(clk_i, rst_n_i) is
   begin
@@ -141,7 +149,7 @@ begin
     elsif rising_edge(clk_i) then
       r_pc1 <= s_pc1;
       if s_stall = '0' then
-        r_hit <= f_opa_bit(r_pc1(s_rtag'range) = s_rtag) or s_repeat;
+        r_hit <= f_opa_eq(r_pc1(s_rtag'range), s_rtag) or s_repeat;
         r_pc2 <= r_pc1;
       end if;
     end if;
@@ -198,7 +206,7 @@ begin
   i_addr_o(c_fetch_align-1 downto c_reg_align)  <= std_logic_vector(r_load);
   i_addr_o(c_reg_align -1 downto 0)            <= (others => '0');
   
-  s_wen  <= i_ack_i and f_opa_bit(r_got = c_num_load-1);
+  s_wen  <= i_ack_i and f_opa_eq(r_got, c_num_load-1);
   fill : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
@@ -221,11 +229,11 @@ begin
       else
         if (r_istb and not i_stall_i) = '1' then
           r_load <= r_load + 1;
-          r_istb <= f_opa_bit(r_load /= c_num_load-1);
+          r_istb <= not f_opa_eq(r_load, c_num_load-1);
         end if;
         if (r_icyc and i_ack_i) = '1' then
           r_got  <= r_got + 1;
-          r_icyc <= f_opa_bit(r_got /= c_num_load-1);
+          r_icyc <= not f_opa_eq(r_got, c_num_load-1);
         end if;
       end if;
     end if;
