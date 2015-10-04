@@ -293,6 +293,15 @@ architecture rtl of opa_regfile is
     
 begin
 
+  check : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      assert (f_opa_safe(decode_stb_i) = '1') report "regfile: decode_stb_i has a metavalue" severity failure;
+      assert (f_opa_safe(issue_rstb_i) = '1') report "regfile: issue_rstb_i has a metavalue" severity failure;
+      assert (f_opa_safe(issue_wstb_i) = '1') report "regfile: issue_wstb_i has a metavalue" severity failure;
+    end if;
+  end process;
+
   input : process(clk_i) is
   begin
     if rising_edge(clk_i) then
@@ -317,13 +326,7 @@ begin
   s_map_set   <= f_opa_product(s_map_match, c_ones); -- 2 levels with 3 EU and 64 bak
   s_map_new   <= f_opa_product(s_map_match, c_eu_indexes);
   s_map_aged  <= f_opa_compose(c_age_table, r_map); -- 1 level decode
-  
-  -- Was a register written?
-  regs : for i in s_map'range(1) generate
-    bits : for b in s_map'range(2) generate
-      s_map(i,b) <= s_map_new(i,b) when s_map_set(i)='1' else s_map_aged(i,b);
-    end generate;
-  end generate;
+  s_map       <= f_opa_mux(s_map_set, s_map_new, s_map_aged);
   
   back_reg : process(clk_i, rst_n_i) is
   begin
@@ -525,9 +528,6 @@ begin
         if r_rstb0(i) = '1' then
           assert (f_opa_safe(s_rega(i, 0)) = '1') report "rega contains meta-values" severity warning;
           assert (f_opa_safe(s_regb(i, 0)) = '1') report "regb contains meta-values" severity warning;
-        end if;
-        if r_wstb1(i) = '1' then
-          assert (f_opa_safe(f_opa_select_row(eu_regx_i, i)) = '1') report "regx contains meta-values" severity warning;
         end if;
       end loop;
     end if;

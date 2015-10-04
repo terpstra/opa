@@ -113,6 +113,19 @@ architecture rtl of opa_pbus is
   
 begin
 
+  check : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      assert (f_opa_safe(l1d_req_i) = '1') report "pbus: l1d_req_i has a metavalue" severity failure;
+      assert (f_opa_safe(l1d_pop_i) = '1') report "pbus: l1d_req_i has a metavalue" severity failure;
+      -- Internal state
+      assert (f_opa_safe(r_full) = '1') report "pbus: r_full has a metavalue" severity failure;
+      assert (f_opa_safe(r_ridx) = '1') report "pbus: r_ridx has a metavalue" severity failure;
+      assert (f_opa_safe(r_widx) = '1') report "pbus: r_widx has a metavalue" severity failure;
+      assert (f_opa_safe(r_fidx) = '1') report "pbus: r_fidx has a metavalue" severity failure;
+    end if;
+  end process;
+
   -- We accept requests into the same wishbone cycle if they are within the same device
   -- OR the user has explicitly requested the cycle line stay up (r_lock).
   s_stall <= 

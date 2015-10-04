@@ -194,7 +194,7 @@ begin
     s_sum_low       when c_opa_fast_addl,
     s_comparison    when c_opa_fast_addh,
     s_pc_next_pad   when c_opa_fast_jump,
-    (others => '-') when others;
+    (others => 'X') when others;
   
   -- Pack immediate into sum format
   s_pc_imm(c_sum_wide-2 downto r_pc'low)  <= unsigned(r_imm(c_sum_wide-2 downto r_pc'low));

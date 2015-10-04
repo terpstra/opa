@@ -189,6 +189,16 @@ architecture rtl of opa_rename is
 
 begin
 
+  check : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      assert (f_opa_safe(decode_stb_i)  = '1') report "rename: decode_stb_i has metavalue" severity failure;
+      assert (f_opa_safe(issue_stall_i) = '1') report "rename: issue_stall_i has metavalue" severity failure;
+      assert (f_opa_safe(issue_fault_i) = '1') report "rename: issue_fault_i has metavalue" severity failure;
+      assert (f_opa_safe(s_progress)    = '1') report "rename: s_progress has metavalue" severity failure;
+    end if;
+  end process;
+
   -- Compute the new architectural state, predicting these operations run
   s_pre_writers <= f_opa_match_index(c_num_arch, decode_archx_i) and f_opa_dup_row(c_num_arch, decode_setx_i);
   s_pre_mux     <= f_opa_product(s_pre_writers, c_decode_ones);

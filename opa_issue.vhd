@@ -257,7 +257,7 @@ architecture rtl of opa_issue is
   
   -- The three sources of reissue
   signal s_nodep           : std_logic_vector(c_num_stat-1 downto 0);
-  signal r_alias           : std_logic_vector(c_num_stat-1 downto 0);
+  signal r_alias           : std_logic_vector(c_num_stat-1 downto 0) := (others => '0');
   signal s_retry           : std_logic_vector(c_num_stat-1 downto 0);
   
   signal r_retry           : std_logic_vector(c_executers-1 downto 0) := (others => '0');
@@ -360,7 +360,24 @@ architecture rtl of opa_issue is
   
 begin
 
-  invariants : process(clk_i, rst_n_i) is
+  check : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      -- input control signals
+      assert (f_opa_safe(rename_stb_i) = '1') report "issue: rename_stb_i has metavalue" severity failure;
+      assert (f_opa_safe(l1d_store_i)  = '1') report "issue: l1d_store_i has metavalue" severity failure;
+      assert (f_opa_safe(l1d_load_i)   = '1') report "issue: l1d_load_i has metavalue" severity failure;
+      -- internal control signals
+      assert (f_opa_safe(r_shift)      = '1') report "issue: r_shift has metavalue" severity failure;
+      assert (f_opa_safe(s_shift)      = '1') report "issue: s_shift has metavalue" severity failure;
+      assert (f_opa_safe(r_fault_pipe) = '1') report "issue: r_fault_pipe has metavalue" severity failure;
+      assert (f_opa_safe(r_fault_out)  = '1') report "issue: r_fault_out has metavalue" severity failure;
+      assert (f_opa_safe(s_fault_out)  = '1') report "issue: s_fault_out has metavalue" severity failure;
+      assert (f_opa_safe(r_fault_in)   = '1') report "issue: r_fault_in has metavalue" severity failure;
+    end if;
+  end process;
+
+  invariants : process(clk_i) is
     variable v_schedule0s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
     variable v_schedule1s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
     variable v_schedule2s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
@@ -369,9 +386,7 @@ begin
     variable v_schedule2p : std_logic_vector(c_num_stat-1 downto 0);
     variable v_seen       : std_logic_vector(c_num_stat-1 downto 0);
   begin
-    if rst_n_i = '0' then
-      -- don't care
-    elsif rising_edge(clk_i) then
+    if rising_edge(clk_i) then
       -- r_final => r_ready (s_ready b/c r_ready has indexes one cycle late)
       assert (f_opa_or(r_final and not s_ready) = '0')
       report "issue: final operation that is not ready!"
@@ -720,15 +735,18 @@ begin
       r_issued      <= (others => '1');
       r_final       <= (others => '1');
       r_alias_valid <= (others => '0');
+      r_alias       <= (others => '0');
     elsif rising_edge(clk_i) then
       if r_fault_pipe = '1' then -- synchronous clear
         r_issued      <= (others => '1');
         r_final       <= (others => '1');
         r_alias_valid <= (others => '0');
+        r_alias       <= (others => '0');
       else
         r_issued      <= f_shift(s_new_issued, s_shift);
         r_final       <= f_shift(s_new_final,  s_shift);
         r_alias_valid <= f_shift(s_alias_valid, s_shift);
+        r_alias       <= f_shift(s_alias, s_shift);
       end if;
     end if;
   end process;
@@ -738,7 +756,6 @@ begin
     if rising_edge(clk_i) then
       r_alias_addr <= f_opa_transpose(f_shift(f_opa_transpose(s_alias_addr), s_shift));
       r_alias_mask <= f_opa_transpose(f_shift(f_opa_transpose(s_alias_mask), s_shift));
-      r_alias      <= f_shift(s_alias, s_shift);
     end if;
   end process;
   
@@ -788,7 +805,6 @@ begin
   stations_1rs : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_retry      <= (others => '0');
       r_ready      <= (others => '1');
       r_wipe       <= (others => '0');
       r_schedule0  <= (others => (others => '0'));
@@ -798,7 +814,6 @@ begin
       r_schedule4s <= (others => (others => '0'));
     elsif rising_edge(clk_i) then
       if r_fault_pipe = '1' then
-        r_retry      <= (others => '0');
         r_ready      <= (others => '1');
         r_wipe       <= (others => '0');
         r_schedule0  <= (others => (others => '0'));
@@ -807,7 +822,6 @@ begin
         r_schedule3s <= (others => (others => '0'));
         r_schedule4s <= (others => (others => '0'));
       else
-        r_retry      <= eu_retry_i;
         r_ready      <= s_new_ready;
         r_wipe       <= f_shift(s_nodep or r_alias or s_retry, s_shift);
         r_schedule0  <= f_opa_transpose(f_opa_concat(
@@ -840,6 +854,7 @@ begin
       --   fast cannot be affected by load aliasing ... but slow can
       r_fast_issue <= s_fast_issue and s_pending_fast;
       r_slow_issue <= s_slow_issue and s_pending_slow and not r_alias;
+      r_retry      <= eu_retry_i;
     end if;
   end process;
   

@@ -311,8 +311,7 @@ begin
   
   datin : for i in 0 to c_line_words-1 generate
     s_loadline(c_reg_wide*(i+1)-1 downto c_reg_wide*i) <= 
-      d_data_i when r_loadat(i)='1' else
-      r_loadline(c_reg_wide*(i+1)-1 downto c_reg_wide*i);
+      f_opa_mux(r_loadat(i), d_data_i, r_loadline(c_reg_wide*(i+1)-1 downto c_reg_wide*i));
   end generate;
   
   loadat : process(clk_i) is
