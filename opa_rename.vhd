@@ -89,6 +89,7 @@ architecture rtl of opa_rename is
 
   constant c_num_arch  : natural := f_opa_num_arch(g_config);
   constant c_num_stat  : natural := f_opa_num_stat(g_config);
+  constant c_num_back  : natural := f_opa_num_back(g_config);
   constant c_renamers  : natural := f_opa_renamers(g_config);
   constant c_arch_wide : natural := f_opa_arch_wide(g_config);
   constant c_back_wide : natural := f_opa_back_wide(g_config);
@@ -196,6 +197,43 @@ begin
       assert (f_opa_safe(issue_stall_i) = '1') report "rename: issue_stall_i has metavalue" severity failure;
       assert (f_opa_safe(issue_fault_i) = '1') report "rename: issue_fault_i has metavalue" severity failure;
       assert (f_opa_safe(s_progress)    = '1') report "rename: s_progress has metavalue" severity failure;
+    end if;
+  end process;
+  
+  invariants : process(clk_i) is
+    variable v_pre : std_logic_vector(c_num_back-1 downto 0);
+    variable v_com : std_logic_vector(c_num_back-1 downto 0);
+    variable v_bak : unsigned(c_back_wide-1 downto 0);
+    variable v_idx : integer;
+  begin
+    if rising_edge(clk_i) then
+      v_pre := (others => '0');
+      v_com := (others => '0');
+      
+      for i in 0 to c_num_arch-1 loop
+        v_bak := unsigned(f_opa_select_row(r_pre_bak, i));
+        assert (f_opa_safe(v_bak) = '1') report "rename: r_pre_bak has a metavalue" severity failure;
+        v_idx := to_integer(v_bak);
+        assert (v_idx < c_num_back) report "rename: r_pre_bak contains an invalid register" severity failure;
+        assert (v_pre(v_idx) = '0') report "rename: r_pre_bak contains a duplicate" severity failure;
+        v_pre(v_idx) := '1';
+        
+        v_bak := unsigned(f_opa_select_row(r_com_bak, i));
+        assert (f_opa_safe(v_bak) = '1') report "rename: r_com_bak has a metavalue" severity failure;
+        v_idx := to_integer(v_bak);
+        assert (v_idx < c_num_back) report "rename: r_com_bak contains an invalid register" severity failure;
+        assert (v_com(v_idx) = '0') report "rename: r_com_bak contains a duplicate" severity failure;
+        v_com(v_idx) := '1';
+      end loop;
+      
+      for i in 0 to c_renamers-1 loop
+        v_bak := unsigned(f_opa_select_row(r_free_bak, i));
+        assert (f_opa_safe(v_bak) = '1') report "rename: r_free_bak has a metavalue" severity failure;
+        v_idx := to_integer(v_bak);
+        assert (v_idx < c_num_back) report "rename: r_free_bak contains an invalid register" severity failure;
+        assert (v_com(v_idx) = '0') report "rename: r_free_bak contains a duplicate" severity failure;
+        v_com(v_idx) := '1';
+      end loop;
     end if;
   end process;
 
