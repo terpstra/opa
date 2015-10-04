@@ -111,8 +111,6 @@ architecture rtl of opa_decode is
   
   constant c_min_imm_pc : natural := f_opa_choose(c_imm_wide<c_adr_wide, c_imm_wide, c_adr_wide);
   
-  constant c_zeros : std_logic_vector(c_fetchers-1 downto 0) := (others => '0');
-  
   type t_op_array  is array(natural range <>) of t_opa_op;
   type t_pc_array  is array(natural range <>) of std_logic_vector(c_adr_wide-1 downto c_op_align);
   type t_pcf_array is array(natural range <>) of std_logic_vector(c_fetch_align-1 downto c_op_align);
@@ -154,6 +152,7 @@ architecture rtl of opa_decode is
   signal s_rename_source : std_logic_vector(c_adr_wide-1 downto c_op_align);
   
   signal s_jump_taken : std_logic_vector(c_fetchers-1 downto 0);
+  signal s_ret_taken  : std_logic;
   signal s_pcn_taken  : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal r_pcn_taken  : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal s_jal_pc     : std_logic_vector(c_adr_wide-1 downto c_op_align);
@@ -178,6 +177,31 @@ architecture rtl of opa_decode is
   
 begin
 
+  check : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      -- control inputs (safe for when/if)
+      assert (f_opa_safe(predict_hit_i)    = '1') report "decode: predict_hit_i has metavalue" severity failure;
+      assert (f_opa_safe(predict_jump_i)   = '1') report "decode: predict_jump_i has metavalue" severity failure;
+--      assert (f_opa_safe(predict_return_i) = '1') report "decode: predict_return_i has metavalue" severity failure;
+      assert (f_opa_safe(icache_stb_i)     = '1') report "decode: icache_stb_i has metavalue" severity failure;
+--      assert (f_opa_safe(rename_stall_i)   = '1') report "decode: rename_stall_i has metavalue" severity failure;
+      assert (f_opa_safe(rename_fault_i)   = '1') report "decode: rename_fault_i has metavalue" severity failure;
+      -- combinatorial control (safe for when/if)
+--      assert (f_opa_safe(s_use_static) = '1') report "decode: s_use_static has metavalue" severity failure;
+--      assert (f_opa_safe(s_ret_taken)  = '1') report "decode: s_ret_taken has metavalue"   severity failure;
+      assert (f_opa_safe(s_stall)      = '1') report "decode: s_stall has metavalue" severity failure;
+      assert (f_opa_safe(s_stb)        = '1') report "decode: s_stb has metavalue" severity failure;
+      assert (f_opa_safe(s_pcn_reg)    = '1') report "decode: s_pcn_reg has metavalue" severity failure;
+      assert (f_opa_safe(s_progress)   = '1') report "decode: s_progress has metavalue" severity failure;
+      assert (f_opa_safe(s_accept)     = '1') report "decode: s_accept has metavalue"   severity failure;
+      -- registered control
+      assert (f_opa_safe(r_use_static) = '1') report "decode: r_use_static has metavalue" severity failure;
+      assert (f_opa_safe(r_fill)       = '1') report "decode: r_fill has metavalue" severity failure;
+      assert (f_opa_safe(r_aux)        = '1') report "decode: r_aux has metavalue" severity failure;
+    end if;
+  end process;
+
   -- Decode the flow control information from the instructions
   s_pc_off <= unsigned(icache_pc_i(c_fetch_align-1 downto c_op_align));
   s_mask_tail(0) <= '0';
@@ -190,7 +214,7 @@ begin
     
     s_pred_in(i) <= std_logic_vector(unsigned(s_pc_in(i)) + unsigned(s_immb_in(i)));
     
-    s_mask_skip(i)  <= '1' when i < s_pc_off else '0'; -- Unused ops before loaded PC
+    s_mask_skip(i)  <= f_opa_lt(i, s_pc_off); -- Unused ops before loaded PC
     tail : if i > 0 generate
       s_mask_tail(i)  <= s_mask_tail(i-1) or predict_jump_i(i-1); -- Ops following a taken jump
     end generate;
@@ -208,7 +232,7 @@ begin
                  (s_force and not predict_jump_i) or
                  (s_take and not s_hit))
                 and not s_mask_skip and not s_mask_tail;
-  s_use_static <= '0' when s_bad_jump = c_zeros else '1';
+  s_use_static <= f_opa_or(s_bad_jump);
   
   -- What is our prediction?
   s_static_jumps<= s_take and not s_mask_skip; -- need to assign valid range before picking
@@ -222,6 +246,7 @@ begin
   s_static_target <= f_opa_product(f_opa_transpose(s_static_targets), s_static_jump);
 
   s_jump_taken <= s_static_jump when s_use_static='1' else predict_jump_i;
+  s_ret_taken  <= f_opa_or(s_pop and s_static_jump);
   
   -- pcn MUST be what gets loaded next, b/c instructions compare against it.
   -- if issue faults, all this gets blown away, so that doesn't matter
@@ -230,7 +255,7 @@ begin
   -- the predictor will always go where we tell it, except for a return.
   s_pcn_taken  <= 
     icache_pcn_i    when s_use_static='0' else
-    s_static_target when (s_pop and s_static_jump) = c_zeros else
+    s_static_target when s_ret_taken ='0' else
     predict_return_i;
   
   -- Decode renamer's fault information
@@ -238,12 +263,13 @@ begin
   s_rename_source(c_fetch_align-1 downto c_op_align)    <= rename_pcf_i;
   
   jumps : for i in 0 to c_fetchers-1 generate
-    s_rename_jump(i) <= '1' when i = unsigned(rename_pc_i(c_fetch_align-1 downto c_op_align)) else '0';
+    s_rename_jump(i) <= f_opa_eq(unsigned(rename_pc_i(c_fetch_align-1 downto c_op_align)), i);
   end generate;
   
   -- Feed back information to fetch
   predict_fault_o  <= (s_use_static and s_accept) or rename_fault_i;
-  predict_return_o <= '0' when rename_fault_i='1' or (s_pop and s_static_jump) = c_zeros else s_accept;
+  predict_return_o <= s_accept and not rename_fault_i and s_ret_taken;
+  
   predict_jump_o   <= s_rename_jump   when rename_fault_i='1' else s_static_jump;
   predict_source_o <= s_rename_source when rename_fault_i='1' else icache_pc_i;
   predict_target_o <= rename_pcn_i    when rename_fault_i='1' else s_static_target;
@@ -251,7 +277,7 @@ begin
   -- Do we need to push the PC?
   s_jal_pc(c_adr_wide   -1 downto c_fetch_align) <= icache_pc_i(c_adr_wide-1 downto c_fetch_align);
   s_jal_pc(c_fetch_align-1 downto c_op_align)    <= f_opa_1hot_dec(s_jump_taken);
-  predict_push_o <= '0' when (s_push and s_jump_taken) = c_zeros else s_accept;
+  predict_push_o <= f_opa_or(s_push and s_jump_taken) and s_accept;
   predict_ret_o  <= std_logic_vector(1 + unsigned(s_jal_pc));
   
   -- Flow control from fetch and to rename
