@@ -792,7 +792,7 @@ package body opa_functions_pkg is
   end f_opa_mux;
   
   function f_opa_mux(c : std_logic; x, y : std_logic_vector) return std_logic_vector is
-    variable bad : std_logic_vector(x'range) := (others => 'X');
+    constant bad : std_logic_vector(x'range) := (others => 'X');
   begin
     assert (x'length = y'length)  report "vector-vector size mismatch" severity failure;
     case c is
