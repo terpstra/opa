@@ -209,17 +209,24 @@ begin
       r_pc_next <= s_pc_next;
       r_pc_jump <= std_logic_vector(unsigned(r_pc) + s_pc_imm);
       r_pc_sum  <= s_sum_low(r_pc_sum'range);
-      r_fmux(1) <= f_opa_bit(r_mode /= c_opa_fast_addh) or not r_fault;
-      r_fmux(0) <= (s_comparison(0) or not r_fault) and f_opa_bit(r_mode /= c_opa_fast_jump);
+      case r_mode is
+        when c_opa_fast_lut  => r_fmux <= "11";
+        when c_opa_fast_addl => r_fmux <= "11";
+        when c_opa_fast_addh => r_fmux(0) <= not r_fault or s_comparison(0);
+                                r_fmux(1) <= not r_fault;
+        when c_opa_fast_jump => r_fmux <= "10";
+        when others          => r_fmux <= "XX";
+      end case;
     end if;
   end process;
   
   with r_fmux select
   s_br_fault <=
-    f_opa_bit(r_pc_next /= r_pcn1)	when "00", -- addh, fault, and comparison=0
-    f_opa_bit(r_pc_jump /= r_pcn1)	when "01", -- addh, fault, and comparison=1
-    f_opa_bit(r_pc_sum  /= r_pcn1)	when "10", -- jump
-    '0'					when others;
+    not f_opa_eq(r_pc_next, r_pcn1) when "00", -- addh, fault, and comparison=0
+    not f_opa_eq(r_pc_jump, r_pcn1) when "01", -- addh, fault, and comparison=1
+    not f_opa_eq(r_pc_sum,  r_pcn1) when "10", -- jump
+    '0'                             when "11",
+    'X'                             when others;
     
   with r_fmux select
   s_br_target <= 
