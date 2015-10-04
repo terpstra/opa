@@ -75,13 +75,14 @@ begin
     severity failure;
 
   s_data_bypass <= w_data_i;
-  s_data_memory <= r_memory(to_integer(unsigned(r_addr_i)));
+  s_data_memory <= r_memory(to_integer(unsigned(r_addr_i))) when f_opa_safe(r_addr_i)='1' else (others => 'X');
   s_bypass      <= f_opa_bit(r_addr_i = w_addr_i) and w_en_i;
   
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
       if w_en_i = '1' then
+        assert (f_opa_safe(w_addr_i) = '1') report "Attempt to write to a meta-valued address" severity failure;
         r_memory(to_integer(unsigned(w_addr_i))) <= w_data_i;
       end if;
       

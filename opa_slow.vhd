@@ -196,14 +196,14 @@ begin
       r_shout <= s_shout(r_shout'range);
     end if;
   end process;
-  s_shout <= std_logic_vector(rotate_right(unsigned(r_sexta), to_integer(unsigned(r_shamt))));
+  s_shout <= f_opa_rotate_right(r_sexta, unsigned(r_shamt));
   
   -- Implement sign extension
   sextmux : for i in s_sext_mux'range generate
     s_sext_mux(i)(c_reg_wide-1 downto f_pow(i)) <= (others => r_rega(f_pow(i)-1));
     s_sext_mux(i)(f_pow(i)-1 downto 0) <= r_rega(f_pow(i)-1 downto 0);
   end generate;
-  s_sext_a <= s_sext_mux(to_integer(unsigned(r_sext.size)));
+  s_sext_a <= s_sext_mux(to_integer(unsigned(r_sext.size))) when f_opa_safe(r_sext.size)='1' else (others => 'X');
   sext : process(clk_i) is
   begin
     if rising_edge(clk_i) then

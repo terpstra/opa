@@ -161,7 +161,7 @@ begin
   logic : for i in r_rega'range generate
     s_logic_in(i)(1) <= r_rega(i);
     s_logic_in(i)(0) <= r_regb(i);
-    s_logic(i) <= r_lut(to_integer(s_logic_in(i)));
+    s_logic(i) <= f_opa_index(r_lut, s_logic_in(i));
   end generate;
   
   -- Result is an adder function

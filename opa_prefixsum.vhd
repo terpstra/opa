@@ -132,27 +132,31 @@ architecture rtl of opa_prefixsum is
   constant c_compress_decode_rom1 : t_lut_romu := f_matrix_to_romu(f_decode_table(1, c_compress_rom1));
   
   function f_compress(bits : natural; x : std_logic_vector) return std_logic_vector is
-    constant bug : std_logic_vector(c_max_wide-1 downto 0) := (others => '0');
+    constant bad : std_logic_vector(c_max_wide-1 downto 0) := (others => 'X');
   begin
-    assert (bits >= 1 and bits <= c_max_wide) report "unsupported bit width" severity failure;
-    if bits = 3 then return c_compress_rom3(to_integer(unsigned(x))); end if;
-    if bits = 2 then return c_compress_rom2(to_integer(unsigned(x))); end if;
-    if bits = 1 then return c_compress_rom1(to_integer(unsigned(x))); end if;
-    return bug;
+    if f_opa_safe(x) = '1' then
+      assert (bits >= 1 and bits <= c_max_wide) report "unsupported bit width" severity failure;
+      if bits = 3 then return c_compress_rom3(to_integer(unsigned(x))); end if;
+      if bits = 2 then return c_compress_rom2(to_integer(unsigned(x))); end if;
+      if bits = 1 then return c_compress_rom1(to_integer(unsigned(x))); end if;
+    end if;
+    return bad;
   end f_compress;
   
   function f_compress_decode(num_unit : natural; x : std_logic_vector) return std_logic_vector is
-    constant bug : std_logic_vector(c_max_units downto 0) := (others => '0');
+    constant bad : std_logic_vector(c_max_units downto 0) := (others => 'X');
   begin
-    assert (num_unit >= 1 and num_unit <= c_max_units) report "unsupported unit count" severity failure;
-    if num_unit = 7 then return c_compress_decode_rom7(to_integer(unsigned(x))); end if;
-    if num_unit = 6 then return c_compress_decode_rom6(to_integer(unsigned(x))); end if;
-    if num_unit = 5 then return c_compress_decode_rom5(to_integer(unsigned(x))); end if;
-    if num_unit = 4 then return c_compress_decode_rom4(to_integer(unsigned(x))); end if;
-    if num_unit = 3 then return c_compress_decode_rom3(to_integer(unsigned(x))); end if;
-    if num_unit = 2 then return c_compress_decode_rom2(to_integer(unsigned(x))); end if;
-    if num_unit = 1 then return c_compress_decode_rom1(to_integer(unsigned(x))); end if;
-    return bug;
+    if f_opa_safe(x) = '1' then
+      assert (num_unit >= 1 and num_unit <= c_max_units) report "unsupported unit count" severity failure;
+      if num_unit = 7 then return c_compress_decode_rom7(to_integer(unsigned(x))); end if;
+      if num_unit = 6 then return c_compress_decode_rom6(to_integer(unsigned(x))); end if;
+      if num_unit = 5 then return c_compress_decode_rom5(to_integer(unsigned(x))); end if;
+      if num_unit = 4 then return c_compress_decode_rom4(to_integer(unsigned(x))); end if;
+      if num_unit = 3 then return c_compress_decode_rom3(to_integer(unsigned(x))); end if;
+      if num_unit = 2 then return c_compress_decode_rom2(to_integer(unsigned(x))); end if;
+      if num_unit = 1 then return c_compress_decode_rom1(to_integer(unsigned(x))); end if;
+    end if;
+    return bad;
   end f_compress_decode;
   
   ---------------------------------------------------------------------------------------
@@ -199,27 +203,31 @@ architecture rtl of opa_prefixsum is
   constant c_combine_decode_rom1 : t_lut_romu := f_matrix_to_romu(f_decode_table(1, c_combine_rom1));
   
   function f_combine(bits : natural; x : std_logic_vector) return std_logic_vector is
-    constant bug : std_logic_vector(c_max_wide-1 downto 0) := (others => '0');
+    constant bad : std_logic_vector(c_max_wide-1 downto 0) := (others => 'X');
   begin
-    assert (bits >= 1 and bits <= c_max_wide) report "unsupported bit width" severity failure;
-    if bits = 3 then return c_combine_rom3(to_integer(unsigned(x))); end if;
-    if bits = 2 then return c_combine_rom2(to_integer(unsigned(x))); end if;
-    if bits = 1 then return c_combine_rom1(to_integer(unsigned(x))); end if;
-    return bug;
+    if f_opa_safe(x) = '1' then
+      assert (bits >= 1 and bits <= c_max_wide) report "unsupported bit width" severity failure;
+      if bits = 3 then return c_combine_rom3(to_integer(unsigned(x))); end if;
+      if bits = 2 then return c_combine_rom2(to_integer(unsigned(x))); end if;
+      if bits = 1 then return c_combine_rom1(to_integer(unsigned(x))); end if;
+    end if;
+    return bad;
   end f_combine;
   
   function f_combine_decode(num_unit : natural; x : std_logic_vector) return std_logic_vector is
-    constant bug : std_logic_vector(c_max_units downto 0) := (others => '0');
+    constant bad : std_logic_vector(c_max_units downto 0) := (others => 'X');
   begin
-    assert (num_unit >= 1 and num_unit <= c_max_units) report "unsupported unit count" severity failure;
-    if num_unit = 7 then return c_combine_decode_rom7(to_integer(unsigned(x))); end if;
-    if num_unit = 6 then return c_combine_decode_rom6(to_integer(unsigned(x))); end if;
-    if num_unit = 5 then return c_combine_decode_rom5(to_integer(unsigned(x))); end if;
-    if num_unit = 4 then return c_combine_decode_rom4(to_integer(unsigned(x))); end if;
-    if num_unit = 3 then return c_combine_decode_rom3(to_integer(unsigned(x))); end if;
-    if num_unit = 2 then return c_combine_decode_rom2(to_integer(unsigned(x))); end if;
-    if num_unit = 1 then return c_combine_decode_rom1(to_integer(unsigned(x))); end if;
-    return bug;
+    if f_opa_safe(x) = '1' then
+      assert (num_unit >= 1 and num_unit <= c_max_units) report "unsupported unit count" severity failure;
+      if num_unit = 7 then return c_combine_decode_rom7(to_integer(unsigned(x))); end if;
+      if num_unit = 6 then return c_combine_decode_rom6(to_integer(unsigned(x))); end if;
+      if num_unit = 5 then return c_combine_decode_rom5(to_integer(unsigned(x))); end if;
+      if num_unit = 4 then return c_combine_decode_rom4(to_integer(unsigned(x))); end if;
+      if num_unit = 3 then return c_combine_decode_rom3(to_integer(unsigned(x))); end if;
+      if num_unit = 2 then return c_combine_decode_rom2(to_integer(unsigned(x))); end if;
+      if num_unit = 1 then return c_combine_decode_rom1(to_integer(unsigned(x))); end if;
+    end if;
+    return bad;
   end f_combine_decode;
   
   ---------------------------------------------------------------------------------------

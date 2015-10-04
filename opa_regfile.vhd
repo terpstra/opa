@@ -393,21 +393,21 @@ begin
       end generate;
     end generate;
     arg : for b in 0 to c_arg_wide-1 generate
-      s_arg(u,b) <= s_aux_arg_mux(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+      s_arg(u,b) <= f_opa_index(s_aux_arg_mux(f_idx(u,b)), unsigned(f_opa_select_row(r_dec,u)));
     end generate;
     imm : for b in 0 to c_imm_wide-1 generate
-      s_imm(u,b) <= s_aux_imm_mux(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+      s_imm(u,b) <= f_opa_index(s_aux_imm_mux(f_idx(u,b)), unsigned(f_opa_select_row(r_dec,u)));
       s_imm_pad(u,b) <= s_imm(u,b);
     end generate;
     pc : for b in 0 to c_pc_wide-1 generate
-      s_pc (u,b+c_op_align) <= s_aux_pc_mux (f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+      s_pc (u,b+c_op_align) <= f_opa_index(s_aux_pc_mux (f_idx(u,b)), unsigned(f_opa_select_row(r_dec,u)));
       s_pc_pad(u,b+c_op_align) <= s_pc(u,b+c_op_align);
     end generate;
     pcn : for b in 0 to c_pc_wide-1 generate
-      s_pcn(u,b+c_op_align) <= s_aux_pcn_mux(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+      s_pcn(u,b+c_op_align) <= f_opa_index(s_aux_pcn_mux(f_idx(u,b)), unsigned(f_opa_select_row(r_dec,u)));
     end generate;
     pcf : for b in 0 to c_pcf_wide-1 generate
-      s_pcf(u,b+c_op_align) <= s_aux_pcf_mux(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_dec,u))));
+      s_pcf(u,b+c_op_align) <= f_opa_index(s_aux_pcf_mux(f_idx(u,b)), unsigned(f_opa_select_row(r_dec,u)));
     end generate;
     
     sext_imm : if c_imm_wide < c_reg_wide generate
@@ -499,8 +499,8 @@ begin
       imm : opa_lcell port map(a_i => s_imm_pad(u,b), b_o => s_mux_b(f_idx(u,b))(c_imm));
       
       -- Execute the mux
-      eu_rega_o(u,b) <= s_mux_a(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_mux_idx_a,u))));
-      eu_regb_o(u,b) <= s_mux_b(f_idx(u,b))(to_integer(unsigned(f_opa_select_row(r_mux_idx_b,u))));
+      eu_rega_o(u,b) <= f_opa_index(s_mux_a(f_idx(u,b)), unsigned(f_opa_select_row(r_mux_idx_a,u)));
+      eu_regb_o(u,b) <= f_opa_index(s_mux_b(f_idx(u,b)), unsigned(f_opa_select_row(r_mux_idx_b,u)));
     end generate;
   end generate;
   

@@ -398,14 +398,14 @@ begin
       s_victimw(p,w) <= s_matchw(p,w) when s_match(p)='1' else s_random(w);
       
       -- If there is more than one word in the line, pick the one we want
-      s_sel(f_idx(p,w)) <= std_logic_vector(rotate_right(unsigned(s_rdat(f_idx(p,w))), to_integer(unsigned(r_shoff(p)))*c_reg_wide));
+      s_sel(f_idx(p,w)) <= f_opa_rotate_right(s_rdat(f_idx(p,w)), unsigned(r_shoff(p)), c_reg_wide);
       
       -- Rotate read line data to align with requested load
       big_rotate : if c_big_endian generate
-        s_rot(f_idx(p,w)) <= std_logic_vector(rotate_left (unsigned(s_sel(f_idx(p,w))(c_reg_wide-1 downto 0)), to_integer(unsigned(r_shsub(p)))*8));
+        s_rot(f_idx(p,w)) <= f_opa_rotate_left (s_sel(f_idx(p,w))(c_reg_wide-1 downto 0), unsigned(r_shsub(p)), 8);
       end generate;
       little_rotate : if not c_big_endian generate
-        s_rot(f_idx(p,w)) <= std_logic_vector(rotate_right(unsigned(s_sel(f_idx(p,w))(c_reg_wide-1 downto 0)), to_integer(unsigned(r_shsub(p)))*8));
+        s_rot(f_idx(p,w)) <= f_opa_rotate_right(s_sel(f_idx(p,w))(c_reg_wide-1 downto 0), unsigned(r_shsub(p)), 8);
       end generate;
       
       -- Create the muxes for sign extension
@@ -422,7 +422,7 @@ begin
       
       -- Apply the sign extension mux
       bits : for b in 0 to c_reg_wide-1 generate
-        s_sext(f_idx(p,w))(b) <= s_mux(f_idx(p,w,b))(to_integer(unsigned(r_size(p))));
+        s_sext(f_idx(p,w))(b) <= f_opa_index(s_mux(f_idx(p,w,b)), unsigned(r_size(p)));
       end generate;
       
       -- use 'when' instead of 'and' because it helps synthesis realize this can be sync clear
@@ -468,10 +468,10 @@ begin
   -- Rotate write data to put target byte at write mask location
   s_0dat <= f_opa_select_row(slow_data_i, 0);
   wb_big : if c_big_endian generate
-    s_wb_dat <= std_logic_vector(rotate_right(unsigned(s_0dat), to_integer(unsigned(s_shsub(0)))*8));
+    s_wb_dat <= f_opa_rotate_right(s_0dat, unsigned(s_shsub(0)), 8);
   end generate;
   wb_little : if not c_big_endian generate
-    s_wb_dat <= std_logic_vector(rotate_left (unsigned(s_0dat), to_integer(unsigned(s_shsub(0)))*8));
+    s_wb_dat <= f_opa_rotate_left (s_0dat, unsigned(s_shsub(0)), 8);
   end generate;
   
   -- Which way gets written by port 0?

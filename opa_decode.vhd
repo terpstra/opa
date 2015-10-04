@@ -265,9 +265,9 @@ begin
   s_idx_base <= s_pc_off - r_fill(s_idx_base'range);
   ops : for i in 0 to c_buffers-1 generate
     s_idx(i) <= s_idx_base + to_unsigned(i mod c_fetchers, c_fet_wide);
-    s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(to_integer(s_idx(i)));
-    s_pc (i) <= r_pc (i) when i < r_fill else s_pc_in (to_integer(s_idx(i)));
-    s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_align-1 downto c_op_align);
+    s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(to_integer(s_idx(i))) when f_opa_safe(s_idx(i))='1' else c_opa_op_undef;
+    s_pc (i) <= r_pc (i) when i < r_fill else s_pc_in (to_integer(s_idx(i))) when f_opa_safe(s_idx(i))='1' else (others => 'X');
+    s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_align-1 downto c_op_align) when f_opa_safe(s_idx(i))='1' else (others => 'X');
   end generate;
   
   s_ops_sub <= unsigned(f_opa_1hot_dec(f_opa_reverse(s_jump_taken))) + s_pc_off;

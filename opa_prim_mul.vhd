@@ -106,15 +106,17 @@ architecture rtl of opa_prim_mul is
   constant c_wallace_lut7 : t_wallace_lut(2**7-1 downto 0) := f_wallace_table(7);
   
   function f_wallace_lut(bits : natural; x : std_logic_vector) return std_logic_vector is
-    constant c_error : t_wallace_bits_out := (others => '1');
+    constant c_bad : t_wallace_bits_out := (others => 'X');
   begin
-    if bits = 1 then return c_wallace_lut1(to_integer(unsigned(x(0 downto 0)))); end if;
-    if bits = 3 then return c_wallace_lut3(to_integer(unsigned(x(2 downto 0)))); end if;
-    if bits = 5 then return c_wallace_lut5(to_integer(unsigned(x(4 downto 0)))); end if;
-    if bits = 6 then return c_wallace_lut6(to_integer(unsigned(x(5 downto 0)))); end if;
-    if bits = 7 then return c_wallace_lut7(to_integer(unsigned(x(6 downto 0)))); end if;
-    assert (false) report "Invalid Wallace reduction" severity failure;
-    return c_error;
+    if f_opa_safe(x) = '1' then
+      if bits = 1 then return c_wallace_lut1(to_integer(unsigned(x(0 downto 0)))); end if;
+      if bits = 3 then return c_wallace_lut3(to_integer(unsigned(x(2 downto 0)))); end if;
+      if bits = 5 then return c_wallace_lut5(to_integer(unsigned(x(4 downto 0)))); end if;
+      if bits = 6 then return c_wallace_lut6(to_integer(unsigned(x(5 downto 0)))); end if;
+      if bits = 7 then return c_wallace_lut7(to_integer(unsigned(x(6 downto 0)))); end if;
+      assert (false) report "Invalid Wallace reduction" severity failure;
+    end if;
+    return c_bad;
   end f_wallace_lut;
   
   function f_wallace(x : t_opa_matrix) return t_opa_matrix is

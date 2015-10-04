@@ -42,6 +42,21 @@ package opa_functions_pkg is
   function f_opa_or(x : std_logic_vector) return std_logic;
   function f_opa_and(x : std_logic_vector) return std_logic;
   
+  -- Comparisons, but where a meta-value results in 'X'
+  function f_opa_eq(x, y : std_logic_vector) return std_logic;
+  function f_opa_eq(x, y : unsigned) return std_logic;
+--  function f_opa_lt(x, y : unsigned) return std_logic;
+--  function f_opa_le(x, y : unsigned) return std_logic;
+  -- Returns '1' when no meta-values
+  function f_opa_safe(x : std_logic) return std_logic;
+  function f_opa_safe(x : std_logic_vector) return std_logic;
+  function f_opa_safe(x : unsigned) return std_logic;
+  -- Result is v(to_integer(idx)), except returns 'X' if idx has meta-values
+  function f_opa_index(v : std_logic_vector; idx : unsigned) return std_logic;
+  -- Rotation, returning 'X' if index was bad
+  function f_opa_rotate_left (x : std_logic_vector; y : unsigned; f : integer := 1) return std_logic_vector;
+  function f_opa_rotate_right(x : std_logic_vector; y : unsigned; f : integer := 1) return std_logic_vector;
+  
   -- Decode config into useful values
   function f_opa_fetchers (conf : t_opa_config) return natural;
   function f_opa_renamers (conf : t_opa_config) return natural;
@@ -237,6 +252,33 @@ package opa_functions_pkg is
       ldst  => (store => '-', sext => '-', size => (others => '-')),
       sext  => (size => (others => '-'))));
   
+  constant c_opa_op_undef : t_opa_op := (
+    bad   => 'X',
+    jump  => 'X',
+    take  => 'X',
+    force => 'X',
+    pop   => 'X',
+    push  => 'X',
+    immb  => (others => 'X'),
+    geta  => 'X',
+    getb  => 'X',
+    setx  => 'X',
+    archa => (others => 'X'),
+    archb => (others => 'X'),
+    archx => (others => 'X'),
+    fast  => 'X',
+    order => 'X',
+    imm   => (others => 'X'),
+    arg   => (
+      fmode => (others => 'X'),
+      adder => (eq => 'X', nota => 'X', notb => 'X', cin => 'X', sign => 'X', fault => 'X'),
+      lut   => (others => 'X'),
+      smode => (others => 'X'),
+      mul   => (sexta => 'X', sextb => 'X', high => 'X', divide => 'X'),
+      shift => (right => 'X', sext => 'X'),
+      ldst  => (store => 'X', sext => 'X', size => (others => 'X')),
+      sext  => (size => (others => 'X'))));
+  
   -- Define the arguments needed for operations in our execution units
   constant c_arg_wide : natural := 26;
   function f_opa_vec_from_arg(x : t_opa_arg) return std_logic_vector;
@@ -288,6 +330,64 @@ package body opa_functions_pkg is
     return f_opa_and(y(y'high downto c_mid+1)) and
            f_opa_and(y(c_mid downto y'low));
   end f_opa_and;
+  
+  function f_opa_eq(x, y : std_logic_vector) return std_logic is
+  begin
+    assert (x'low  = y'low)  report "vector-vector dimension mismatch" severity failure;
+    assert (x'high = y'high) report "vector-vector dimension mismatch" severity failure;
+    return f_opa_and(not (x xor y));
+  end f_opa_eq;
+  
+  function f_opa_eq(x, y : unsigned) return std_logic is
+  begin
+    return f_opa_eq(std_logic_vector(x), std_logic_vector(y));
+  end f_opa_eq;
+  
+  function f_opa_safe(x : std_logic) return std_logic is
+  begin
+    return not (x xor x);
+  end f_opa_safe;
+  
+  function f_opa_safe(x : std_logic_vector) return std_logic is
+  begin
+    return f_opa_eq(x, x);
+  end f_opa_safe;
+  
+  function f_opa_safe(x : unsigned) return std_logic is
+  begin
+    return f_opa_eq(x, x);
+  end f_opa_safe;
+  
+  function f_opa_index(v : std_logic_vector; idx : unsigned) return std_logic is
+  begin
+    assert (v'low = 0) report "vector-index not at zero" severity failure;
+    assert (f_opa_log2(v'length) = idx'length) report "vector-index dimension mismatch" severity failure;
+    if f_opa_safe(idx) = '1' then
+      return v(to_integer(idx));
+    else
+      return 'X';
+    end if;
+  end f_opa_index;
+  
+  function f_opa_rotate_left (x : std_logic_vector; y : unsigned; f : integer := 1) return std_logic_vector is
+    constant bad : std_logic_vector(x'range) := (others => 'X');
+  begin
+    if f_opa_safe(y) = '1' then
+      return std_logic_vector(rotate_left(unsigned(x), to_integer(unsigned(y))*f));
+    else
+      return bad;
+    end if;
+  end f_opa_rotate_left;
+  
+  function f_opa_rotate_right(x : std_logic_vector; y : unsigned; f : integer := 1) return std_logic_vector is
+    constant bad : std_logic_vector(x'range) := (others => 'X');
+  begin
+    if f_opa_safe(y) = '1' then
+      return std_logic_vector(rotate_right(unsigned(x), to_integer(unsigned(y))*f));
+    else
+      return bad;
+    end if;
+  end f_opa_rotate_right;
   
   function f_opa_fetchers(conf : t_opa_config) return natural is
   begin
@@ -660,20 +760,30 @@ package body opa_functions_pkg is
     variable result : std_logic_vector(y'range(1));
   begin
     for i in result'range loop
-      result(i) := x(to_integer(unsigned(f_opa_select_row(y, i))));
+      result(i) := f_opa_index(x, unsigned(f_opa_select_row(y, i)));
     end loop;
     return result;
   end f_opa_compose;
   
   function f_opa_compose(x, y : t_opa_matrix) return t_opa_matrix is
     variable result : t_opa_matrix(y'range(1), x'range(2));
-    variable index : integer;
+    variable indexu : unsigned(y'range(2));
+    variable index  : integer;
   begin
+    assert (x'low(1) = 0) report "matrix-index not at zero" severity failure;
+    assert (f_opa_log2(x'length(1)) = indexu'length) report "matrix-index dimension mismatch" severity failure;
     for i in result'range(1) loop
-      index := to_integer(unsigned(f_opa_select_row(y, i)));
-      for j in result'range(2) loop
-        result(i, j) := x(index, j);
-      end loop;
+      indexu := unsigned(f_opa_select_row(y, i));
+      if f_opa_safe(indexu) = '1' then
+        index  := to_integer(indexu);
+        for j in result'range(2) loop
+          result(i, j) := x(index, j);
+        end loop;
+      else
+        for j in result'range(2) loop
+          result(i, j) := 'X';
+        end loop;
+      end if;
     end loop;
     return result;
   end f_opa_compose;
