@@ -90,7 +90,7 @@ architecture rtl of opa_prefixsum is
       for b in 0 to num_unit-1 loop
         result(i, b) := f_opa_bit(row = to_unsigned(b, row'length));
       end loop;
-      result(i, num_unit) := f_opa_bit(row < num_unit);
+      result(i, num_unit) := f_opa_lt(row, num_unit);
     end loop;
     return result;
   end f_decode_table;

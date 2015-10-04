@@ -432,7 +432,7 @@ begin
       end generate;
     end generate;
     zext : for b in 0 to c_log_reg_bytes generate
-      s_clear(p,b) <= f_opa_bit(unsigned(s_size(p)) < b) and not slow_sext_i(p);
+      s_clear(p,b) <= f_opa_lt(unsigned(s_size(p)), b) and not slow_sext_i(p);
     end generate;
   end generate;
   

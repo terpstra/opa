@@ -166,8 +166,8 @@ begin
         end if;
       end process;
       
-      s_last_ack <= d_ack_i       and f_opa_bit(r_in  = c_line_words-1);
-      s_last_stb <= not d_stall_i and f_opa_bit(r_out = c_line_words-1);
+      s_last_ack <= d_ack_i       and f_opa_eq(r_in,  c_line_words-1);
+      s_last_stb <= not d_stall_i and f_opa_eq(r_out, c_line_words-1);
     end block;
   end generate;
   nocount : if c_line_words = 1 generate
@@ -294,7 +294,7 @@ begin
     load_big : if c_big_endian generate
       s_loadat <= std_logic_vector(rotate_right(unsigned(r_loadat), 1));
       onehot : for i in 0 to c_line_words-1 generate
-        s_loadat_in(i) <= f_opa_bit(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)) = (c_line_words-1)-i);
+        s_loadat_in(i) <= f_opa_eq(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)), (c_line_words-1)-i);
       end generate;
     end generate;
     load_small : if not c_big_endian generate

@@ -158,12 +158,14 @@ begin
       b_i      => regfile_regb_i,
       x_o      => s_product);
 
+  with r_high3 select
   s_mul_out <= 
-    s_product(  c_reg_wide-1 downto          0) when r_high3='0' else
-    s_product(2*c_reg_wide-1 downto c_reg_wide);
+    s_product(  c_reg_wide-1 downto          0) when '0',
+    s_product(2*c_reg_wide-1 downto c_reg_wide) when '1',
+    (others => 'X') when others;
   
   -- Hand over memory accesses to the L1d
-  l1d_stb_o    <= r_stb when r_mode1=c_opa_slow_ldst else '0';
+  l1d_stb_o    <= r_stb and f_opa_eq(r_mode1, c_opa_slow_ldst);
   l1d_we_o     <= r_ldst.store;
   l1d_sext_o   <= r_ldst.sext;
   l1d_size_o   <= r_ldst.size;
@@ -177,21 +179,23 @@ begin
     if rising_edge(clk_i) then
       r_shift <= s_shift;
       -- sign extend the shifter
-      if r_shift.sext = '0' then
-        r_sexta <= (others => '0');
-      else
-        r_sexta <= (others => r_rega(r_rega'high));
-      end if;
+      case r_shift.sext is
+        when '0' => r_sexta <= (others => '0');
+        when '1' => r_sexta <= (others => r_rega(r_rega'high));
+        when others => r_sexta <= (others => 'X');
+      end case;
       r_sexta(r_rega'range) <= r_rega;
       -- calculate distance
-      r_shamt <= (others => '0');
-      if r_shift.right = '1' then
-        r_shamt(c_log_reg_wide-1 downto 0) <= r_regb(c_log_reg_wide-1 downto 0);
-      else
-        if unsigned(r_regb(c_log_reg_wide-1 downto 0)) /= 0 then
-          r_shamt <= std_logic_vector(0-unsigned(r_regb(r_shamt'range)));
-        end if;
-      end if;
+      case r_shift.right is
+        when '1' => r_shamt <= '0' & r_regb(c_log_reg_wide-1 downto 0);
+        when '0' =>
+          case f_opa_or(r_regb(c_log_reg_wide-1 downto 0)) is
+            when '1' => r_shamt <= std_logic_vector(0-unsigned(r_regb(r_shamt'range)));
+            when '0' => r_shamt <= (others => '0');
+            when others => r_shamt <= (others => 'X');
+          end case;
+        when others => r_shamt <= (others => 'X');
+      end case;
       -- run the shifter
       r_shout <= s_shout(r_shout'range);
     end if;

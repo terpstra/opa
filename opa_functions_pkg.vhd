@@ -45,7 +45,11 @@ package opa_functions_pkg is
   -- Comparisons, but where a meta-value results in 'X'
   function f_opa_eq(x, y : std_logic_vector) return std_logic;
   function f_opa_eq(x, y : unsigned) return std_logic;
---  function f_opa_lt(x, y : unsigned) return std_logic;
+  function f_opa_eq(x : unsigned; y : natural) return std_logic;
+  function f_opa_lt(x, y : natural) return std_logic;
+  function f_opa_lt(x, y : unsigned) return std_logic;
+  function f_opa_lt(x : natural;  y : unsigned) return std_logic;
+  function f_opa_lt(x : unsigned; y : natural) return std_logic;
 --  function f_opa_le(x, y : unsigned) return std_logic;
   -- Returns '1' when no meta-values
   function f_opa_safe(x : std_logic) return std_logic;
@@ -342,6 +346,45 @@ package body opa_functions_pkg is
   begin
     return f_opa_eq(std_logic_vector(x), std_logic_vector(y));
   end f_opa_eq;
+  
+  function f_opa_eq(x : unsigned; y : natural) return std_logic is
+    variable z : unsigned(x'range);
+  begin
+    z  := to_unsigned(y, x'length);
+    return f_opa_eq(x, z);
+  end f_opa_eq;
+  
+  function f_opa_lt(x, y : natural) return std_logic is
+  begin
+    if x < y then return '1'; else return '0'; end if;
+  end f_opa_lt;
+  
+  function f_opa_lt(x, y : unsigned) return std_logic is
+  begin
+    if f_opa_safe(x) = '1' and f_opa_safe(y) = '1' then
+      return f_opa_lt(to_integer(x), to_integer(y));
+    else
+      return 'X';
+    end if;
+  end f_opa_lt;
+  
+  function f_opa_lt(x : natural;  y : unsigned) return std_logic is
+  begin
+    if f_opa_safe(y) = '1' then
+      return f_opa_lt(x, to_integer(y));
+    else
+      return 'X';
+    end if;
+  end f_opa_lt;
+  
+  function f_opa_lt(x : unsigned; y : natural) return std_logic is
+  begin
+    if f_opa_safe(x) = '1' then
+      return f_opa_lt(to_integer(x), y);
+    else
+      return 'X';
+    end if;
+  end f_opa_lt;
   
   function f_opa_safe(x : std_logic) return std_logic is
   begin
@@ -660,7 +703,9 @@ package body opa_functions_pkg is
   begin
     for i in x'range(1) loop
       row := unsigned(f_opa_select_row(x,i));
-      if row = c_ones or row < y then
+      if f_opa_safe(row) /= '1' then
+        row := (others => 'X');
+      elsif row = c_ones or row < y then
         row := c_ones;
       else
         row := row - y;
