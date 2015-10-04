@@ -190,7 +190,7 @@ begin
         when '1' => r_shamt <= '0' & r_regb(c_log_reg_wide-1 downto 0);
         when '0' =>
           case f_opa_or(r_regb(c_log_reg_wide-1 downto 0)) is
-            when '1' => r_shamt <= std_logic_vector(0-unsigned(r_regb(r_shamt'range)));
+            when '1' => r_shamt <= '1' & std_logic_vector(0-unsigned(r_regb(c_log_reg_wide-1 downto 0)));
             when '0' => r_shamt <= (others => '0');
             when others => r_shamt <= (others => 'X');
           end case;
