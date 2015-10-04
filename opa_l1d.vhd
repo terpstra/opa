@@ -147,6 +147,7 @@ architecture rtl of opa_l1d is
   constant c_ent_wide      : natural := 1 + c_tag_wide + c_line_bytes*9;
 
   constant c_way_ones  : std_logic_vector(c_num_ways-1 downto 0) := (others => '1');
+  constant c_not_valid : std_logic_vector(c_line_bytes-1 downto 0) := (others => '0');
   
   type t_tag   is array(natural range <>) of std_logic_vector(c_tag_high downto c_tag_low);
   type t_idx   is array(natural range <>) of std_logic_vector(c_idx_high downto c_idx_low);
@@ -220,9 +221,9 @@ architecture rtl of opa_l1d is
   signal s_dretry : std_logic_vector(c_num_slow-1 downto 0);
   signal s_pretry : std_logic_vector(c_num_slow-1 downto 0);
   
-  signal r_stb    : std_logic_vector(c_num_slow-1 downto 0);
-  signal r_we     : std_logic_vector(c_num_slow-1 downto 0);
-  signal r_re     : std_logic_vector(c_num_slow-1 downto 0);
+  signal r_stb    : std_logic_vector(c_num_slow-1 downto 0) := (others => '0');
+  signal r_we     : std_logic_vector(c_num_slow-1 downto 0) := (others => '0');
+  signal r_re     : std_logic_vector(c_num_slow-1 downto 0) := (others => '0');
   signal r_vtag   : t_tag(c_num_slow-1 downto 0);
   signal r_vidx   : t_idx(c_num_slow-1 downto 0);
   signal r_voff   : t_off(c_num_slow-1 downto 0);
@@ -248,8 +249,29 @@ architecture rtl of opa_l1d is
   function f_idx(p, w    : natural) return natural is begin return w*c_num_slow+p; end f_idx;
   function f_idx(p, w, b : natural) return natural is begin return (f_idx(p,w)*c_reg_wide)+b; end f_idx;
   function f_pow(m : natural) return natural is begin return 8*2**m; end f_pow;
+  function f_pow1(m : natural) return natural is begin return 8*(2**m/2); end f_pow1;
   
 begin
+
+  check : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      -- Validate input control
+      assert (f_opa_safe(slow_stb_i)   = '1') report "opa_l1d: slow_stb_i has metavalue" severity failure;
+      assert (f_opa_safe(slow_oldest_i)= '1') report "opa_l1d: slow_oldest_i has metavalue" severity failure;
+      assert (f_opa_safe(dbus_busy_i)  = '1') report "opa_l1d: dbus_busy_i has metavalue" severity failure;
+      -- pbus_stall_i depends on pbus_addr_o, so only valid if we are strobing
+      assert (f_opa_safe(r_stb(0) and pbus_stall_i) = '1') report "opa_l1d: pbus_stall_i has metavalue" severity failure;
+      assert (f_opa_safe(pbus_full_i)  = '1') report "opa_l1d: pbus_full_i has metavalue" severity failure;
+      -- combinatorial control
+      assert (f_opa_safe(s_ldreq) = '1') report "opa_l1d: s_ldreq has metavalue" severity failure;
+      assert (f_opa_safe(s_streq) = '1') report "opa_l1d: s_streq has metavalue" severity failure;
+      assert (f_opa_safe(s_grant) = '1') report "opa_l1d: s_grant has metavalue" severity failure;
+      -- these two only have meaning when a ldreq occurs
+      assert (f_opa_safe(s_ldreq and s_match) = '1') report "opa_l1d: s_match has metavalue" severity failure;
+      assert (f_opa_safe(s_ldreq and s_dirty) = '1') report "opa_l1d: s_dirty has metavalue" severity failure;
+    end if;
+  end process;
 
   -- Arbitrate the ways if we have more than one to pick
   many_ways : if c_num_ways > 1 generate
@@ -331,7 +353,7 @@ begin
       
       bmask : for b in 0 to c_line_bytes-1 generate
         s_bmask(p)(b) <= 
-          s_wmask(p)(b mod c_reg_bytes) when (b / c_reg_bytes) = unsigned(s_shoff(p)) else '0';
+          s_wmask(p)(b mod c_reg_bytes) and f_opa_eq(unsigned(s_shoff(p)), b/c_reg_bytes);
       end generate;
     end generate;
     nooff : if c_off_wide = 0 generate
@@ -395,7 +417,7 @@ begin
       s_donew (p,w) <= s_matchw(p,w) and (r_we(p) or s_validw(p,w));
       
       -- Would this way be the victim on a refill?
-      s_victimw(p,w) <= s_matchw(p,w) when s_match(p)='1' else s_random(w);
+      s_victimw(p,w) <= f_opa_mux(s_match(p), s_matchw(p,w), s_random(w));
       
       -- If there is more than one word in the line, pick the one we want
       s_sel(f_idx(p,w)) <= f_opa_rotate_right(s_rdat(f_idx(p,w)), unsigned(r_shoff(p)), c_reg_wide);
@@ -425,10 +447,10 @@ begin
         s_sext(f_idx(p,w))(b) <= f_opa_index(s_mux(f_idx(p,w,b)), unsigned(r_size(p)));
       end generate;
       
-      -- use 'when' instead of 'and' because it helps synthesis realize this can be sync clear
-      zext : for b in 0 to c_log_reg_bytes generate
-        s_zext(f_idx(p,w))(8*2**b-1 downto 8*((2**b)/2)) <= 
-          s_sext(f_idx(p,w))(8*2**b-1 downto 8*((2**b)/2)) when r_clear(p,b)='0' else (others => '0');
+      zext : for e in 0 to c_log_reg_bytes generate
+        bits : for b in f_pow(e)-1 downto f_pow1(e) generate
+          s_zext(f_idx(p,w))(b) <= s_sext(f_idx(p,w))(b) and not r_clear(p,e);
+        end generate;
       end generate;
     end generate;
     zext : for b in 0 to c_log_reg_bytes generate
@@ -484,11 +506,12 @@ begin
   wb_ways : for w in 0 to c_num_ways-1 generate
     wbytes : for b in 0 to c_line_bytes-1 generate
       s_wb_line(w)((b+1)*8-1 downto b*8) <= 
-        s_rdat(f_idx(0,w))((b+1)*8-1 downto b*8) when r_bmask(0)(b)='0' else
-        r_wb_dat(((b mod c_reg_bytes)+1)*8-1 downto (b mod c_reg_bytes)*8);
+        f_opa_mux(r_bmask(0)(b),
+          r_wb_dat(((b mod c_reg_bytes)+1)*8-1 downto (b mod c_reg_bytes)*8),
+          s_rdat(f_idx(0,w))((b+1)*8-1 downto b*8));
     end generate;
     -- What is the new valid state?
-    s_was_valid(w) <= s_rvalid(f_idx(0,w)) when s_matchw(0,w)='1' else (others => '0');
+    s_was_valid(w) <= f_opa_mux(s_matchw(0,w), s_rvalid(f_idx(0,w)), c_not_valid);
     s_wb_valid(w)  <= r_bmask(0) or s_was_valid(w);
   end generate;
   
@@ -554,15 +577,15 @@ begin
                   and f_opa_or(r_wmask(p) and r_wmask(0));
   end generate;
   
+  -- Restart load if it aliases a concurrent store or misses cache
+  -- Restart a store if it is not oldest or dbus had control of L1d write port
   retry : for p in 0 to c_num_slow-1 generate
-    -- Restart load if it aliases a concurrent store or misses cache
-    -- Restart a store if it is not oldest or dbus had control of L1d write port
-    s_dretry(p) <= (s_alias(p) or s_ldreq(p)) when r_re(p)='1' else (not slow_oldest_i(p) or dbus_busy_i);
-    -- Both loads and stores to pbus must be oldest
-    -- Loads must have result ready, while stores must have a non-busy pbus
-    s_pretry(p) <= (not pbus_full_i) when r_re(p)='1' else pbus_stall_i;
-    slow_retry_o(p) <= (not slow_oldest_i(p) or s_pretry(p)) when s_pbus(p)='1' else s_dretry(p);
+    s_dretry(p) <= f_opa_mux(r_re(p), (s_alias(p) or s_ldreq(p)), (not slow_oldest_i(p) or dbus_busy_i));
   end generate;
+  -- Both loads and stores to pbus must be oldest
+  -- Loads must have result ready, while stores must have a non-busy pbus
+  s_pretry <= (0 => not slow_oldest_i(0) or f_opa_mux(r_re(0), not pbus_full_i, pbus_stall_i), others => '1');
+  slow_retry_o <= r_stb and f_opa_mux(s_pbus, s_pretry, s_dretry);
   
   -- Peripheral bus accesses are comparatievly easy. They come from port 0.
   pbus_req_o  <= slow_oldest_i(0) and r_stb(0) and s_pbus(0) and not (r_re(0) and pbus_full_i);
@@ -572,12 +595,22 @@ begin
   pbus_dat_o  <= r_wb_dat;
   pbus_pop_o  <= slow_oldest_i(0) and r_re(0) and s_pbus(0);
   
+  control : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_stb <= (others => '0');
+      r_we  <= (others => '0');
+      r_re  <= (others => '0');
+    elsif rising_edge(clk_i) then
+      r_stb <= slow_stb_i;
+      r_we  <= slow_stb_i and     slow_we_i;
+      r_re  <= slow_stb_i and not slow_we_i; -- future: re=0 & we=0 for prefetch
+    end if;
+  end process;
+  
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_stb   <= slow_stb_i;
-      r_we    <= slow_stb_i and     slow_we_i;
-      r_re    <= slow_stb_i and not slow_we_i; -- future: re=0 & we=0 for prefetch
       r_vtag  <= s_vtag;
       r_vidx  <= s_vidx;
       r_voff  <= s_voff;
