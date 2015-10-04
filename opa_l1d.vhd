@@ -217,8 +217,6 @@ architecture rtl of opa_l1d is
   signal s_rvalid_m  : t_opa_matrix(c_line_bytes  -1 downto 0, c_num_slow*c_num_ways-1 downto 0);
   signal s_rdat_m    : t_opa_matrix(c_line_bytes*8-1 downto 0, c_num_slow*c_num_ways-1 downto 0);
   signal s_alias  : std_logic_vector(c_num_slow-1 downto 0);
-  signal s_dbusy  : std_logic_vector(c_num_slow-1 downto 0);
-  signal s_pbusy  : std_logic_vector(c_num_slow-1 downto 0);
   signal s_dretry : std_logic_vector(c_num_slow-1 downto 0);
   signal s_pretry : std_logic_vector(c_num_slow-1 downto 0);
   
@@ -243,6 +241,8 @@ architecture rtl of opa_l1d is
   signal r_matchw : t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal r_victimw: t_opa_matrix(c_num_slow-1 downto 0, c_num_ways-1 downto 0);
   signal r_zext   : t_reg (c_num_slow*c_num_ways-1 downto 0);
+  signal r_pbus   : std_logic_vector(c_num_slow-1 downto 0);
+  signal r_pdata  : std_logic_vector(c_reg_wide-1 downto 0);
   signal r_grant  : std_logic_vector(c_num_slow-1 downto 0);
   
   function f_idx(p, w    : natural) return natural is begin return w*c_num_slow+p; end f_idx;
@@ -442,7 +442,8 @@ begin
       ways : for w in 0 to c_num_ways-1 generate
         s_ways(f_idx(p,b))(w) <= r_zext(f_idx(p,w))(b);
       end generate;
-      slow_data_o(p,b) <= f_opa_or(s_ways(f_idx(p,b)) and f_opa_select_row(r_matchw, p));
+      slow_data_o(p,b) <= f_opa_or(s_ways(f_idx(p,b)) and f_opa_select_row(r_matchw, p)) or
+                          (r_pdata(b) and r_pbus(p));
     end generate;
   end generate;
   
@@ -553,33 +554,30 @@ begin
                   and f_opa_or(r_wmask(p) and r_wmask(0));
   end generate;
   
-  -- Restart if load misses cache or store unacceptable
-  -- We only accept a store if it is the oldest and dbus is not busy
-  s_dbusy <= (others => dbus_busy_i);
-  s_pbusy <= (others => pbus_stall_i);
-  s_pretry <= not slow_oldest_i or s_pbusy;
   retry : for p in 0 to c_num_slow-1 generate
-    s_dretry(p) <= (s_alias(p) or s_ldreq(p)) when r_we(p)='0' else 
-                   (not slow_oldest_i(p) or s_dbusy(p));
-    slow_retry_o(p) <= s_pretry(p) when s_pbus(p)='1' else s_dretry(p);
+    -- Restart load if it aliases a concurrent store or misses cache
+    -- Restart a store if it is not oldest or dbus had control of L1d write port
+    s_dretry(p) <= (s_alias(p) or s_ldreq(p)) when r_re(p)='1' else (not slow_oldest_i(p) or dbus_busy_i);
+    -- Both loads and stores to pbus must be oldest
+    -- Loads must have result ready, while stores must have a non-busy pbus
+    s_pretry(p) <= (not pbus_full_i) when r_re(p)='1' else pbus_stall_i;
+    slow_retry_o(p) <= (not slow_oldest_i(p) or s_pretry(p)) when s_pbus(p)='1' else s_dretry(p);
   end generate;
   
-  -- Peripheral bus writes are comparatievly easy. They come from port 0.
-  pbus_req_o  <= slow_oldest_i(0) and r_stb(0) and s_pbus(0);
+  -- Peripheral bus accesses are comparatievly easy. They come from port 0.
+  pbus_req_o  <= slow_oldest_i(0) and r_stb(0) and s_pbus(0) and not (r_re(0) and pbus_full_i);
   pbus_we_o   <= r_we(0);
   pbus_addr_o <= f_opa_select_row(s_adr, 0);
   pbus_sel_o  <= r_wmask(0);
   pbus_dat_o  <= r_wb_dat;
-  
-  -- !!! add loads
-  pbus_pop_o  <= '0';
+  pbus_pop_o  <= slow_oldest_i(0) and r_re(0) and s_pbus(0);
   
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
       r_stb   <= slow_stb_i;
       r_we    <= slow_stb_i and     slow_we_i;
-      r_re    <= slow_stb_i and not slow_we_i;
+      r_re    <= slow_stb_i and not slow_we_i; -- future: re=0 & we=0 for prefetch
       r_vtag  <= s_vtag;
       r_vidx  <= s_vidx;
       r_voff  <= s_voff;
@@ -598,6 +596,8 @@ begin
       r_matchw<= s_matchw;
       r_victimw<= s_victimw;
       r_zext  <= s_zext;
+      r_pbus  <= (0 => s_pbus(0), others => '0');
+      r_pdata <= pbus_dat_i;
       r_grant <= s_grant;
     end if;
   end process;

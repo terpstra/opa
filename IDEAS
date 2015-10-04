@@ -1,14 +1,17 @@
 URGENT:
-	add loads to pbus
+	shift faster on fault, pull in proper values
+		... currently we force shift only sometimes and get bad shit in
 	add icache wipe on reset
 	write a proper n-way icache
 	move ISA selection to a generic parameter
 	optimize oldest
-	fast track shifting when r_fault_pending
 
 TODO:
+	eliminate all meta-value related simulation warnings
+		=, <, >=, etc should return 'X' for meta-values
+		indexing with a meta-value should return 'X'
 	write suduko solver for LM32				2 evenings
-	add prefetch instruction (load r0)?
+	add prefetch instruction (load r0) => re=we=0, fifo in pbus
 	add ITTAGE predictor					5 evenings
 	add sign to multiply					0.5 evenings
 	add SRT division step ... then use microcode?		5 evenings
@@ -41,3 +44,5 @@ BUGS:
 	zeroing memory gets into a bad feedbak loop with gaps
 		... old ordered patch does not help
 		=> need to kill ALL ordered ops
+	shifting while not ready on fault => corrupt r_stat[ab]
+	bad instructions (even unexecuted) corrupt prediction SM with 'X's

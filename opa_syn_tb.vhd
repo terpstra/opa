@@ -409,6 +409,6 @@ begin
       r_but0 <= r_but1;
     end if;
   end process;
-  p_dati(31) <= r_but0;
+  p_dati(31) <= not r_but0;
   
 end rtl;
