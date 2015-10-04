@@ -82,7 +82,7 @@ architecture rtl of opa_slow is
   function f_pow(m : natural) return natural is begin return 8*2**m; end f_pow;
   
   signal s_arg     : t_opa_arg;
-  signal r_stb     : std_logic;
+  signal r_stb     : std_logic := '0';
   signal r_rega    : std_logic_vector(c_reg_wide-1 downto 0);
   signal r_regb    : std_logic_vector(c_reg_wide-1 downto 0);
   signal r_imm     : std_logic_vector(c_imm_wide-1 downto 0);
@@ -129,10 +129,18 @@ begin
   s_shift<= s_arg.shift;
   s_sext <= s_arg.sext;
   
+  control : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r_stb <= '0';
+    elsif rising_edge(clk_i) then
+      r_stb <= regfile_stb_i;
+    end if;
+  end process;
+  
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      r_stb   <= regfile_stb_i;
       r_rega  <= regfile_rega_i;
       r_regb  <= regfile_regb_i;
       r_imm   <= regfile_imm_i;
