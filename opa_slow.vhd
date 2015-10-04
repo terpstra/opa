@@ -224,6 +224,6 @@ begin
     l1d_data_i      when c_opa_slow_ldst,
     r_shout         when c_opa_slow_shift,
     r_sext_o        when c_opa_slow_sext,
-    (others => '-') when others;
+    (others => 'X') when others;
 
 end rtl;

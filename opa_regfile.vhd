@@ -109,6 +109,12 @@ architecture rtl of opa_regfile is
   constant c_labels : t_opa_matrix := f_opa_labels(c_executers);
   constant c_ones : std_logic_vector(c_executers-1 downto 0) := (others => '1');
   
+  constant c_undef_reg : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0) := (others => (others => 'X'));
+  constant c_undef_arg : t_opa_matrix(c_executers-1 downto 0, c_arg_wide-1 downto 0) := (others => (others => 'X'));
+  constant c_undef_imm : t_opa_matrix(c_executers-1 downto 0, c_imm_wide-1 downto 0) :=(others => (others => 'X'));
+  constant c_undef_pc  : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align) := (others => (others => 'X'));
+  constant c_undef_pcf : t_opa_matrix(c_executers-1 downto 0, c_fetch_align-1 downto c_op_align) := (others => (others => 'X'));
+  
   -- Bypass logic. We combine:
   --   EU outputs (fast+slow)
   --   reg of last cycle
@@ -219,6 +225,7 @@ architecture rtl of opa_regfile is
   constant c_reg_indexes : t_opa_matrix := f_indexes(c_executers*1);
   constant c_mem_indexes : t_opa_matrix := f_indexes(c_executers*2);
   
+  signal r_rstb0       : std_logic_vector(c_executers-1 downto 0);
   signal r_wstb0       : std_logic_vector(c_executers-1 downto 0);
   signal r_wstb1       : std_logic_vector(c_executers-1 downto 0);
   signal r_bakx0       : t_opa_matrix(c_executers-1 downto 0, c_back_wide-1 downto 0);
@@ -280,19 +287,22 @@ architecture rtl of opa_regfile is
   signal s_mux_b     : t_mux;
   signal r_mux_idx_a : t_opa_matrix(c_executers-1 downto 0, c_mux_wide-1 downto 0);
   signal r_mux_idx_b : t_opa_matrix(c_executers-1 downto 0, c_mux_wide-1 downto 0);
-  
+
+  signal s_rega : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0);
+  signal s_regb : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0);
+    
 begin
 
   input : process(clk_i) is
   begin
     if rising_edge(clk_i) then
-      eu_stb_o <= issue_rstb_i;
-      r_dec    <= issue_dec_i;
-      r_wstb0  <= issue_wstb_i;
-      r_wstb1  <= r_wstb0;
-      r_bakx0  <= issue_bakx_i;
-      r_bakx1  <= r_bakx0;
-      r_regx   <= eu_regx_i;
+      r_rstb0 <= issue_rstb_i;
+      r_dec   <= issue_dec_i;
+      r_wstb0 <= issue_wstb_i;
+      r_wstb1 <= r_wstb0;
+      r_bakx0 <= issue_bakx_i;
+      r_bakx1 <= r_bakx0;
+      r_regx  <= eu_regx_i;
     end if;
   end process;
   
@@ -422,12 +432,6 @@ begin
     end generate;
   end generate;
   
-  eu_arg_o <= s_arg;
-  eu_imm_o <= s_imm;
-  eu_pc_o  <= s_pc;
-  eu_pcf_o <= s_pcf;
-  eu_pcn_o <= s_pcn;
-  
   -- !!! move s_imm to r_imm using async dpram; mux before choice?
   
   remap_rf_in : for u in 0 to c_executers-1 generate
@@ -499,9 +503,34 @@ begin
       imm : opa_lcell port map(a_i => s_imm_pad(u,b), b_o => s_mux_b(f_idx(u,b))(c_imm));
       
       -- Execute the mux
-      eu_rega_o(u,b) <= f_opa_index(s_mux_a(f_idx(u,b)), unsigned(f_opa_select_row(r_mux_idx_a,u)));
-      eu_regb_o(u,b) <= f_opa_index(s_mux_b(f_idx(u,b)), unsigned(f_opa_select_row(r_mux_idx_b,u)));
+      s_rega(u,b) <= f_opa_index(s_mux_a(f_idx(u,b)), unsigned(f_opa_select_row(r_mux_idx_a,u)));
+      s_regb(u,b) <= f_opa_index(s_mux_b(f_idx(u,b)), unsigned(f_opa_select_row(r_mux_idx_b,u)));
     end generate;
   end generate;
+  
+  eu_stb_o  <= r_rstb0;
+  eu_rega_o <= f_opa_mux(r_rstb0, s_rega, c_undef_reg);
+  eu_regb_o <= f_opa_mux(r_rstb0, s_regb, c_undef_reg);
+  eu_arg_o  <= f_opa_mux(r_rstb0, s_arg,  c_undef_arg);
+  eu_imm_o  <= f_opa_mux(r_rstb0, s_imm,  c_undef_imm);
+  eu_pc_o   <= f_opa_mux(r_rstb0, s_pc,   c_undef_pc);
+  eu_pcf_o  <= f_opa_mux(r_rstb0, s_pcf,  c_undef_pcf);
+  eu_pcn_o  <= f_opa_mux(r_rstb0, s_pcn,  c_undef_pc);
+  
+  -- It's possible this might happen due to speculation in a legitimate program
+  warn : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      for i in 0 to c_executers-1 loop
+        if r_rstb0(i) = '1' then
+          assert (f_opa_safe(s_rega(i, 0)) = '1') report "rega contains meta-values" severity warning;
+          assert (f_opa_safe(s_regb(i, 0)) = '1') report "regb contains meta-values" severity warning;
+        end if;
+        if r_wstb1(i) = '1' then
+          assert (f_opa_safe(f_opa_select_row(eu_regx_i, i)) = '1') report "regx contains meta-values" severity warning;
+        end if;
+      end loop;
+    end if;
+  end process;
   
 end rtl;

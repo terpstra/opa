@@ -233,7 +233,7 @@ begin
     r_pc_next       when "00",
     r_pc_jump       when "01",
     r_pc_sum        when "10",
-    (others => '-') when others;
+    (others => 'X') when others;
   
   issue_retry_o   <= s_br_fault;
   issue_fault_o   <= s_br_fault and issue_oldest_i;
