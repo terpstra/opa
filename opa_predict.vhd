@@ -84,7 +84,7 @@ architecture rtl of opa_predict is
   
   signal r_loop_pc   : unsigned(c_adr_wide-1 downto c_op_align) := (others => '0');
   signal r_loop_jump : std_logic_vector(c_fetchers-1 downto 0)  := (others => '0');
-  signal r_loop_pcn  : unsigned(c_adr_wide-1 downto c_op_align) := (others => '0');
+  signal r_loop_pcn  : unsigned(c_adr_wide-1 downto c_op_align) := c_increment;
 
 begin
 
