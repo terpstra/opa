@@ -7,9 +7,6 @@ URGENT:
 	optimize oldest
 
 TODO:
-	eliminate all meta-value related simulation warnings
-		=, <, >=, etc should return 'X' for meta-values
-		indexing with a meta-value should return 'X'
 	write suduko solver for LM32				2 evenings
 	add prefetch instruction (load r0) => re=we=0, fifo in pbus
 	add ITTAGE predictor					5 evenings

@@ -183,13 +183,10 @@ begin
       -- control inputs (safe for when/if)
       assert (f_opa_safe(predict_hit_i)    = '1') report "decode: predict_hit_i has metavalue" severity failure;
       assert (f_opa_safe(predict_jump_i)   = '1') report "decode: predict_jump_i has metavalue" severity failure;
---      assert (f_opa_safe(predict_return_i) = '1') report "decode: predict_return_i has metavalue" severity failure;
       assert (f_opa_safe(icache_stb_i)     = '1') report "decode: icache_stb_i has metavalue" severity failure;
---      assert (f_opa_safe(rename_stall_i)   = '1') report "decode: rename_stall_i has metavalue" severity failure;
+      assert (f_opa_safe(rename_stall_i)   = '1') report "decode: rename_stall_i has metavalue" severity failure;
       assert (f_opa_safe(rename_fault_i)   = '1') report "decode: rename_fault_i has metavalue" severity failure;
       -- combinatorial control (safe for when/if)
---      assert (f_opa_safe(s_use_static) = '1') report "decode: s_use_static has metavalue" severity failure;
---      assert (f_opa_safe(s_ret_taken)  = '1') report "decode: s_ret_taken has metavalue"   severity failure;
       assert (f_opa_safe(s_stall)      = '1') report "decode: s_stall has metavalue" severity failure;
       assert (f_opa_safe(s_stb)        = '1') report "decode: s_stb has metavalue" severity failure;
       assert (f_opa_safe(s_pcn_reg)    = '1') report "decode: s_pcn_reg has metavalue" severity failure;
@@ -245,7 +242,7 @@ begin
   end generate;
   s_static_target <= f_opa_product(f_opa_transpose(s_static_targets), s_static_jump);
 
-  s_jump_taken <= s_static_jump when s_use_static='1' else predict_jump_i;
+  s_jump_taken <= f_opa_mux(s_use_static, s_static_jump, predict_jump_i);
   s_ret_taken  <= f_opa_or(s_pop and s_static_jump);
   
   -- pcn MUST be what gets loaded next, b/c instructions compare against it.
@@ -254,9 +251,9 @@ begin
   -- if decode faults, then we need to pick whatever the predictor picks!
   -- the predictor will always go where we tell it, except for a return.
   s_pcn_taken  <= 
-    icache_pcn_i    when s_use_static='0' else
-    s_static_target when s_ret_taken ='0' else
-    predict_return_i;
+    f_opa_mux(s_use_static,
+      f_opa_mux(s_ret_taken, predict_return_i, s_static_target),
+      icache_pcn_i);
   
   -- Decode renamer's fault information
   s_rename_source(c_adr_wide-1    downto c_fetch_align) <= rename_pc_i(c_adr_wide-1 downto c_fetch_align);

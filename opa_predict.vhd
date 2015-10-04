@@ -82,11 +82,25 @@ architecture rtl of opa_predict is
   signal r_rs_idx : unsigned(c_rs_wide-1 downto 0) := (others => '1');
   signal s_rs_idx : unsigned(c_rs_wide-1 downto 0);
   
-  signal r_loop_pc   : unsigned(c_adr_wide-1 downto c_op_align);
-  signal r_loop_jump : std_logic_vector(c_fetchers-1 downto 0);
-  signal r_loop_pcn  : unsigned(c_adr_wide-1 downto c_op_align);
+  signal r_loop_pc   : unsigned(c_adr_wide-1 downto c_op_align) := (others => '0');
+  signal r_loop_jump : std_logic_vector(c_fetchers-1 downto 0)  := (others => '0');
+  signal r_loop_pcn  : unsigned(c_adr_wide-1 downto c_op_align) := (others => '0');
 
 begin
+
+  check : process(clk_i) is
+  begin
+    if rising_edge(clk_i) then
+      -- Check inputs
+      assert (f_opa_safe(icache_stall_i)  = '1') report "predict: icache_stall_i has metavalue" severity failure;
+      assert (f_opa_safe(decode_push_i)   = '1') report "predict: decode_push_i has metavalue" severity failure;
+      assert (f_opa_safe(decode_fault_i)  = '1') report "predict: decode_fault_i has metavalue" severity failure;
+      assert (f_opa_safe(decode_return_i) = '1') report "predict: decode_return_i has metavalue" severity failure;
+      -- Check state
+      assert (f_opa_safe(r_pc)     = '1') report "predict: r_pc has a metavalue" severity failure;
+      assert (f_opa_safe(r_rs_idx) = '1') report "predict: r_rs_idx has a metavalue" severity failure;
+    end if;
+  end process;
 
   -- Return stack
   rs : opa_dpram
@@ -132,6 +146,9 @@ begin
   main : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
+      r_loop_pc     <= (others => '0');
+      r_loop_jump   <= (others => '0');
+      r_loop_pcn    <= c_increment;
       r_pc          <= c_increment;
       decode_jump_o <= (others => '0');
       decode_hit_o  <= '0';
@@ -156,6 +173,6 @@ begin
     end if;
   end process;
   
-  icache_pc_o   <= std_logic_vector(s_pc);
+  icache_pc_o <= std_logic_vector(s_pc);
 
 end rtl;
