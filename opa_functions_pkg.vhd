@@ -767,7 +767,7 @@ package body opa_functions_pkg is
     assert (x'high(2) = y'high(2)) report "matrix-matrix row mismatch" severity failure;
     for i in x'range(1) loop
       for j in y'range(1) loop
-        result(i, j) := f_opa_bit(f_opa_select_row(x, i) = f_opa_select_row(y, j));
+        result(i, j) := f_opa_eq(f_opa_select_row(x, i), f_opa_select_row(y, j));
       end loop;
     end loop;
     return result;

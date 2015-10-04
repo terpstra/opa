@@ -43,23 +43,13 @@ end package;
 package body opa_isa_pkg is
   
   function f_zero(x : std_logic_vector(4 downto 0)) return std_logic is
-    constant c_zero : std_logic_vector(x'range) := (others => '0');
   begin
-    if x = c_zero then
-      return '1';
-    else
-      return '0';
-    end if;
+    return not f_opa_or(x);
   end f_zero;
   
   function f_one(x : std_logic_vector(4 downto 0)) return std_logic is
-    constant c_one : std_logic_vector(x'range) := (0 => '1', others => '0');
   begin
-    if x = c_one then
-      return '1';
-    else
-      return '0';
-    end if;
+    return f_opa_and(x);
   end f_one;
   
   function f_parse_rtype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is

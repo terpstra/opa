@@ -49,10 +49,8 @@ package body opa_isa_pkg is
   
   function f_parse_rtype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
-    constant c_zero1 : std_logic_vector(20 downto 16) := (others => '0');
-    constant c_zero2 : std_logic_vector(10 downto  0) := (others => '0');
   begin
-    result.bad   := f_opa_bit(x(20 downto 16) /= c_zero1 or x(10 downto 0) /= c_zero2);
+    result.bad   := f_opa_or(x(20 downto 16)) or f_opa_or(x(10 downto 0));
     result.jump  := '0';
     result.take  := '0';
     result.force := '0';
@@ -67,9 +65,8 @@ package body opa_isa_pkg is
   
   function f_parse_rrtype (x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
-    constant c_zero : std_logic_vector(10 downto 0) := (others => '0');
   begin
-    result.bad   := f_opa_bit(x(10 downto 0) /= c_zero);
+    result.bad   := f_opa_or(x(10 downto 0));
     result.jump  := '0';
     result.take  := '0';
     result.force := '0';
@@ -146,9 +143,8 @@ package body opa_isa_pkg is
 
   function f_parse_intype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := f_parse_ritype(x);
-    constant c_zero : std_logic_vector(10 downto 0) := (others => '0');
   begin
-    result.bad := f_opa_bit(x(15 downto 5) /= c_zero);
+    result.bad := f_opa_or(x(15 downto 5));
     result.imm := (others => '-');
     result.imm(4 downto 0) := x(4 downto 0);
     return result;
@@ -196,9 +192,8 @@ package body opa_isa_pkg is
   
   function f_parse_jrtype(x : std_logic_vector(c_op_wide-1 downto 0)) return t_opa_op is
     variable result : t_opa_op := c_opa_op_bad;
-    constant c_zero : std_logic_vector(20 downto 0) := (others => '0');
   begin
-    result.bad   := f_opa_bit(x(20 downto 0) /= c_zero);
+    result.bad   := f_opa_or(x(20 downto 0));
     result.jump  := '1';
     result.take  := '0'; -- no point following branch to nowhere
     result.force := '0';
@@ -220,7 +215,7 @@ package body opa_isa_pkg is
   begin
     op := f_parse_jrtype(x);
     -- !!! mess around with CSRs on eret/bret
-    ret         := f_opa_bit(op.archa = c_lm32_ra or op.archa = c_lm32_ba or op.archa = c_lm32_ea);
+    ret         := f_opa_eq(op.archa, c_lm32_ra) or f_opa_eq(op.archa, c_lm32_ba) or f_opa_eq(op.archa, c_lm32_ea);
     op.take     := ret; -- only follow indirect branches that are returns
     op.setx     := '0';
     op.pop      := ret;

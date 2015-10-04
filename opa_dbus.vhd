@@ -300,7 +300,7 @@ begin
     load_small : if not c_big_endian generate
       s_loadat <= std_logic_vector(rotate_left(unsigned(r_loadat), 1));
       onehot : for i in 0 to c_line_words-1 generate
-        s_loadat_in(i) <= f_opa_bit(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)) = i);
+        s_loadat_in(i) <= f_opa_eq(unsigned(l1d_radr_i(c_idx_high-1 downto c_idx_low)), i);
       end generate;
     end generate;
   end generate;
