@@ -283,11 +283,15 @@ architecture rtl of opa_issue is
   signal s_alias           : std_logic_vector(c_num_stat-1 downto 0);
   
   -- Determine if side effects are allowed
-  signal s_complete        : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_pred_complete   : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_oldest_mask     : std_logic_vector(c_num_stat-1 downto 0);
-  signal s_am_oldest       : std_logic_vector(c_executers-1 downto 0);
-  signal s_am_oldest_trim  : std_logic_vector(c_executers-1 downto 0) := (others => '0');
+  signal s_future_final    : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_future_complete : std_logic_vector(c_num_stat-1 downto 0);
+  signal s_future_pcomplete: std_logic_vector(c_num_stat-1 downto 0);
+  signal s_old             : std_logic_vector(c_executers-1 downto 0);
+  signal r_old             : std_logic_vector(c_executers-1 downto 0) := (others => '0');
+  signal s_oldest_candidate: std_logic_vector(c_executers-1 downto 0);
+  signal r_oldest_candidate: std_logic_vector(c_executers-1 downto 0) := (others => '0');
+  signal s_oldest_possible : std_logic;
+  signal s_am_oldest       : std_logic_vector(c_executers-1 downto 0) := (others => '0');
   
   -- Flow control of the issue pipeline
   signal s_stall         : std_logic;
@@ -392,6 +396,8 @@ begin
     variable v_schedule4s : t_opa_matrix(c_executers-1 downto 0, c_num_stat-1 downto 0);
     variable v_schedule2p : std_logic_vector(c_num_stat-1 downto 0);
     variable v_seen       : std_logic_vector(c_num_stat-1 downto 0);
+    variable v_old        : std_logic_vector(c_num_stat-1 downto 0);
+    variable v_complete   : std_logic_vector(c_num_stat-1 downto 0);
   begin
     if rising_edge(clk_i) then
       -- r_final => r_ready (s_ready b/c r_ready has indexes one cycle late)
@@ -412,6 +418,11 @@ begin
       -- If the CAM has an entry, it better be a store
       assert (f_opa_or(r_alias_valid and not r_slow) = '0')
       report "issue: load alias for non-slow op!"
+      severity failure;
+      
+      -- r_alias => r_final (we only wake up final ops)
+      assert (f_opa_or(r_alias and not r_final) = '0')
+      report "issue: load alias for non-final op!"
       severity failure;
       
       -- Start checking the schedule
@@ -458,6 +469,41 @@ begin
       assert (f_opa_or(v_seen and r_final) = '0')
       report "issue: scheduled operation is final!"
       severity failure;
+
+      -- Confirm r_old makes sense
+      for u in 0 to c_executers-1 loop
+        assert (r_old(u) = '0' or f_opa_or(f_opa_select_row(v_schedule4s, u)) = '1')
+        report "issue: unscheduled old instruction"
+        severity failure;
+      end loop;
+      
+      -- Find the instructions we claim are old
+      v_old := f_opa_product(f_opa_transpose(v_schedule4s), r_old);
+      
+      assert (f_opa_or(v_old and r_final) = '0')
+      report "issue: an old instruction cannot be final!"
+      severity failure;
+      
+      -- r_old combined with r_final must form unbroken 1s including r_old
+      v_complete := v_old or r_final;
+      v_complete := v_complete and not std_logic_vector(unsigned(v_complete) + 1);
+      assert (f_opa_or(v_old and not v_complete) = '0')
+      report "issue: an old instruction did not form a part of the new complete chain"
+      severity failure;
+      
+      -- The current 'oldest' instruction had better be correct
+      assert (s_am_oldest(c_fast0) = '0' or s_old(c_fast0) = '1')
+      report "issue: fast0 s_am_oldest, but not old?!"
+      severity failure;
+      
+      assert (s_am_oldest(c_slow0) = '0' or s_old(c_slow0) = '1')
+      report "issue: fast0 s_am_oldest, but not old?!"
+      severity failure;
+      
+      assert (s_am_oldest(c_fast0) = '0' or s_am_oldest(c_slow0) = '0')
+      report "issue: there can not be two oldest"
+      severity failure;
+      
     end if;
   end process;
   
@@ -550,7 +596,8 @@ begin
   -- 1. old readiness / instructions where r_ready=1 already
   --    => these must be masked out by all three cases
   -- 2. slow readiness / slow instructions issued 2 cycles ago
-  --    => s_nodep and s_alias must be considered
+  --    => s_nodep
+  --    => s_alias is impossible => it implies the op was final
   --    => s_retry is impossible => it implies simultaneous execution
   -- 3. fast readiness / fast instructions issued just now
   --    => s_nodep is already considered via s_pending_fast
@@ -565,51 +612,63 @@ begin
   -- final must go low in all three cases, however not all must be considered for completeness/shift
   --   => s_nodep is irrevelant to completeness, because the (older) input already blocks complete
   --   => s_retry is actually the opposite here; we only go final if its false
-  --   => s_alias must be considered, in order for store final=1 to be atomic with load final=0
+  --   => r_alias must be considered, in order for store final=1 to be atomic with load final=0
+  --      however, r_alias cannot affect anything scheduled, as they are not final
   s_finalize <= not r_retry;
   s_final <= (r_final and not r_alias) or (f_opa_product(f_opa_transpose(r_schedule4s), s_finalize) and not r_wipe);
-  s_complete <= s_final and not std_logic_vector(unsigned(s_final) + 1);
   s_new_final <= s_final and not s_nodep;
-  
-  -- !!! need to speed up eu_oldest_o
-  -- one idea: pre-decode how it would respond to r_retry, thus:
-  -- consider one step earlier, what can kill off r_schedule3s before it reaches final state
-  --  s_nodep, should not matter; prior is also not final
-  --  s_retry, this i will consider
-  --  s_alias, this i must also consider
-  -- 
-  -- >>>> to avoid r_alias mattering, don't use r_alias if not final <<<<
-  -- also reduces complexity in other circuits (r_wipe for example)
-  --
-  -- prior cycle:
-  --   a load that gets reissued is either:
-  --     retried for same cycle => fine
-  --     wipe, which means !ready => fine
-  --   if i become last, then they WERE last
-  --     s_nodep is impossible
-  --     they were inflight => r_alias is impossible
-  --     r_retry ... we are considering this!
   
   -- Determine if the execution window should be shifted
   s_stall  <= not f_opa_and(s_final(c_renamers-1 downto 0));
   s_shift  <= (rename_stb_i and not s_stall) or r_fault_out;
   rename_stall_o <= s_stall;
   
-  -- Let EUs know if they are the oldest incomplete operation, ie: they can cause side effects
-  -- We cannot let an operation that gets reissued run with oldest state; double effects are bad!
-  -- Consider the three causes of reissue:
-  --   s_nodep => an earlier op is !ready => an earlier op is !final => we are not oldest => impossible
-  --   s_retry => scheduled at stage 4 => not at stage 3 => contradiction
-  --   r_alias => this could happen if just completed op was a store and now oldest is a load
-  --              ... even though we are actually safe to run (after store), we can't because
-  --                  issued/ready will be cleared.
-  s_pred_complete <= s_complete(s_complete'high-1 downto s_complete'low) & '1';
-  s_oldest_mask   <= s_pred_complete and not (r_wipe or r_alias);
-  s_am_oldest <= f_opa_product(r_schedule3s, s_oldest_mask);
-  -- Only the 0th fast and slow EUs can actually be oldest; help the synthesis tool optimize
-  s_am_oldest_trim(c_fast0) <= s_am_oldest(c_fast0);
-  s_am_oldest_trim(c_slow0) <= s_am_oldest(c_slow0);
-  eu_oldest_o <= s_am_oldest_trim;
+  -- Plan oldest calculation one cycle ahead:
+  -- Recall that complete = this and all later instructions are final.
+  --   Nothing can undo complete instructions; alias/nodep affect younger instructions and retry scheduled
+  -- Define old = will be complete if all the instructions at schedule4 go final
+  --   Old instructions can be prevented from becoming complete if they or an older old instruction
+  --   report retry. Only old instructions might retry. Suppose none of them retry. Then:
+  --   1. s_nodep can't stop them; they are all final => ready => clearly not woken up
+  --   2. r_alias can't stop them; the only younger instructions are also old, which means that they
+  --      ran in the same cycle. same cycle aliases are resolved with a retry.
+  -- Therefore, the only thing that prevents an old instruction from going final is retry.
+  --
+  -- Now, suppose we are an instruction that runs in the cycle after the current old instructions.
+  -- The question is: will we be the oldest in that cycle?
+  -- Well, to answer this, suppose first that all the old instructions succeed (s_future_final).
+  -- If our precedecessor is then complete (s_future_complete), we must be oldest!
+  -- 
+  -- Obviously, not all the instructions last cycle necessarily complete. However, we only have
+  -- to care about the old instructions, because only those can preceed us if we become oldest. 
+  -- As argued above, those old instructions can only be stopped by a retry. So we just need to
+  -- know two things: which executed instructions are old (r_old), and did they retry?
+  --
+  -- If an instruction is old, then it's predecessor this cycle must be complete, so we can just
+  -- re-use s_future_complete to check. We record this into r_was_old to combine with r_retry.
+  
+  -- We don't need to consider s_nodep in s_future_final, because nodep => an earlier non-final,
+  -- and we don't care about future_final per-se, but about future_complete.
+  s_future_final <= s_final or (f_opa_product(f_opa_transpose(r_schedule3s), c_executer_ones) and not r_wipe);
+  s_future_complete <= s_future_final and not std_logic_vector(unsigned(s_future_final) + 1);
+  s_future_pcomplete <= not r_wipe and (s_future_complete(s_future_complete'high-1 downto s_future_complete'low) & '1');
+  -- Next cycle, these instructions are old
+  s_old <= f_opa_product(r_schedule3s, s_future_pcomplete);
+  -- In two cycles, these instructions can become oldest IF the next cycle's old instructions complete
+  s_oldest_candidate <= f_opa_product(f_shift(r_schedule2, r_shift), s_future_pcomplete);
+  
+  -- Let's prove a bit more in-depth that the above cannot go wrong
+  --   1. alias. Not an issue, because these ops are scheduled => !final => !r_alias
+  --   2. retry. This is explicitly covered for schedule4 by using s_final and schedule3 using r_retry
+  --   3. nodep. If schedule4 fail, then s_future_complete will be zero beyond that point
+  --             If schedule3 fail, that is covered by considering their r_retry
+  --             schedule2 cannot have cross-depends
+  --             No other instructions are earlier, if we are an oldest candidate.
+  
+  s_oldest_possible <= f_opa_and(not r_old or s_finalize);
+  s_am_oldest(c_fast0) <= s_oldest_possible and r_oldest_candidate(c_fast0);
+  s_am_oldest(c_slow0) <= s_oldest_possible and r_oldest_candidate(c_slow0);
+  eu_oldest_o <= s_am_oldest;
   
   -- Forward the fault up the pipeline
   rename_fault_o <= r_fault_out;
@@ -651,7 +710,8 @@ begin
   begin
     if rising_edge(clk_i) then
       if s_fault_out = '1' then
-        r_fault_mask <= s_complete(c_renamers-1 downto 0);
+        r_fault_mask <= s_final(c_renamers-1 downto 0) and
+                        not std_logic_vector(unsigned(s_final(c_renamers-1 downto 0)) + 1);
       else
         r_fault_mask <= (others => '1');
       end if;
@@ -748,17 +808,23 @@ begin
       r_final       <= (others => '1');
       r_alias_valid <= (others => '0');
       r_alias       <= (others => '0');
+      r_old              <= (others => '0');
+      r_oldest_candidate <= (others => '0');
     elsif rising_edge(clk_i) then
       if r_fault_pipe = '1' then -- synchronous clear
         r_issued      <= (others => '1');
         r_final       <= (others => '1');
         r_alias_valid <= (others => '0');
         r_alias       <= (others => '0');
+        r_old              <= (others => '0');
+        r_oldest_candidate <= (others => '0');
       else
         r_issued      <= f_shift(s_new_issued, s_shift);
         r_final       <= f_shift(s_new_final,  s_shift);
         r_alias_valid <= f_shift(s_alias_valid, s_shift);
-        r_alias       <= f_shift(s_alias, s_shift);
+        r_alias       <= f_shift(s_alias and s_new_final, s_shift);
+        r_old              <= s_old;
+        r_oldest_candidate <= s_oldest_candidate;
       end if;
     end if;
   end process;
@@ -851,7 +917,8 @@ begin
         r_schedule4s <= (others => (others => '0'));
       else
         r_ready      <= s_new_ready;
-        r_wipe       <= f_shift(s_nodep or r_alias or s_retry, s_shift);
+        -- wipe does not need to consider r_alias; r_alias => r_final => not in schedule
+        r_wipe       <= f_shift(s_nodep or s_retry, s_shift);
         r_schedule0  <= f_opa_transpose(f_opa_concat(
           f_opa_transpose(s_schedule_slow and f_opa_dup_row(c_num_slow, s_pending_slow)), 
           f_opa_transpose(s_schedule_fast and f_opa_dup_row(c_num_fast, s_pending_fast))));
@@ -879,9 +946,9 @@ begin
       -- These also need to consider all three sources of reissue as they feed s_issue
       --   s_pending_{fast,slow} already covers s_nodep
       --   both are just issued now, so s_retry is impossible (retry=>scheduled=>issued=>!not issued now)
-      --   fast cannot be affected by load aliasing ... but slow can
+      --   r_alias => r_final => r_issued => not issued now
       r_fast_issue <= s_fast_issue and s_pending_fast;
-      r_slow_issue <= s_slow_issue and s_pending_slow and not r_alias;
+      r_slow_issue <= s_slow_issue and s_pending_slow;
       r_retry      <= eu_retry_i;
     end if;
   end process;

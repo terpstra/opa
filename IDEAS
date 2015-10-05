@@ -1,6 +1,5 @@
 URGENT:
 	write a proper n-way icache
-	optimize oldest
 
 TODO:
 	write suduko solver for LM32				2 evenings

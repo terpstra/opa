@@ -59,7 +59,7 @@ architecture rtl of opa_syn_tb is
     ieee_fp    => false, -- hell no
     ic_ways    =>  2, -- keep the size down; only 2-way L1i
     iline_size => 16, -- 4 instructions per line
-    dc_ways    =>  2, -- keep the size down; only 2-way L1d
+    dc_ways    =>  1, -- keep the size down; only 1-way L1d
     dline_size => 16, -- 4 words per line
     dtlb_ways  =>  1);-- direct mapped TLB
   
