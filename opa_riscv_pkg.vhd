@@ -54,12 +54,12 @@ package body opa_riscv_pkg is
   
   function f_zero(x : std_logic_vector) return std_logic is
   begin
-    return not f_opa_or(x(c_arch_wide-1 downto 0));
+    return f_opa_and(not x(c_arch_wide-1 downto 0));
   end f_zero;
   
   function f_one(x : std_logic_vector) return std_logic is
   begin
-    return f_opa_and(x(c_arch_wide-1 downto 0));
+    return f_opa_and(not x(c_arch_wide-1 downto 1)) and x(0);
   end f_one;
   
   function f_parse_rtype (x : std_logic_vector) return t_opa_op is

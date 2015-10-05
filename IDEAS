@@ -37,4 +37,4 @@ BUGS:
 	zeroing memory gets into a bad feedbak loop with gaps
 		... old ordered patch does not help
 		=> need to kill ALL ordered ops
-	bad instructions (even unexecuted) corrupt prediction SM with 'X's
+	bad executed instructions corrupt prediction SM with 'X's
