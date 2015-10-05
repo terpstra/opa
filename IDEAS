@@ -1,6 +1,4 @@
 URGENT:
-	shift faster on fault, pull in proper values
-		... currently we force shift only sometimes and get bad shit in
 	write a proper n-way icache
 	optimize oldest
 
@@ -39,5 +37,4 @@ BUGS:
 	zeroing memory gets into a bad feedbak loop with gaps
 		... old ordered patch does not help
 		=> need to kill ALL ordered ops
-	shifting while not ready on fault => corrupt r_stat[ab]
 	bad instructions (even unexecuted) corrupt prediction SM with 'X's

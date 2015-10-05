@@ -376,6 +376,11 @@ begin
       assert (f_opa_safe(r_fault_out)  = '1') report "issue: r_fault_out has metavalue" severity failure;
       assert (f_opa_safe(s_fault_out)  = '1') report "issue: s_fault_out has metavalue" severity failure;
       assert (f_opa_safe(r_fault_in)   = '1') report "issue: r_fault_in has metavalue" severity failure;
+      
+      for i in 0 to c_num_stat-1 loop
+        assert (f_opa_safe(f_opa_select_row(r_stata,i)) = '1') report "issue: stata bad" severity warning;
+        assert (f_opa_safe(f_opa_select_row(r_statb,i)) = '1') report "issue: statb bad" severity warning;
+      end loop;
     end if;
   end process;
 
@@ -720,8 +725,13 @@ begin
   begin
     if rising_edge(clk_i) then
       if s_shift = '1' then
-        r_sp_geta <= rename_geta_i;
-        r_sp_getb <= rename_getb_i;
+        if r_fault_out = '1' then
+          r_sp_geta <= (others => '0');
+          r_sp_getb <= (others => '0');
+        else
+          r_sp_geta <= rename_geta_i;
+          r_sp_getb <= rename_getb_i;
+        end if;
         r_sp_bakx <= rename_bakx_i;
         r_sp_baka <= rename_baka_i;
         r_sp_bakb <= rename_bakb_i;
@@ -775,12 +785,21 @@ begin
             r_statb(i,b) <= s_statb(i+c_renamers,b);
           end loop;
         end loop;
-        for i in c_num_stat-c_renamers to c_num_stat-1 loop
-          for b in 0 to c_stat_wide-1 loop
-            r_stata(i,b) <= rename_stata_i(i-(c_num_stat-c_renamers),b);
-            r_statb(i,b) <= rename_statb_i(i-(c_num_stat-c_renamers),b);
+        if r_fault_out = '1' then
+          for i in c_num_stat-c_renamers to c_num_stat-1 loop
+            for b in 0 to c_stat_wide-1 loop
+              r_stata(i,b) <= '1';
+              r_statb(i,b) <= '1';
+            end loop;
           end loop;
-        end loop;
+        else
+          for i in c_num_stat-c_renamers to c_num_stat-1 loop
+            for b in 0 to c_stat_wide-1 loop
+              r_stata(i,b) <= rename_stata_i(i-(c_num_stat-c_renamers),b);
+              r_statb(i,b) <= rename_statb_i(i-(c_num_stat-c_renamers),b);
+            end loop;
+          end loop;
+        end if;
       else
         r_stata <= s_stata;
         r_statb <= s_statb;
@@ -796,8 +815,15 @@ begin
       r_slow <= (others => '0');
     elsif rising_edge(clk_i) then
       if s_shift = '1' then
-        r_fast <= rename_fast_i & r_fast(c_num_stat-1 downto c_renamers);
-        r_slow <= rename_slow_i & r_slow(c_num_stat-1 downto c_renamers);
+        if r_fault_out = '1' then
+          r_fast(c_num_stat-1 downto c_num_stat-c_renamers) <= (others => '0');
+          r_slow(c_num_stat-1 downto c_num_stat-c_renamers) <= (others => '0');
+        else
+          r_fast(c_num_stat-1 downto c_num_stat-c_renamers) <= rename_fast_i;
+          r_slow(c_num_stat-1 downto c_num_stat-c_renamers) <= rename_slow_i;
+        end if;
+        r_fast(c_num_stat-c_renamers-1 downto 0) <= r_fast(c_num_stat-1 downto c_renamers);
+        r_slow(c_num_stat-c_renamers-1 downto 0) <= r_slow(c_num_stat-1 downto c_renamers);
       end if;
     end if;
   end process;

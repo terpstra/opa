@@ -283,11 +283,12 @@ begin
         if issue_fault_i = '1' then -- load enable
           r_q_setx     <= (others => '0');
           r_pre_bak    <= s_com_mux_bak;
+          r_pre_stat   <= (others => (others => '1'));
         else
           r_q_setx     <= decode_setx_i & r_q_setx(c_num_stat-1 downto c_renamers);
           r_pre_bak    <= s_pre_mux_bak;
+          r_pre_stat   <= s_pre_mux_stat;
         end if;
-        r_pre_stat   <= s_pre_mux_stat;
         r_com_bak    <= s_com_mux_bak;
         r_free_bak   <= s_free_bak;
       end if;
