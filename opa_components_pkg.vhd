@@ -181,7 +181,7 @@ package opa_components_pkg is
       i_stall_i       : in  std_logic;
       i_ack_i         : in  std_logic;
       i_err_i         : in  std_logic;
-      i_addr_o        : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      i_addr_o        : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
       i_data_i        : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0));
   end component;
   

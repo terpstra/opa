@@ -102,7 +102,7 @@ architecture rtl of opa_dbus is
   signal r_dirty    : std_logic_vector(c_dline_size-1 downto 0);
   signal s_storeline: std_logic_vector(c_dline_size*8-1 downto 0);
   signal r_storeline: std_logic_vector(c_dline_size*8-1 downto 0);
-  signal r_adr      : std_logic_vector(c_reg_wide-1 downto 0) := (others => '0');
+  signal r_adr      : std_logic_vector(c_adr_wide-1 downto 0) := (others => '0');
   signal s_last_ack : std_logic;
   signal s_last_stb : std_logic;
   signal s_loadat_in: std_logic_vector(c_line_words-1 downto 0);

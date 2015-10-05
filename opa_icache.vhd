@@ -59,7 +59,7 @@ entity opa_icache is
     i_stall_i       : in  std_logic;
     i_ack_i         : in  std_logic;
     i_err_i         : in  std_logic;
-    i_addr_o        : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+    i_addr_o        : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
     i_data_i        : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0));
 end opa_icache;
 
@@ -213,8 +213,7 @@ begin
   i_cyc_o <= r_icyc;
   i_stb_o <= r_istb;
   
-  i_addr_o(c_reg_wide  -1 downto c_adr_wide-1) <= (others => r_pc2(r_pc2'left));
-  i_addr_o(c_adr_wide  -2 downto c_fetch_align) <= r_pc2(c_adr_wide-2 downto c_fetch_align);
+  i_addr_o(c_adr_wide-1 downto c_fetch_align) <= r_pc2(c_adr_wide-1 downto c_fetch_align);
   -- !!! what if c_fetchers*c_op_size <= c_reg_wide ... => make icache line larger
   i_addr_o(c_fetch_align-1 downto c_reg_align)  <= std_logic_vector(r_load);
   i_addr_o(c_reg_align -1 downto 0)            <= (others => '0');
