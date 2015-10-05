@@ -27,8 +27,6 @@ int main() {
   int sum = 0;
   int i, j;
   
-  msleep(1000);
-  
   pp_printf("I say: '%s'", hello);
   
   for (j = 0; j < 2; ++j) {
@@ -39,7 +37,20 @@ int main() {
     }
   }
   
-  pp_printf("Result: %x", sum);
+  pp_printf("Result: %x %d", sum, sum);
   
+#ifndef HOST
+  int old = 0, but = 0;
+  while (1) {
+    msleep(100); // Debounce by sleeping
+    
+    old = but;
+    but = (*stdout >> 31);
+    if (but != old) {
+      pp_printf("Button: %s", but?"pushed":"released");
+    }
+  }
+#endif
+
   return sum;
 }
