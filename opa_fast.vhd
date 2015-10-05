@@ -36,34 +36,35 @@ use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
 entity opa_fast is
-  generic(
-    g_config : t_opa_config;
-    g_target : t_opa_target);
-  port(
-    clk_i          : in  std_logic;
-    rst_n_i        : in  std_logic;
-    
-    regfile_stb_i  : in  std_logic;
-    regfile_rega_i : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-    regfile_regb_i : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-    regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide   (g_config)-1 downto 0);
-    regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide   (g_config)-1 downto 0);
-    regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    regfile_regx_o : out std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-    
-    issue_oldest_i : in  std_logic;
-    issue_retry_o  : out std_logic;
-    issue_fault_o  : out std_logic;
-    issue_pc_o     : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    issue_pcf_o    : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    issue_pcn_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align));
+    generic(
+      g_isa    : t_opa_isa;
+      g_config : t_opa_config;
+      g_target : t_opa_target);
+    port(
+      clk_i          : in  std_logic;
+      rst_n_i        : in  std_logic;
+      
+      regfile_stb_i  : in  std_logic;
+      regfile_rega_i : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      regfile_regb_i : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide(g_config)-1 downto 0);
+      regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide(g_isa)   -1 downto 0);
+      regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      regfile_pcf_i  : in  std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      
+      issue_oldest_i : in  std_logic;
+      issue_retry_o  : out std_logic;
+      issue_fault_o  : out std_logic;
+      issue_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      issue_pcf_o    : out std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      issue_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
 end opa_fast;
 
 architecture rtl of opa_fast is
 
-  constant c_imm_wide : natural := f_opa_imm_wide(g_config);
+  constant c_imm_wide : natural := f_opa_imm_wide(g_isa);
   constant c_adr_wide : natural := f_opa_adr_wide(g_config);
   constant c_sum_wide : natural := f_opa_choose(c_imm_wide<c_adr_wide,c_imm_wide,c_adr_wide);
 

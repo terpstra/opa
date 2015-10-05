@@ -34,14 +34,16 @@ use work.opa_pkg.all;
 use work.opa_isa_base_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
+use work.opa_isa_pkg.all;
 
 entity opa is
   generic(
-    g_config : t_opa_config;
-    g_target : t_opa_target);
+    g_isa     : t_opa_isa;
+    g_config  : t_opa_config;
+    g_target  : t_opa_target);
   port(
-    clk_i          : in  std_logic;
-    rst_n_i        : in  std_logic;
+    clk_i     : in  std_logic;
+    rst_n_i   : in  std_logic;
 
     -- Wishbone instruction bus
     i_cyc_o   : out std_logic;
@@ -49,8 +51,8 @@ entity opa is
     i_stall_i : in  std_logic;
     i_ack_i   : in  std_logic;
     i_err_i   : in  std_logic;
-    i_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    i_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+    i_addr_o  : out std_logic_vector(g_config.adr_width  -1 downto 0);
+    i_data_i  : in  std_logic_vector(g_config.reg_width  -1 downto 0);
     
     -- Wishbone data bus
     d_cyc_o   : out std_logic;
@@ -59,11 +61,11 @@ entity opa is
     d_stall_i : in  std_logic;
     d_ack_i   : in  std_logic;
     d_err_i   : in  std_logic;
-    d_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-    d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
-      
+    d_addr_o  : out std_logic_vector(g_config.adr_width  -1 downto 0);
+    d_sel_o   : out std_logic_vector(g_config.reg_width/8-1 downto 0);
+    d_data_o  : out std_logic_vector(g_config.reg_width  -1 downto 0);
+    d_data_i  : in  std_logic_vector(g_config.reg_width  -1 downto 0);
+    
     -- Wishbone peripheral bus
     p_cyc_o   : out std_logic;
     p_stb_o   : out std_logic;
@@ -71,11 +73,11 @@ entity opa is
     p_stall_i : in  std_logic;
     p_ack_i   : in  std_logic;
     p_err_i   : in  std_logic;
-    p_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    p_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-    p_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    p_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
-      
+    p_addr_o  : out std_logic_vector(g_config.adr_width  -1 downto 0);
+    p_sel_o   : out std_logic_vector(g_config.reg_width/8-1 downto 0);
+    p_data_o  : out std_logic_vector(g_config.reg_width  -1 downto 0);
+    p_data_i  : in  std_logic_vector(g_config.reg_width  -1 downto 0);
+    
     -- Execution unit acitivity indication
     status_o  : out std_logic_vector(g_config.num_fast+g_config.num_slow-1 downto 0));
 end opa;
@@ -87,23 +89,28 @@ architecture rtl of opa is
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_num_fast  : natural := f_opa_num_fast (g_config);
   constant c_num_slow  : natural := f_opa_num_slow (g_config);
-  constant c_num_back  : natural := f_opa_num_back (g_config);
-  constant c_num_arch  : natural := f_opa_num_arch (g_config);
+  constant c_num_back  : natural := f_opa_num_back (g_isa,g_config);
+  constant c_num_arch  : natural := f_opa_num_arch (g_isa);
   constant c_num_stat  : natural := f_opa_num_stat (g_config);
-  constant c_fetch_bits: natural := f_opa_fetch_bits(g_config);
-  constant c_num_dway  : natural := f_opa_num_dway(g_config);
-  constant c_back_wide : natural := f_opa_back_wide(g_config);
+  constant c_page_size : natural := f_opa_page_size (g_isa);
+  constant c_dline_size: natural := f_opa_dline_size(g_config);
+  constant c_iline_size: natural := f_opa_iline_size(g_config);
+  constant c_fetch_bits: natural := f_opa_fetch_bits(g_isa,g_config);
+  constant c_op_align  : natural := f_opa_op_align (g_isa);
+  constant c_op_wide   : natural := f_opa_op_wide  (g_isa);
+  constant c_num_dway  : natural := f_opa_num_dway (g_config);
+  constant c_back_wide : natural := f_opa_back_wide(g_isa,g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
-  constant c_arch_wide : natural := f_opa_arch_wide(g_config);
+  constant c_arch_wide : natural := f_opa_arch_wide(g_isa);
   constant c_reg_wide  : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
   constant c_arg_wide  : natural := f_opa_arg_wide(g_config);
-  constant c_imm_wide  : natural := f_opa_imm_wide(g_config);
+  constant c_imm_wide  : natural := f_opa_imm_wide(g_isa);
+  constant c_fet_wide  : natural := f_opa_fet_wide(g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide(g_config);
   constant c_ren_wide  : natural := f_opa_ren_wide(g_config);
-  constant c_alias_high: natural := f_opa_alias_high(g_config);
+  constant c_alias_high: natural := f_opa_alias_high(g_isa);
   constant c_alias_low : natural := f_opa_alias_low (g_config);
-  constant c_fetch_align : natural := f_opa_fetch_align(g_config);
   
   signal predict_icache_pc      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal predict_decode_hit     : std_logic;
@@ -140,13 +147,13 @@ architecture rtl of opa is
   signal decode_regfile_arg     : t_opa_matrix(c_renamers-1 downto 0, c_arg_wide-1 downto 0);
   signal decode_regfile_imm     : t_opa_matrix(c_renamers-1 downto 0, c_imm_wide-1 downto 0);
   signal decode_regfile_pc      : t_opa_matrix(c_renamers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal decode_regfile_pcf     : t_opa_matrix(c_renamers-1 downto 0, c_fetch_align-1 downto c_op_align);
+  signal decode_regfile_pcf     : t_opa_matrix(c_renamers-1 downto 0, c_fet_wide-1 downto 0);
   signal decode_regfile_pcn     : std_logic_vector(c_adr_wide-1 downto c_op_align);
   
   signal rename_decode_stall    : std_logic;
   signal rename_decode_fault    : std_logic;
   signal rename_decode_pc       : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal rename_decode_pcf      : std_logic_vector(c_fetch_align-1 downto c_op_align);
+  signal rename_decode_pcf      : std_logic_vector(c_fet_wide-1 downto 0);
   signal rename_decode_pcn      : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal rename_issue_stb       : std_logic;
   signal rename_issue_fast      : std_logic_vector(c_renamers-1 downto 0);
@@ -167,7 +174,7 @@ architecture rtl of opa is
   signal issue_rename_fault     : std_logic;
   signal issue_rename_mask      : std_logic_vector(c_renamers-1 downto 0);
   signal issue_rename_pc        : std_logic_vector(c_adr_wide-1 downto c_op_align);
-  signal issue_rename_pcf       : std_logic_vector(c_fetch_align-1 downto c_op_align);
+  signal issue_rename_pcf       : std_logic_vector(c_fet_wide-1 downto 0);
   signal issue_rename_pcn       : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal issue_regfile_rstb     : std_logic_vector(c_executers-1 downto 0);
   signal issue_regfile_geta     : std_logic_vector(c_executers-1 downto 0);
@@ -185,14 +192,14 @@ architecture rtl of opa is
   signal regfile_eu_arg         : t_opa_matrix(c_executers-1 downto 0, c_arg_wide-1  downto 0);
   signal regfile_eu_imm         : t_opa_matrix(c_executers-1 downto 0, c_imm_wide-1  downto 0);
   signal regfile_eu_pc          : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal regfile_eu_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fetch_align-1 downto c_op_align);
+  signal regfile_eu_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fet_wide-1 downto 0);
   signal regfile_eu_pcn         : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   
   signal eu_regfile_regx        : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0);
   signal eu_issue_retry         : std_logic_vector(c_executers-1 downto 0);
   signal eu_issue_fault         : std_logic_vector(c_executers-1 downto 0);
   signal eu_issue_pc            : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal eu_issue_pcf           : t_opa_matrix(c_executers-1 downto 0, c_fetch_align-1 downto c_op_align);
+  signal eu_issue_pcf           : t_opa_matrix(c_executers-1 downto 0, c_fet_wide-1 downto 0);
   signal eu_issue_pcn           : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   
   signal slow_l1d_stb           : std_logic_vector(c_num_slow-1 downto 0);
@@ -237,7 +244,7 @@ architecture rtl of opa is
   type t_arg  is array (c_executers-1 downto 0) of std_logic_vector(c_arg_wide -1 downto 0);
   type t_imm  is array (c_executers-1 downto 0) of std_logic_vector(c_imm_wide -1 downto 0);
   type t_pc   is array (c_executers-1 downto 0) of std_logic_vector(c_adr_wide -1 downto c_op_align);
-  type t_pcf  is array (c_executers-1 downto 0) of std_logic_vector(c_fetch_align -1 downto c_op_align);
+  type t_pcf  is array (c_executers-1 downto 0) of std_logic_vector(c_fet_wide -1 downto 0);
   type t_size is array (c_num_slow -1 downto 0) of std_logic_vector(1 downto 0);
   type t_adr  is array (c_num_slow -1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
   type t_dat  is array (c_num_slow -1 downto 0) of std_logic_vector(c_reg_wide -1 downto 0);
@@ -260,75 +267,131 @@ architecture rtl of opa is
   
 begin
 
-  check_issue_divisible : 
-    assert (g_config.num_stat mod g_config.num_rename = 0) 
-    report "num_stat must be divisible by num_rename"
+  check_reg_pow :
+    assert (2**f_opa_log2(g_config.reg_width) = g_config.reg_width)
+    report "registers must be a power of two"
     severity failure;
   
-  check_fetch :
+  check_reg_min :
+    assert (g_config.reg_width >= 8)
+    report "registers must be at least 8-bits wide"
+    severity failure;
+  
+  check_adr_min :
+    assert (g_config.adr_width >= f_opa_log2(c_page_size))
+    report "virtual address space must exceed one ISA page"
+    severity failure;
+    
+  check_adr_max :
+    assert (g_config.adr_width <= g_config.reg_width)
+    report "virtual address space must be less than register width"
+    severity failure;
+    
+  check_fetch_min :
     assert (2**f_opa_log2(g_config.num_fetch) = g_config.num_fetch)
     report "num_fetch must be a power of 2"
     severity failure;
   
-  check_rename :
+  check_rename_min :
     assert (g_config.num_rename >= 1)
     report "num_rename must be >= 1"
     severity failure;
   
-  check_fast :
+  check_stat_min : 
+    assert (g_config.num_stat >= 6) 
+    report "num_stat must be >= 6"
+    severity failure;
+  
+  check_stat_divisible : 
+    assert (g_config.num_stat mod g_config.num_rename = 0) 
+    report "num_stat must be divisible by num_rename"
+    severity failure;
+  
+  check_fast_min :
     assert (g_config.num_fast >= 1)
     report "num_fast must be >= 1"
     severity failure;
 
-  check_slow :
+  check_slow_min :
     assert (g_config.num_slow >= 1)
     report "num_slow must be >= 1"
     severity failure;
   
-  check_reg :
-    assert (8 <= 2**g_config.log_width)
-    report "registers must be larger than a byte"
+  check_ieee_fp :
+    assert (not g_config.ieee_fp)
+    report "IEEE fp currently unsupported"
+    severity warning;
+  
+  check_dway_pow :
+    assert (2**f_opa_log2(g_config.dc_ways) = g_config.dc_ways)
+    report "number of data cache lines must be a power of two"
     severity failure;
-    
-  check_imm :
-    assert (c_imm_wide <= 2**g_config.log_width)
+  
+  check_dline_min :
+    assert (c_dline_size*8 >= g_config.reg_width)
+    report "data cache line may not be smaller than a register"
+    severity failure;
+  
+  check_dline_max :
+    assert (c_page_size/g_config.dline_size <= g_target.mem_depth)
+    report "data cache line is so large that FPGA memory is underutilized (too shallow)"
+    severity warning;
+
+  check_dline_pow :
+    assert (2**f_opa_log2(g_config.dline_size) = g_config.dline_size)
+    report "data cache line size must be a power of two"
+    severity failure;
+
+  check_iway_pow :
+    assert (2**f_opa_log2(g_config.ic_ways) = g_config.ic_ways)
+    report "number of instruction cache lines must be a power of two"
+    severity failure;
+  
+  check_iline_min1 :
+    assert (c_iline_size*8 >= g_config.reg_width)
+    report "instruction cache line may not be smaller than a register"
+    severity failure;
+  
+  check_iline_min2 :
+    assert (c_iline_size*8 >= c_fetch_bits)
+    report "instruction cache line may not be smaller than the number of instructions fetched in one cycle"
+    severity failure;
+  
+  check_iline_max :
+    assert (c_page_size/g_config.iline_size <= g_target.mem_depth)
+    report "instruction cache line is so large that FPGA memory is underutilized (too shallow)"
+    severity warning;
+
+  check_iline_pow :
+    assert (2**f_opa_log2(g_config.iline_size) = g_config.iline_size)
+    report "instruction cache line size must be a power of two"
+    severity failure;
+  
+  check_isa :
+    assert (f_opa_isa_accept(g_isa, g_config) = '1')
+    report "ISA does not accept configuration"
+    severity failure;
+  
+  check_imm_max :
+    assert (c_imm_wide <= g_config.reg_width)
     report "registers must be larger than ISA immediates"
     severity failure;
+  
+  check_op_wide_pow :
+    assert (8*2**c_op_align = c_op_wide)
+    report "ISA operation width must be a power of two"
+    severity failure;
+  
+  check_page_size_pow :
+    assert (2**f_opa_log2(c_page_size) = c_page_size)
+    report "ISA page size must be a power of two"
+    severity failure;
     
-  check_adr :
-    assert (g_config.adr_width <= 2**g_config.log_width)
-    report "registers must be larger than virtual address space"
-    severity failure;
-    
-  check_page :
-    assert (g_config.adr_width >= f_opa_log2(c_page_size))
-    report "virtual address space must exceed one page"
-    severity failure;
-  
-  check_dline :
-    assert (2**g_config.log_width <= c_dline_size*8)
-    report "registers can not exceed the size of an L1d line"
-    severity failure;
-  
-  check_dline_pow :
-    assert (2**f_opa_log2(c_dline_size) = c_dline_size)
-    report "L1d cache line size must be a power of two"
-    severity failure;
-
-  check_iline :
-    assert (2**g_config.log_width <= c_iline_size*8)
-    report "registers can not exceed the size of an L1i line"
-    severity failure;
-  
-  check_dway :
-    assert (2**f_opa_log2(g_config.dc_ways) = g_config.dc_ways)
-    report "number of cache lines must be a power of two"
-    severity failure;
-
   -- !!! include our own reset extender
 
   predict : opa_predict
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map (
@@ -349,6 +412,7 @@ begin
   
   icache : opa_icache
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map(
@@ -372,6 +436,7 @@ begin
   
   decode : opa_decode
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map(
@@ -418,6 +483,7 @@ begin
       
   rename : opa_rename
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map(
@@ -461,6 +527,7 @@ begin
   
   issue : opa_issue
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map(
@@ -507,6 +574,7 @@ begin
   
   regfile : opa_regfile
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map(
@@ -557,7 +625,7 @@ begin
       eu_issue_pc (u,b) <= s_eu_issue_pc (u)(b);
       eu_issue_pcn(u,b) <= s_eu_issue_pcn(u)(b);
     end generate;
-    pcf : for b in c_op_align to c_fetch_align-1 generate
+    pcf : for b in 0 to c_fet_wide-1 generate
       s_regfile_eu_pcf(u)(b) <= regfile_eu_pcf(u,b);
       eu_issue_pcf(u,b) <= s_eu_issue_pcf(u)(b);
     end generate;
@@ -577,6 +645,7 @@ begin
   fastx : for i in 0 to c_num_fast-1 generate
     fast : opa_fast
       generic map(
+        g_isa    => g_isa,
         g_config => g_config,
         g_target => g_target)
       port map(
@@ -602,6 +671,7 @@ begin
   slowx : for i in 0 to c_num_slow-1 generate
     slow : opa_slow
       generic map(
+        g_isa    => g_isa,
         g_config => g_config,
         g_target => g_target)
       port map(
@@ -635,6 +705,7 @@ begin
   
   l1d : opa_l1d
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map(
@@ -677,6 +748,7 @@ begin
   
   dbus : opa_dbus
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map(
@@ -706,6 +778,7 @@ begin
   
   pbus : opa_pbus
     generic map(
+      g_isa    => g_isa,
       g_config => g_config,
       g_target => g_target)
     port map(

@@ -32,8 +32,11 @@ use std.textio.all;
 
 library work;
 use work.opa_pkg.all;
-use work.demo_pkg.all;
-use work.opa_functions_pkg.all;
+
+-- Users do not need these packages:
+use work.demo_pkg.all;           -- for demo program
+use work.opa_isa_base_pkg.all;   -- for f_opa_log2
+use work.opa_functions_pkg.all;  -- for f_opa_safe
 use work.opa_components_pkg.all; -- for opa_lfsr
 
 entity opa_sim_tb is
@@ -51,8 +54,8 @@ architecture rtl of opa_sim_tb is
   signal i_stall  : std_logic;
   signal i_ack    : std_logic;
   signal i_err    : std_logic;
-  signal i_addr   : std_logic_vector(2**c_config.log_width  -1 downto 0);
-  signal i_data   : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal i_addr   : std_logic_vector(c_config.adr_width  -1 downto 0);
+  signal i_data   : std_logic_vector(c_config.reg_width  -1 downto 0);
 
   signal d_cyc    : std_logic;
   signal d_stb    : std_logic;
@@ -60,10 +63,10 @@ architecture rtl of opa_sim_tb is
   signal d_stall  : std_logic;
   signal d_ack    : std_logic;
   signal d_err    : std_logic;
-  signal d_addr   : std_logic_vector(2**c_config.log_width  -1 downto 0);
-  signal d_sel    : std_logic_vector(2**c_config.log_width/8-1 downto 0);
-  signal d_data_o : std_logic_vector(2**c_config.log_width  -1 downto 0);
-  signal d_data_i : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal d_addr   : std_logic_vector(c_config.adr_width  -1 downto 0);
+  signal d_sel    : std_logic_vector(c_config.reg_width/8-1 downto 0);
+  signal d_data_o : std_logic_vector(c_config.reg_width  -1 downto 0);
+  signal d_data_i : std_logic_vector(c_config.reg_width  -1 downto 0);
   
   signal p_cyc    : std_logic;
   signal p_stb    : std_logic;
@@ -71,12 +74,12 @@ architecture rtl of opa_sim_tb is
   signal p_stall  : std_logic;
   signal p_ack    : std_logic;
   signal p_err    : std_logic;
-  signal p_addr   : std_logic_vector(2**c_config.log_width  -1 downto 0);
-  signal p_sel    : std_logic_vector(2**c_config.log_width/8-1 downto 0);
-  signal p_data_o : std_logic_vector(2**c_config.log_width  -1 downto 0);
-  signal p_data_i : std_logic_vector(2**c_config.log_width  -1 downto 0);
+  signal p_addr   : std_logic_vector(c_config.adr_width  -1 downto 0);
+  signal p_sel    : std_logic_vector(c_config.reg_width/8-1 downto 0);
+  signal p_data_o : std_logic_vector(c_config.reg_width  -1 downto 0);
+  signal p_data_i : std_logic_vector(c_config.reg_width  -1 downto 0);
   
-  signal ram : t_word_array(demo'range) := demo;
+  signal ram : t_word_array(c_demo_ram'range) := c_demo_ram;
   
 begin
 
@@ -98,6 +101,7 @@ begin
   
   opa_core : opa
     generic map(
+      g_isa    => c_demo_isa,
       g_config => c_config,
       g_target => c_opa_cyclone_v)
     port map(
@@ -153,7 +157,7 @@ begin
       assert (f_opa_safe(i_stb) = '1') report "Meta-value on i_stb" severity failure;
       if (i_cyc and i_stb) = '1' then
         assert (f_opa_safe(i_addr) = '1') report "Meta-value on instruction bus address" severity failure;
-        ia := to_integer(unsigned(i_addr(i_addr'left downto (c_config.log_width-3))));
+        ia := to_integer(unsigned(i_addr(i_addr'left downto f_opa_log2(c_config.reg_width)-3)));
         if ia > ram'high or ia < ram'low then
           assert (ia >= ram'low and ia <= ram'high)
           report "Instruction bus read out-of-bounds"
@@ -170,7 +174,7 @@ begin
         assert (f_opa_safe(d_addr)   = '1') report "Meta-value on d_addr"   severity failure;
         assert (f_opa_safe(d_sel)    = '1') report "Meta-value on d_sel"    severity failure;
         assert (f_opa_safe(d_data_o) = '1') report "Meta-value on d_data_o" severity failure;
-        da := to_integer(unsigned(d_addr(d_addr'left downto (c_config.log_width-3))));
+        da := to_integer(unsigned(d_addr(d_addr'left downto f_opa_log2(c_config.reg_width)-3)));
         if da > ram'high or da < ram'low then
           assert (da >= ram'low and da <= ram'high)
           report "Data bus access out-of-bounds"

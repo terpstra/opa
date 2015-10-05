@@ -37,6 +37,7 @@ use work.opa_components_pkg.all;
 
 entity opa_pbus is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
@@ -49,27 +50,28 @@ entity opa_pbus is
     p_stall_i   : in  std_logic;
     p_ack_i     : in  std_logic;
     p_err_i     : in  std_logic;
-    p_addr_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    p_sel_o     : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-    p_data_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    p_data_i    : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+    p_addr_o    : out std_logic_vector(g_config.adr_width  -1 downto 0);
+    p_sel_o     : out std_logic_vector(g_config.reg_width/8-1 downto 0);
+    p_data_o    : out std_logic_vector(g_config.reg_width  -1 downto 0);
+    p_data_i    : in  std_logic_vector(g_config.reg_width  -1 downto 0);
     
     -- L1d requests action
     l1d_stall_o : out std_logic; -- stall has an async dep on addr
     l1d_req_i   : in  std_logic;
     l1d_we_i    : in  std_logic;
-    l1d_addr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    l1d_sel_i   : in  std_logic_vector(2**g_config.log_width/8 -1 downto 0);
-    l1d_dat_i   : in  std_logic_vector(2**g_config.log_width   -1 downto 0);
+    l1d_addr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)  -1 downto 0);
+    l1d_sel_i   : in  std_logic_vector(f_opa_reg_wide(g_config)/8-1 downto 0);
+    l1d_dat_i   : in  std_logic_vector(f_opa_reg_wide(g_config)  -1 downto 0);
     
     l1d_pop_i   : in  std_logic;
     l1d_full_o  : out std_logic;
     l1d_err_o   : out std_logic;
-    l1d_dat_o   : out std_logic_vector(2**g_config.log_width-1 downto 0));
+    l1d_dat_o   : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0));
 end opa_pbus;
 
 architecture rtl of opa_pbus is
 
+  constant c_page_size : natural := f_opa_page_size(g_isa);
   constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
   constant c_reg_wide  : natural := f_opa_reg_wide(g_config);
   constant c_sel_wide  : natural := c_reg_wide/8;

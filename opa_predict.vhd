@@ -37,6 +37,7 @@ use work.opa_components_pkg.all;
 
 entity opa_predict is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
@@ -45,28 +46,29 @@ entity opa_predict is
     
     -- Deliver our prediction
     icache_stall_i  : in  std_logic;
-    icache_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    icache_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
     decode_hit_o    : out std_logic;
     decode_jump_o   : out std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
     
     -- Push a return stack entry
     decode_push_i   : in  std_logic;
-    decode_ret_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    decode_ret_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
     
     -- Fixup PC to new target
     decode_fault_i  : in  std_logic;
     decode_return_i : in  std_logic;
     decode_jump_i   : in  std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
-    decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    decode_return_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
+    decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    decode_return_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
 end opa_predict;
 
 architecture rtl of opa_predict is
 
+  constant c_op_align  : natural := f_opa_op_align(g_isa);
   constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
   constant c_fetchers  : natural := f_opa_fetchers(g_config);
-  constant c_fetch_bytes : natural := f_opa_fetch_bytes(g_config);
+  constant c_fetch_bytes : natural := f_opa_fetch_bytes(g_isa,g_config);
   constant c_rs_wide   : natural := 5; -- can maybe bump to 8 if IPC gain is substantial
   constant c_rs_deep   : natural := 2**c_rs_wide;
   

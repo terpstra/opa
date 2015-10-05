@@ -37,6 +37,7 @@ use work.opa_components_pkg.all;
 
 entity opa_regfile is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
@@ -46,11 +47,11 @@ entity opa_regfile is
     -- Record PC + immediate data
     decode_stb_i : in  std_logic;
     decode_aux_i : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-    decode_arg_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_arg_wide   (g_config)-1 downto 0);
-    decode_imm_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_imm_wide   (g_config)-1 downto 0);
-    decode_pc_i  : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-    decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    decode_arg_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
+    decode_imm_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_imm_wide(g_isa)   -1 downto 0);
+    decode_pc_i  : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fet_wide(g_config)-1 downto 0);
+    decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
 
     -- Issue has dispatched these instructions to us
     issue_rstb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -58,43 +59,44 @@ entity opa_regfile is
     issue_getb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     issue_aux_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide  (g_config)-1 downto 0);
     issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide  (g_config)-1 downto 0);
-    issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
-    issue_bakb_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
+    issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_isa,g_config)-1 downto 0);
+    issue_bakb_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_isa,g_config)-1 downto 0);
     
     -- Feed the EUs one cycle later (they register this => result is two cycles later)
     eu_stb_o     : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    eu_rega_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide   (g_config)-1 downto 0);
-    eu_regb_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide   (g_config)-1 downto 0);
-    eu_arg_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_arg_wide   (g_config)-1 downto 0);
-    eu_imm_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_imm_wide   (g_config)-1 downto 0);
-    eu_pc_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-    eu_pcn_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
+    eu_rega_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
+    eu_regb_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
+    eu_arg_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
+    eu_imm_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_imm_wide(g_isa)   -1 downto 0);
+    eu_pc_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fet_wide(g_config)-1 downto 0);
+    eu_pcn_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
     
     -- Issue has indicated these EUs will write now
     issue_wstb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    issue_bakx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
+    issue_bakx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
     
     -- The results arrive two cycles after the issue said they would
-    eu_regx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide  (g_config)-1 downto 0));
+    eu_regx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0));
 end opa_regfile;
 
 architecture rtl of opa_regfile is
 
+  constant c_op_align  : natural := f_opa_op_align  (g_isa);
   constant c_executers : natural := f_opa_executers (g_config);
   constant c_renamers  : natural := f_opa_renamers  (g_config);
-  constant c_num_back  : natural := f_opa_num_back  (g_config);
+  constant c_num_back  : natural := f_opa_num_back  (g_isa,g_config);
   constant c_num_aux   : natural := f_opa_num_aux   (g_config);
-  constant c_back_wide : natural := f_opa_back_wide (g_config);
+  constant c_back_wide : natural := f_opa_back_wide (g_isa,g_config);
   constant c_reg_wide  : natural := f_opa_reg_wide  (g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide  (g_config);
-  constant c_fetch_align: natural := f_opa_fetch_align(g_config);
+  constant c_fet_wide  : natural := f_opa_fet_wide  (g_config);
   constant c_arg_wide  : natural := f_opa_arg_wide  (g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide  (g_config);
-  constant c_imm_wide  : natural := f_opa_imm_wide  (g_config);
+  constant c_imm_wide  : natural := f_opa_imm_wide  (g_isa);
   constant c_ren_wide  : natural := f_opa_ren_wide  (g_config);
-  constant c_pc_wide   : natural := c_adr_wide   - c_op_align;
-  constant c_pcf_wide  : natural := c_fetch_align - c_op_align;
+  constant c_pc_wide   : natural := c_adr_wide - c_op_align;
+  constant c_pcf_wide  : natural := c_fet_wide;
   
   constant c_aux_num_arg   : natural := c_renamers;
   constant c_aux_num_imm   : natural := c_renamers;
@@ -113,7 +115,7 @@ architecture rtl of opa_regfile is
   constant c_undef_arg : t_opa_matrix(c_executers-1 downto 0, c_arg_wide-1 downto 0) := (others => (others => 'X'));
   constant c_undef_imm : t_opa_matrix(c_executers-1 downto 0, c_imm_wide-1 downto 0) :=(others => (others => 'X'));
   constant c_undef_pc  : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align) := (others => (others => 'X'));
-  constant c_undef_pcf : t_opa_matrix(c_executers-1 downto 0, c_fetch_align-1 downto c_op_align) := (others => (others => 'X'));
+  constant c_undef_pcf : t_opa_matrix(c_executers-1 downto 0, c_fet_wide-1 downto 0) := (others => (others => 'X'));
   
   -- Bypass logic. We combine:
   --   EU outputs (fast+slow)
@@ -278,7 +280,7 @@ architecture rtl of opa_regfile is
   signal s_imm         : t_opa_matrix(c_executers-1 downto 0, c_imm_wide-1 downto 0);
   signal s_pc          : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
   signal s_pcn         : t_opa_matrix(c_executers-1 downto 0, c_adr_wide-1 downto c_op_align);
-  signal s_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fetch_align-1 downto c_op_align);
+  signal s_pcf         : t_opa_matrix(c_executers-1 downto 0, c_fet_wide-1 downto 0);
   signal s_imm_pad     : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0) := (others => (others => '0'));
   signal s_pc_pad      : t_opa_matrix(c_executers-1 downto 0, c_reg_wide-1 downto 0) := (others => (others => '0'));
   
@@ -362,7 +364,7 @@ begin
       s_aux_wdata(c_aux_off_pc  + b*c_aux_num_pc  + d) <= decode_pc_i (d,b+c_op_align);
     end generate;
     pcf : for b in 0 to c_pcf_wide-1 generate
-      s_aux_wdata(c_aux_off_pcf + b*c_aux_num_pcf + d) <= decode_pcf_i(d,b+c_op_align);
+      s_aux_wdata(c_aux_off_pcf + b*c_aux_num_pcf + d) <= decode_pcf_i(d,b);
     end generate;
   end generate;
   pcn : for b in 0 to c_pc_wide-1 generate
@@ -420,7 +422,7 @@ begin
       s_pcn(u,b+c_op_align) <= f_opa_index(s_aux_pcn_mux(f_idx(u,b)), unsigned(f_opa_select_row(r_dec,u)));
     end generate;
     pcf : for b in 0 to c_pcf_wide-1 generate
-      s_pcf(u,b+c_op_align) <= f_opa_index(s_aux_pcf_mux(f_idx(u,b)), unsigned(f_opa_select_row(r_dec,u)));
+      s_pcf(u,b) <= f_opa_index(s_aux_pcf_mux(f_idx(u,b)), unsigned(f_opa_select_row(r_dec,u)));
     end generate;
     
     sext_imm : if c_imm_wide < c_reg_wide generate

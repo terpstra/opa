@@ -37,6 +37,7 @@ use work.opa_components_pkg.all;
 
 entity opa_dbus is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
@@ -49,28 +50,31 @@ entity opa_dbus is
     d_stall_i   : in  std_logic;
     d_ack_i     : in  std_logic;
     d_err_i     : in  std_logic;
-    d_addr_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    d_sel_o     : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-    d_data_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-    d_data_i    : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+    d_addr_o    : out std_logic_vector(g_config.adr_width  -1 downto 0);
+    d_sel_o     : out std_logic_vector(g_config.reg_width/8-1 downto 0);
+    d_data_o    : out std_logic_vector(g_config.reg_width  -1 downto 0);
+    d_data_i    : in  std_logic_vector(g_config.reg_width  -1 downto 0);
     
     -- L1d requests action
     l1d_req_i   : in  t_opa_dbus_request;
-    l1d_radr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    l1d_way_i   : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-    l1d_wadr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    l1d_dirty_i : in  std_logic_vector(c_dline_size            -1 downto 0);
-    l1d_data_i  : in  std_logic_vector(c_dline_size*8          -1 downto 0);
+    l1d_radr_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+    l1d_way_i   : in  std_logic_vector(f_opa_num_dway  (g_config)  -1 downto 0);
+    l1d_wadr_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+    l1d_dirty_i : in  std_logic_vector(f_opa_dline_size(g_config)  -1 downto 0);
+    l1d_data_i  : in  std_logic_vector(f_opa_dline_size(g_config)*8-1 downto 0);
     
     l1d_busy_o  : out std_logic; -- can accept a req_i
-    l1d_we_o    : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-    l1d_adr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    l1d_valid_o : out std_logic_vector(c_dline_size            -1 downto 0);
-    l1d_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0));
+    l1d_we_o    : out std_logic_vector(f_opa_num_dway  (g_config)  -1 downto 0);
+    l1d_adr_o   : out std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+    l1d_valid_o : out std_logic_vector(f_opa_dline_size(g_config)  -1 downto 0);
+    l1d_data_o  : out std_logic_vector(f_opa_dline_size(g_config)*8-1 downto 0));
 end opa_dbus;
 
 architecture rtl of opa_dbus is
 
+  constant c_big_endian:boolean := f_opa_big_endian(g_isa);
+  constant c_page_size: natural := f_opa_page_size(g_isa);
+  constant c_dline_size:natural := f_opa_dline_size(g_config);
   constant c_reg_wide : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide : natural := f_opa_adr_wide(g_config);
   constant c_num_slow : natural := f_opa_num_slow(g_config);

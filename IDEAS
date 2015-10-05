@@ -3,7 +3,6 @@ URGENT:
 		... currently we force shift only sometimes and get bad shit in
 	add icache wipe on reset
 	write a proper n-way icache
-	move ISA selection to a generic parameter
 	optimize oldest
 
 TODO:

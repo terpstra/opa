@@ -37,6 +37,7 @@ use work.opa_components_pkg.all;
 
 entity opa_slow is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
@@ -44,38 +45,38 @@ entity opa_slow is
     rst_n_i        : in  std_logic;
     
     regfile_stb_i  : in  std_logic;
-    regfile_rega_i : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-    regfile_regb_i : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-    regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide   (g_config)-1 downto 0);
-    regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide   (g_config)-1 downto 0);
-    regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    regfile_regx_o : out std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
+    regfile_rega_i : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+    regfile_regb_i : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+    regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide(g_config)-1 downto 0);
+    regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide(g_isa)   -1 downto 0);
+    regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    regfile_pcf_i  : in  std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+    regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
     
     l1d_stb_o      : out std_logic;
     l1d_we_o       : out std_logic;
     l1d_sext_o     : out std_logic;
     l1d_size_o     : out std_logic_vector(1 downto 0);
-    l1d_addr_o     : out std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-    l1d_data_o     : out std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
+    l1d_addr_o     : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+    l1d_data_o     : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
     l1d_oldest_o   : out std_logic; -- delivered 1 cycle after stb
     l1d_retry_i    : in  std_logic; -- valid 1 cycle after stb_o 
-    l1d_data_i     : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0); -- 2 cycles
+    l1d_data_i     : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0); -- 2 cycles
     
     issue_oldest_i : in  std_logic;
     issue_retry_o  : out std_logic;
     issue_fault_o  : out std_logic;
-    issue_pc_o     : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    issue_pcf_o    : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    issue_pcn_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align));
+    issue_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    issue_pcf_o    : out std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+    issue_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
 end opa_slow;
 
 architecture rtl of opa_slow is
 
   constant c_reg_wide     : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide     : natural := f_opa_adr_wide(g_config);
-  constant c_imm_wide     : natural := f_opa_imm_wide(g_config);
+  constant c_imm_wide     : natural := f_opa_imm_wide(g_isa);
   constant c_log_reg_wide : natural := f_opa_log2(c_reg_wide);
   constant c_log_reg_bytes: natural := c_log_reg_wide - 3;
   

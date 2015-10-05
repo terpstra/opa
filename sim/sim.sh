@@ -11,10 +11,12 @@ fi
 echo "Building for $arch"
 for i in 				\
 	opa_pkg.vhd 			\
-	opa_isa_base_pkg_$arch.vhd	\
+	opa_isa_base_pkg.vhd		\
+	opa_riscv_pkg.vhd		\
+	opa_lm32_pkg.vhd		\
+	opa_isa_pkg.vhd			\
 	opa_functions_pkg.vhd		\
 	opa_components_pkg.vhd		\
-	opa_isa_pkg_$arch.vhd		\
 	opa_dpram.vhd			\
 	opa_tdpram.vhd			\
 	opa_lcell.vhd			\

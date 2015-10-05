@@ -131,6 +131,7 @@ package opa_components_pkg is
   
   component opa_predict is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -139,25 +140,26 @@ package opa_components_pkg is
       
       -- Deliver our prediction
       icache_stall_i  : in  std_logic;
-      icache_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      icache_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       decode_hit_o    : out std_logic;
       decode_jump_o   : out std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
       
       -- Push a return stack entry
       decode_push_i   : in  std_logic;
-      decode_ret_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      decode_ret_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       
       -- Fixup PC to new target
       decode_fault_i  : in  std_logic;
       decode_return_i : in  std_logic;
       decode_jump_i   : in  std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
-      decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      decode_return_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
+      decode_source_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      decode_target_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      decode_return_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
   end component;
   
   component opa_icache is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -165,14 +167,14 @@ package opa_components_pkg is
       rst_n_i         : in  std_logic;
       
       predict_stall_o : out std_logic;
-      predict_pc_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      predict_pc_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       
       decode_stb_o    : out std_logic;
       decode_stall_i  : in  std_logic;
       decode_fault_i  : in  std_logic;
-      decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      decode_dat_o    : out std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
+      decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      decode_dat_o    : out std_logic_vector(f_opa_fetch_bits(g_isa,g_config)-1 downto 0);
       
       i_cyc_o         : out std_logic;
       i_stb_o         : out std_logic;
@@ -185,6 +187,7 @@ package opa_components_pkg is
   
   component opa_decode is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -197,22 +200,22 @@ package opa_components_pkg is
       
       -- Push a return stack entry
       predict_push_o   : out std_logic;
-      predict_ret_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      predict_ret_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       
       -- Fixup PC to new target
       predict_fault_o  : out std_logic;
       predict_return_o : out std_logic;
       predict_jump_o   : out std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
-      predict_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      predict_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      predict_return_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      predict_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      predict_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      predict_return_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
 
       -- Instructions delivered from icache
       icache_stb_i     : in  std_logic;
       icache_stall_o   : out std_logic;
-      icache_pc_i      : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      icache_pcn_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-      icache_dat_i     : in  std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
+      icache_pc_i      : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      icache_pcn_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      icache_dat_i     : in  std_logic_vector(f_opa_fetch_bits(g_isa,g_config)-1 downto 0);
       
       -- Feed data to the renamer
       rename_stb_o   : out std_logic;
@@ -224,28 +227,29 @@ package opa_components_pkg is
       rename_geta_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_getb_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_aux_o   : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      rename_archx_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-      rename_archa_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-      rename_archb_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+      rename_archx_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
+      rename_archa_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
+      rename_archb_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
 
       -- Accept faults
       rename_fault_i : in  std_logic;
-      rename_pc_i    : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      rename_pcf_i   : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-      rename_pcn_i   : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
+      rename_pc_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      rename_pcf_i   : in  std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      rename_pcn_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       
       -- Give the regfile the information EUs will need for these operations
       regfile_stb_o  : out std_logic;
       regfile_aux_o  : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
       regfile_arg_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
-      regfile_imm_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_imm_wide(g_config)-1 downto 0);
-      regfile_pc_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto c_op_align);
-      regfile_pcf_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-      regfile_pcn_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
+      regfile_imm_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_imm_wide(g_isa)   -1 downto 0);
+      regfile_pc_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      regfile_pcf_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fet_wide(g_config)-1 downto 0);
+      regfile_pcn_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
   end component;
   
   component opa_rename is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -262,9 +266,9 @@ package opa_components_pkg is
       decode_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       decode_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       decode_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      decode_archx_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-      decode_archa_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-      decode_archb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+      decode_archx_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
+      decode_archa_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
+      decode_archb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
       
       -- Values we provide to the issuer
       issue_stb_o    : out std_logic;
@@ -275,27 +279,28 @@ package opa_components_pkg is
       issue_geta_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       issue_getb_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       issue_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      issue_bakx_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      issue_baka_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      issue_bakb_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      issue_stata_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      issue_statb_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      issue_bakx_i   : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      issue_bakx_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+      issue_baka_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+      issue_bakb_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+      issue_stata_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)      -1 downto 0);
+      issue_statb_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)      -1 downto 0);
+      issue_bakx_i   : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
       
       -- Feed faults back up the pipeline
       issue_fault_i  : in  std_logic;
-      issue_mask_i   : in  std_logic_vector(f_opa_renamers   (g_config)-1 downto 0);
-      issue_pc_i     : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      issue_pcf_i    : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-      issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
+      issue_mask_i   : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      issue_pc_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      issue_pcf_i    : in  std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      issue_pcn_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       decode_fault_o : out std_logic;
-      decode_pc_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      decode_pcf_o   : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-      decode_pcn_o   : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align));
+      decode_pc_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      decode_pcf_o   : out std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      decode_pcn_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
   end component;
 
   component opa_issue is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -311,27 +316,27 @@ package opa_components_pkg is
       rename_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
       rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      rename_bakx_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      rename_baka_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      rename_bakb_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      rename_stata_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      rename_statb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-      rename_bakx_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      rename_bakx_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+      rename_baka_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+      rename_bakb_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+      rename_stata_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)      -1 downto 0);
+      rename_statb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)      -1 downto 0);
+      rename_bakx_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
       
       -- Exceptions from the EUs
       eu_oldest_o    : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       eu_retry_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-      eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-      eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
+      eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fet_wide(g_config)-1 downto 0);
+      eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       
       -- Selected fault fed back up pipeline
       rename_fault_o : out std_logic;
-      rename_mask_o  : out std_logic_vector(f_opa_renamers   (g_config)-1 downto 0);
-      rename_pc_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      rename_pcf_o   : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-      rename_pcn_o   : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
+      rename_mask_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+      rename_pc_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      rename_pcf_o   : out std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      rename_pcn_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       
       -- Regfile needs to fetch these for EU
       regfile_rstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -339,22 +344,23 @@ package opa_components_pkg is
       regfile_getb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide (g_config)-1 downto 0);
       regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide (g_config)-1 downto 0);
-      regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-      regfile_bakb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+      regfile_bakb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
       
       -- Regfile should capture result from EU
       regfile_wstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-      regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+      regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
       
       -- Gather information from L1d about aliased loads
       l1d_store_i    : in  std_logic;
       l1d_load_i     : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
-      l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
+      l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_isa) downto f_opa_alias_low(g_config));
       l1d_mask_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)/8-1 downto 0));
   end component;
   
   component opa_regfile is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -364,11 +370,11 @@ package opa_components_pkg is
       -- Record PC + immediate data
       decode_stb_i : in  std_logic;
       decode_aux_i : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-      decode_arg_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_arg_wide   (g_config)-1 downto 0);
-      decode_imm_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_imm_wide   (g_config)-1 downto 0);
-      decode_pc_i  : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-      decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+      decode_arg_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
+      decode_imm_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_imm_wide(g_isa)   -1 downto 0);
+      decode_pc_i  : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      decode_pcf_i : in  t_opa_matrix(f_opa_renamers (g_config)-1 downto 0, f_opa_fet_wide(g_config)-1 downto 0);
+      decode_pcn_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
 
       -- Issue has dispatched these instructions to us
       issue_rstb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -376,29 +382,30 @@ package opa_components_pkg is
       issue_getb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
       issue_aux_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide  (g_config)-1 downto 0);
       issue_dec_i  : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide  (g_config)-1 downto 0);
-      issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
-      issue_bakb_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
+      issue_baka_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_isa,g_config)-1 downto 0);
+      issue_bakb_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_isa,g_config)-1 downto 0);
       
       -- Feed the EUs one cycle later (they register this => result is two cycles later)
       eu_stb_o     : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-      eu_rega_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide   (g_config)-1 downto 0);
-      eu_regb_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide   (g_config)-1 downto 0);
-      eu_arg_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_arg_wide   (g_config)-1 downto 0);
-      eu_imm_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_imm_wide   (g_config)-1 downto 0);
-      eu_pc_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-      eu_pcn_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
+      eu_rega_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
+      eu_regb_o    : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0);
+      eu_arg_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
+      eu_imm_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_imm_wide(g_isa)   -1 downto 0);
+      eu_pc_o      : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      eu_pcf_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fet_wide(g_config)-1 downto 0);
+      eu_pcn_o     : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
       
       -- Issue has indicated these EUs will write now
       issue_wstb_i : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-      issue_bakx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide (g_config)-1 downto 0);
+      issue_bakx_i : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
       
       -- The results arrive two cycles after the issue said they would
-      eu_regx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide  (g_config)-1 downto 0));
+      eu_regx_i    : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_reg_wide(g_config)-1 downto 0));
   end component;
   
   component opa_fast is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -406,25 +413,26 @@ package opa_components_pkg is
       rst_n_i        : in  std_logic;
       
       regfile_stb_i  : in  std_logic;
-      regfile_rega_i : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-      regfile_regb_i : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-      regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide   (g_config)-1 downto 0);
-      regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide   (g_config)-1 downto 0);
-      regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-      regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      regfile_regx_o : out std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
+      regfile_rega_i : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      regfile_regb_i : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide(g_config)-1 downto 0);
+      regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide(g_isa)   -1 downto 0);
+      regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      regfile_pcf_i  : in  std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
       
       issue_oldest_i : in  std_logic;
       issue_retry_o  : out std_logic;
       issue_fault_o  : out std_logic;
-      issue_pc_o     : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      issue_pcf_o    : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-      issue_pcn_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align));
+      issue_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      issue_pcf_o    : out std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      issue_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
   end component;
 
   component opa_slow is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -432,31 +440,31 @@ package opa_components_pkg is
       rst_n_i        : in  std_logic;
       
       regfile_stb_i  : in  std_logic;
-      regfile_rega_i : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-      regfile_regb_i : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-      regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide   (g_config)-1 downto 0);
-      regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide   (g_config)-1 downto 0);
-      regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      regfile_pcf_i  : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-      regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      regfile_regx_o : out std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
+      regfile_rega_i : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      regfile_regb_i : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      regfile_arg_i  : in  std_logic_vector(f_opa_arg_wide(g_config)-1 downto 0);
+      regfile_imm_i  : in  std_logic_vector(f_opa_imm_wide(g_isa)   -1 downto 0);
+      regfile_pc_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      regfile_pcf_i  : in  std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      regfile_pcn_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      regfile_regx_o : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
       
       l1d_stb_o      : out std_logic;
       l1d_we_o       : out std_logic;
       l1d_sext_o     : out std_logic;
       l1d_size_o     : out std_logic_vector(1 downto 0);
-      l1d_addr_o     : out std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
-      l1d_data_o     : out std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0);
+      l1d_addr_o     : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
+      l1d_data_o     : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0);
       l1d_oldest_o   : out std_logic; -- delivered 1 cycle after stb
       l1d_retry_i    : in  std_logic; -- valid 1 cycle after stb_o 
-      l1d_data_i     : in  std_logic_vector(f_opa_reg_wide   (g_config)-1 downto 0); -- 2 cycles
+      l1d_data_i     : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0); -- 2 cycles
       
       issue_oldest_i : in  std_logic;
       issue_retry_o  : out std_logic;
       issue_fault_o  : out std_logic;
-      issue_pc_o     : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      issue_pcf_o    : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-      issue_pcn_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align));
+      issue_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+      issue_pcf_o    : out std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+      issue_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
   end component;
 
   type t_opa_dbus_request is (
@@ -472,6 +480,7 @@ package opa_components_pkg is
   
   component opa_l1d is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -492,38 +501,39 @@ package opa_components_pkg is
       -- Share information about the addresses we are loading/storing
       issue_store_o : out std_logic;
       issue_load_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
-      issue_addr_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
+      issue_addr_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_isa) downto f_opa_alias_low(g_config));
       issue_mask_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)/8-1 downto 0);
       
       -- L1d requests action
       dbus_req_o    : out t_opa_dbus_request;
-      dbus_radr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      dbus_way_o    : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-      dbus_wadr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      dbus_dirty_o  : out std_logic_vector(c_dline_size            -1 downto 0);
-      dbus_data_o   : out std_logic_vector(c_dline_size*8          -1 downto 0);
+      dbus_radr_o   : out std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+      dbus_way_o    : out std_logic_vector(f_opa_num_dway  (g_config)  -1 downto 0);
+      dbus_wadr_o   : out std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+      dbus_dirty_o  : out std_logic_vector(f_opa_dline_size(g_config)  -1 downto 0);
+      dbus_data_o   : out std_logic_vector(f_opa_dline_size(g_config)*8-1 downto 0);
       
       dbus_busy_i   : in  std_logic; -- can accept a req_i
-      dbus_we_i     : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-      dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      dbus_valid_i  : in  std_logic_vector(c_dline_size            -1 downto 0);
-      dbus_data_i   : in  std_logic_vector(c_dline_size*8          -1 downto 0);
+      dbus_we_i     : in  std_logic_vector(f_opa_num_dway  (g_config)  -1 downto 0);
+      dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+      dbus_valid_i  : in  std_logic_vector(f_opa_dline_size(g_config)  -1 downto 0);
+      dbus_data_i   : in  std_logic_vector(f_opa_dline_size(g_config)*8-1 downto 0);
       
       pbus_stall_i  : in  std_logic;
       pbus_req_o    : out std_logic;
       pbus_we_o     : out std_logic;
-      pbus_addr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      pbus_sel_o    : out std_logic_vector(2**g_config.log_width/8 -1 downto 0);
-      pbus_dat_o    : out std_logic_vector(2**g_config.log_width   -1 downto 0);
+      pbus_addr_o   : out std_logic_vector(f_opa_adr_wide(g_config)  -1 downto 0);
+      pbus_sel_o    : out std_logic_vector(f_opa_reg_wide(g_config)/8-1 downto 0);
+      pbus_dat_o    : out std_logic_vector(f_opa_reg_wide(g_config)  -1 downto 0);
       
       pbus_pop_o    : out std_logic;
       pbus_full_i   : in  std_logic;
       pbus_err_i    : in  std_logic;
-      pbus_dat_i    : in  std_logic_vector(2**g_config.log_width-1 downto 0));
+      pbus_dat_i    : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0));
   end component;
 
   component opa_dbus is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -536,28 +546,29 @@ package opa_components_pkg is
       d_stall_i   : in  std_logic;
       d_ack_i     : in  std_logic;
       d_err_i     : in  std_logic;
-      d_addr_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      d_sel_o     : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-      d_data_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      d_data_i    : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      d_addr_o    : out std_logic_vector(g_config.adr_width  -1 downto 0);
+      d_sel_o     : out std_logic_vector(g_config.reg_width/8-1 downto 0);
+      d_data_o    : out std_logic_vector(g_config.reg_width  -1 downto 0);
+      d_data_i    : in  std_logic_vector(g_config.reg_width  -1 downto 0);
       
       -- L1d requests action
       l1d_req_i   : in  t_opa_dbus_request;
-      l1d_radr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      l1d_way_i   : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-      l1d_wadr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      l1d_dirty_i : in  std_logic_vector(c_dline_size            -1 downto 0);
-      l1d_data_i  : in  std_logic_vector(c_dline_size*8          -1 downto 0);
+      l1d_radr_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+      l1d_way_i   : in  std_logic_vector(f_opa_num_dway  (g_config)  -1 downto 0);
+      l1d_wadr_i  : in  std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+      l1d_dirty_i : in  std_logic_vector(f_opa_dline_size(g_config)  -1 downto 0);
+      l1d_data_i  : in  std_logic_vector(f_opa_dline_size(g_config)*8-1 downto 0);
       
       l1d_busy_o  : out std_logic; -- can accept a req_i
-      l1d_we_o    : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-      l1d_adr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      l1d_valid_o : out std_logic_vector(c_dline_size            -1 downto 0);
-      l1d_data_o  : out std_logic_vector(c_dline_size*8          -1 downto 0));
+      l1d_we_o    : out std_logic_vector(f_opa_num_dway  (g_config)  -1 downto 0);
+      l1d_adr_o   : out std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+      l1d_valid_o : out std_logic_vector(f_opa_dline_size(g_config)  -1 downto 0);
+      l1d_data_o  : out std_logic_vector(f_opa_dline_size(g_config)*8-1 downto 0));
   end component;
   
   component opa_pbus is
     generic(
+      g_isa    : t_opa_isa;
       g_config : t_opa_config;
       g_target : t_opa_target);
     port(
@@ -570,23 +581,23 @@ package opa_components_pkg is
       p_stall_i   : in  std_logic;
       p_ack_i     : in  std_logic;
       p_err_i     : in  std_logic;
-      p_addr_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      p_sel_o     : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-      p_data_o    : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      p_data_i    : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      p_addr_o    : out std_logic_vector(g_config.adr_width  -1 downto 0);
+      p_sel_o     : out std_logic_vector(g_config.reg_width/8-1 downto 0);
+      p_data_o    : out std_logic_vector(g_config.reg_width  -1 downto 0);
+      p_data_i    : in  std_logic_vector(g_config.reg_width  -1 downto 0);
       
       -- L1d requests action
       l1d_stall_o : out std_logic; -- stall has an async dep on addr
       l1d_req_i   : in  std_logic;
       l1d_we_i    : in  std_logic;
-      l1d_addr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-      l1d_sel_i   : in  std_logic_vector(2**g_config.log_width/8 -1 downto 0);
-      l1d_dat_i   : in  std_logic_vector(2**g_config.log_width   -1 downto 0);
+      l1d_addr_i  : in  std_logic_vector(f_opa_adr_wide(g_config)  -1 downto 0);
+      l1d_sel_i   : in  std_logic_vector(f_opa_reg_wide(g_config)/8-1 downto 0);
+      l1d_dat_i   : in  std_logic_vector(f_opa_reg_wide(g_config)  -1 downto 0);
       
       l1d_pop_i   : in  std_logic;
       l1d_full_o  : out std_logic;
       l1d_err_o   : out std_logic;
-      l1d_dat_o   : out std_logic_vector(2**g_config.log_width-1 downto 0));
+      l1d_dat_o   : out std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0));
   end component;
 
 end package;

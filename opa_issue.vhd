@@ -37,6 +37,7 @@ use work.opa_components_pkg.all;
 
 entity opa_issue is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
@@ -52,27 +53,27 @@ entity opa_issue is
     rename_geta_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_getb_i  : in  std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
     rename_aux_i   : in  std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-    rename_bakx_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    rename_baka_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    rename_bakb_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    rename_stata_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    rename_statb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)-1 downto 0);
-    rename_bakx_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    rename_bakx_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+    rename_baka_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+    rename_bakb_i  : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+    rename_stata_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)      -1 downto 0);
+    rename_statb_i : in  t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_stat_wide(g_config)      -1 downto 0);
+    rename_bakx_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
     
     -- Exceptions from the EUs
     eu_oldest_o    : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_retry_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     eu_fault_i     : in  std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-    eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide   (g_config)-1 downto c_op_align);
-     
+    eu_pc_i        : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    eu_pcf_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_fet_wide(g_config)-1 downto 0);
+    eu_pcn_i       : in  t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    
     -- Selected fault fed back up pipeline
     rename_fault_o : out std_logic;
-    rename_mask_o  : out std_logic_vector(f_opa_renamers   (g_config)-1 downto 0);
-    rename_pc_o    : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    rename_pcf_o   : out std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    rename_pcn_o   : out std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
+    rename_mask_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_pc_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    rename_pcf_o   : out std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+    rename_pcn_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
     
     -- Regfile needs to fetch these for EU
     regfile_rstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
@@ -80,35 +81,36 @@ entity opa_issue is
     regfile_getb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
     regfile_aux_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_aux_wide (g_config)-1 downto 0);
     regfile_dec_o  : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_ren_wide (g_config)-1 downto 0);
-    regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
-    regfile_bakb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    regfile_baka_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
+    regfile_bakb_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
     
     -- Regfile should capture result from EU
     regfile_wstb_o : out std_logic_vector(f_opa_executers(g_config)-1 downto 0);
-    regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_config)-1 downto 0);
+    regfile_bakx_o : out t_opa_matrix(f_opa_executers(g_config)-1 downto 0, f_opa_back_wide(g_isa,g_config)-1 downto 0);
     
     -- Gather information from L1d about aliased loads
     l1d_store_i    : in  std_logic;
     l1d_load_i     : in  std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
-    l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
+    l1d_addr_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_isa) downto f_opa_alias_low(g_config));
     l1d_mask_i     : in  t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)/8-1 downto 0));
 end opa_issue;
 
 architecture rtl of opa_issue is
 
+  constant c_op_align  : natural := f_opa_op_align (g_isa);
+  constant c_num_arch  : natural := f_opa_num_arch (g_isa);
   constant c_num_stat  : natural := f_opa_num_stat (g_config);
-  constant c_num_arch  : natural := f_opa_num_arch (g_config);
   constant c_num_fast  : natural := f_opa_num_fast (g_config);
   constant c_num_slow  : natural := f_opa_num_slow (g_config);
-  constant c_back_wide : natural := f_opa_back_wide(g_config);
+  constant c_back_wide : natural := f_opa_back_wide(g_isa,g_config);
   constant c_aux_wide  : natural := f_opa_aux_wide (g_config);
   constant c_ren_wide  : natural := f_opa_ren_wide (g_config);
   constant c_stat_wide : natural := f_opa_stat_wide(g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide (g_config);
   constant c_alias_low : natural := f_opa_alias_low(g_config);
-  constant c_alias_high: natural := f_opa_alias_high(g_config);
-  constant c_reg_bytes : natural := f_opa_reg_wide(g_config)/8;
-  constant c_fetch_align: natural := f_opa_fetch_align(g_config);
+  constant c_alias_high: natural := f_opa_alias_high(g_isa);
+  constant c_reg_bytes : natural := f_opa_reg_wide (g_config)/8;
+  constant c_fet_wide  : natural := f_opa_fet_wide (g_config);
   constant c_renamers  : natural := f_opa_renamers (g_config);
   constant c_executers : natural := f_opa_executers(g_config);
   constant c_fast0     : natural := f_opa_fast_index(g_config, 0);
@@ -308,16 +310,16 @@ architecture rtl of opa_issue is
   signal r_fault_out     : std_logic := '0'; -- lasts one cycle
   signal r_fault_out1    : std_logic := '0'; -- one cycle delayed
   signal r_fault_pipe    : std_logic := '0'; -- lasts two cycles
-  signal r_fault_mask    : std_logic_vector(c_renamers  -1 downto 0);
-  signal r_fault_pc      : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_pcf     : std_logic_vector(c_fetch_align-1 downto c_op_align);
-  signal r_fault_pcn     : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_slow_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_slow_pcf: std_logic_vector(c_fetch_align-1 downto c_op_align);
-  signal r_fault_slow_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_fast_pc : std_logic_vector(c_adr_wide  -1 downto c_op_align);
-  signal r_fault_fast_pcf: std_logic_vector(c_fetch_align-1 downto c_op_align);
-  signal r_fault_fast_pcn: std_logic_vector(c_adr_wide  -1 downto c_op_align);
+  signal r_fault_mask    : std_logic_vector(c_renamers-1 downto 0);
+  signal r_fault_pc      : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal r_fault_pcf     : std_logic_vector(c_fet_wide-1 downto 0);
+  signal r_fault_pcn     : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal r_fault_slow_pc : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal r_fault_slow_pcf: std_logic_vector(c_fet_wide-1 downto 0);
+  signal r_fault_slow_pcn: std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal r_fault_fast_pc : std_logic_vector(c_adr_wide-1 downto c_op_align);
+  signal r_fault_fast_pcf: std_logic_vector(c_fet_wide-1 downto 0);
+  signal r_fault_fast_pcn: std_logic_vector(c_adr_wide-1 downto c_op_align);
   
   function f_decoder_labels(renamers : natural) return t_opa_matrix is
     variable result : t_opa_matrix(c_num_stat-1 downto 0, c_ren_wide-1 downto 0);

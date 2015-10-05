@@ -32,8 +32,11 @@ use ieee.numeric_std.all;
 -- Open Processor Architecture
 package opa_pkg is
 
+  -- Target Instruction Set Architecture
+  type t_opa_isa is (T_OPA_RV32, T_OPA_LM32);
+
   type t_opa_config is record
-    log_width  : natural; -- 2**log_width  = # of bits in registers
+    reg_width  : natural; -- Register width; must conform to ISA
     adr_width  : natural; -- Virtual address space
     num_fetch  : natural; -- # of instructions fetched concurrently
     num_rename : natural; -- # of instructions decoded concurrently
@@ -41,21 +44,24 @@ package opa_pkg is
     num_fast   : natural; -- # of fast EUs (logic, add/sub, branch, ...)
     num_slow   : natural; -- # of slow EUs (load/store, mul, fp, ...)
     ieee_fp    : boolean; -- Floating point support
+    ic_ways    : natural; -- Instruction cache ways (each is 4KB=page_size)
+    iline_size : natural; -- Instruction cache line size (bytes)
     dc_ways    : natural; -- Data cache ways (each is 4KB=page_size)
+    dline_size : natural; -- Data cache line size (bytes)
     dtlb_ways  : natural; -- Data TLB ways
   end record;
   
-  -- 16-bit processor, 1-issue,  6 stations, 1+1 EU, 4KB dcache
-  constant c_opa_tiny  : t_opa_config := ( 4, 16, 1, 1,  6, 1, 1, false, 1, 1);
+  -- Tiny processor:  1-issue,  6 stations, 1+1 EU, 4+4KB i+dcache
+  constant c_opa_tiny  : t_opa_config := (16, 16, 1, 1,  6, 1, 1, false, 1,  8, 1,  8, 1);
   
-  -- 32-bit processor, 2-issue, 18 stations, 1+1 EU, 8KB dcache
-  constant c_opa_small : t_opa_config := ( 5, 22, 2, 2, 18, 1, 1, false, 2, 1);
+  -- Small processor: 2-issue, 18 stations, 1+1 EU, 8+8KB i+dcache
+  constant c_opa_small : t_opa_config := (32, 22, 2, 2, 18, 1, 1, false, 2, 16, 2, 16, 1);
   
-  -- 32-bit processor, 4-issue, 28 stations, 2+1 EU, 16KB dcache
-  constant c_opa_large : t_opa_config := ( 5, 32, 4, 3, 27, 2, 1, false, 4, 4);
+  -- Large processor: 3-issue, 27 stations, 2+1 EU, 16+16KB i+dcache
+  constant c_opa_large : t_opa_config := (32, 32, 4, 3, 27, 2, 1, false, 4, 16, 4, 16, 2);
   
-  -- 64-bit processor, 4-issue, 48 stations, 2+2 EU, 32KB dcache
-  constant c_opa_huge  : t_opa_config := ( 6, 39, 4, 4, 44, 2, 2, true,  8, 4);
+  -- Huge processor:  4-issue, 44 stations, 2+2 EU, 32+32KB i+dcache
+  constant c_opa_huge  : t_opa_config := (64, 38, 4, 4, 44, 2, 2, true,  8, 16, 8, 16, 4);
   
   type t_opa_target is record
     lut_width  : natural; -- How many inputs to combine at once
@@ -73,6 +79,7 @@ package opa_pkg is
   
   component opa is
     generic(
+      g_isa     : t_opa_isa;
       g_config  : t_opa_config;
       g_target  : t_opa_target);
     port(
@@ -85,8 +92,8 @@ package opa_pkg is
       i_stall_i : in  std_logic;
       i_ack_i   : in  std_logic;
       i_err_i   : in  std_logic;
-      i_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      i_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      i_addr_o  : out std_logic_vector(g_config.adr_width  -1 downto 0);
+      i_data_i  : in  std_logic_vector(g_config.reg_width  -1 downto 0);
       
       -- Wishbone data bus
       d_cyc_o   : out std_logic;
@@ -95,10 +102,10 @@ package opa_pkg is
       d_stall_i : in  std_logic;
       d_ack_i   : in  std_logic;
       d_err_i   : in  std_logic;
-      d_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      d_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-      d_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      d_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      d_addr_o  : out std_logic_vector(g_config.adr_width  -1 downto 0);
+      d_sel_o   : out std_logic_vector(g_config.reg_width/8-1 downto 0);
+      d_data_o  : out std_logic_vector(g_config.reg_width  -1 downto 0);
+      d_data_i  : in  std_logic_vector(g_config.reg_width  -1 downto 0);
       
       -- Wishbone peripheral bus
       p_cyc_o   : out std_logic;
@@ -107,10 +114,10 @@ package opa_pkg is
       p_stall_i : in  std_logic;
       p_ack_i   : in  std_logic;
       p_err_i   : in  std_logic;
-      p_addr_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      p_sel_o   : out std_logic_vector(2**g_config.log_width/8-1 downto 0);
-      p_data_o  : out std_logic_vector(2**g_config.log_width  -1 downto 0);
-      p_data_i  : in  std_logic_vector(2**g_config.log_width  -1 downto 0);
+      p_addr_o  : out std_logic_vector(g_config.adr_width  -1 downto 0);
+      p_sel_o   : out std_logic_vector(g_config.reg_width/8-1 downto 0);
+      p_data_o  : out std_logic_vector(g_config.reg_width  -1 downto 0);
+      p_data_i  : in  std_logic_vector(g_config.reg_width  -1 downto 0);
       
       -- Execution unit acitivity indication
       status_o  : out std_logic_vector(g_config.num_fast+g_config.num_slow-1 downto 0));

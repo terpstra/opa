@@ -38,11 +38,12 @@ use work.opa_isa_pkg.all;
 
 entity opa_decode is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
-    clk_i            : in  std_logic;
-    rst_n_i          : in  std_logic;
+    clk_i          : in  std_logic;
+    rst_n_i        : in  std_logic;
 
     -- Predicted jumps?
     predict_hit_i    : in  std_logic;
@@ -50,55 +51,60 @@ entity opa_decode is
     
     -- Push a return stack entry
     predict_push_o   : out std_logic;
-    predict_ret_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    predict_ret_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
     
     -- Fixup PC to new target
     predict_fault_o  : out std_logic;
     predict_return_o : out std_logic;
     predict_jump_o   : out std_logic_vector(f_opa_fetchers(g_config)-1 downto 0);
-    predict_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    predict_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    predict_return_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    predict_source_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    predict_target_o : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    predict_return_i : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
 
     -- Instructions delivered from icache
     icache_stb_i     : in  std_logic;
     icache_stall_o   : out std_logic;
-    icache_pc_i      : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    icache_pcn_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    icache_dat_i     : in  std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
+    icache_pc_i      : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    icache_pcn_i     : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    icache_dat_i     : in  std_logic_vector(f_opa_fetch_bits(g_isa,g_config)-1 downto 0);
     
     -- Feed data to the renamer
-    rename_stb_o     : out std_logic;
-    rename_stall_i   : in  std_logic;
-    rename_fast_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-    rename_slow_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-    rename_order_o   : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-    rename_setx_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-    rename_geta_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-    rename_getb_o    : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
-    rename_aux_o     : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-    rename_archx_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-    rename_archa_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
-    rename_archb_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_config)-1 downto 0);
+    rename_stb_o   : out std_logic;
+    rename_stall_i : in  std_logic;
+    rename_fast_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_slow_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_order_o : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_setx_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_geta_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_getb_o  : out std_logic_vector(f_opa_renamers(g_config)-1 downto 0);
+    rename_aux_o   : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
+    rename_archx_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
+    rename_archa_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
+    rename_archb_o : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arch_wide(g_isa)-1 downto 0);
 
     -- Accept faults
     rename_fault_i : in  std_logic;
-    rename_pc_i    : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-    rename_pcf_i   : in  std_logic_vector(f_opa_fetch_align(g_config)-1 downto c_op_align);
-    rename_pcn_i   : in  std_logic_vector(f_opa_adr_wide   (g_config)-1 downto c_op_align);
-      
+    rename_pc_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    rename_pcf_i   : in  std_logic_vector(f_opa_fet_wide(g_config)-1 downto 0);
+    rename_pcn_i   : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    
     -- Give the regfile the information EUs will need for these operations
-    regfile_stb_o    : out std_logic;
-    regfile_aux_o    : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
-    regfile_arg_o    : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
-    regfile_imm_o    : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_imm_wide(g_config)-1 downto 0);
-    regfile_pc_o     : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto c_op_align);
-    regfile_pcf_o    : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fetch_align(g_config)-1 downto c_op_align);
-    regfile_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align));
+    regfile_stb_o  : out std_logic;
+    regfile_aux_o  : out std_logic_vector(f_opa_aux_wide(g_config)-1 downto 0);
+    regfile_arg_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_arg_wide(g_config)-1 downto 0);
+    regfile_imm_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_imm_wide(g_isa)   -1 downto 0);
+    regfile_pc_o   : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    regfile_pcf_o  : out t_opa_matrix(f_opa_renamers(g_config)-1 downto 0, f_opa_fet_wide(g_config)-1 downto 0);
+    regfile_pcn_o  : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa)));
 end opa_decode;
 
 architecture rtl of opa_decode is
 
+  constant c_big_endian:boolean := f_opa_big_endian(g_isa);
+  constant c_op_align : natural := f_opa_op_align(g_isa);
+  constant c_op_wide  : natural := f_opa_op_wide (g_isa);
+  constant c_imm_wide : natural := f_opa_imm_wide(g_isa);
+  constant c_arch_wide: natural := f_opa_arch_wide(g_isa);
   constant c_fetchers : natural := f_opa_fetchers(g_config);
   constant c_renamers : natural := f_opa_renamers(g_config);
   constant c_buffers  : natural := c_fetchers + 2*c_renamers - 1;
@@ -107,13 +113,13 @@ architecture rtl of opa_decode is
   constant c_fet_wide : natural := f_opa_fet_wide(g_config);
   constant c_buf_wide : natural := f_opa_log2(c_buffers+1); -- [0, c_buffers] inclusive
   constant c_aux_wide : natural := f_opa_aux_wide(g_config);
-  constant c_fetch_align : natural := f_opa_fetch_align(g_config);
+  constant c_fetch_align : natural := f_opa_fetch_align(g_isa,g_config);
   
   constant c_min_imm_pc : natural := f_opa_choose(c_imm_wide<c_adr_wide, c_imm_wide, c_adr_wide);
   
   type t_op_array  is array(natural range <>) of t_opa_op;
   type t_pc_array  is array(natural range <>) of std_logic_vector(c_adr_wide-1 downto c_op_align);
-  type t_pcf_array is array(natural range <>) of std_logic_vector(c_fetch_align-1 downto c_op_align);
+  type t_pcf_array is array(natural range <>) of std_logic_vector(c_fet_wide-1 downto 0);
   type t_idx_array is array(natural range <>) of unsigned(c_fet_wide-1 downto 0);
   
   function f_flip(x : natural) return natural is
@@ -203,7 +209,7 @@ begin
   s_pc_off <= unsigned(icache_pc_i(c_fetch_align-1 downto c_op_align));
   s_mask_tail(0) <= '0';
   decode : for i in 0 to c_fetchers-1 generate
-    s_ops_in(i) <= f_decode(icache_dat_i((f_flip(i)+1)*c_op_wide-1 downto f_flip(i)*c_op_wide));
+    s_ops_in(i) <= f_opa_isa_decode(g_isa, g_config, icache_dat_i((f_flip(i)+1)*c_op_wide-1 downto f_flip(i)*c_op_wide));
     s_pc_in(i)  <= icache_pc_i(c_adr_wide-1 downto c_fetch_align) & std_logic_vector(to_unsigned(i, c_fet_wide));
     
     s_immb_in(i)(c_min_imm_pc-2 downto c_op_align) <= s_ops_in(i).immb(c_min_imm_pc-2 downto c_op_align);
@@ -380,7 +386,7 @@ begin
     rename_setx_o (d) <= r_ops(d).setx;
     rename_geta_o (d) <= r_ops(d).geta;
     rename_getb_o (d) <= r_ops(d).getb;
-    bits : for b in 0 to c_log_arch-1 generate
+    bits : for b in 0 to c_arch_wide-1 generate
       rename_archx_o(d,b) <= r_ops(d).archx(b);
       rename_archa_o(d,b) <= r_ops(d).archa(b);
       rename_archb_o(d,b) <= r_ops(d).archb(b);
@@ -399,7 +405,7 @@ begin
     pc : for b in c_op_align to c_adr_wide-1 generate
       regfile_pc_o(d,b) <= r_pc(d)(b);
     end generate;
-    pcf : for b in c_op_align to c_fetch_align-1 generate
+    pcf : for b in 0 to c_fet_wide-1 generate
       regfile_pcf_o(d,b) <= r_pcf(d)(b);
     end generate;
   end generate;

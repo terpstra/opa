@@ -37,6 +37,7 @@ use work.opa_components_pkg.all;
 
 entity opa_l1d is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
@@ -57,34 +58,34 @@ entity opa_l1d is
     -- Share information about the addresses we are loading/storing
     issue_store_o : out std_logic;
     issue_load_o  : out std_logic_vector(f_opa_num_slow(g_config)-1 downto 0);
-    issue_addr_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_config) downto f_opa_alias_low(g_config));
+    issue_addr_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_alias_high(g_isa) downto f_opa_alias_low(g_config));
     issue_mask_o  : out t_opa_matrix(f_opa_num_slow(g_config)-1 downto 0, f_opa_reg_wide(g_config)/8-1 downto 0);
     
     -- L1d requests action
     dbus_req_o    : out t_opa_dbus_request;
-    dbus_radr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    dbus_way_o    : out std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-    dbus_wadr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    dbus_dirty_o  : out std_logic_vector(c_dline_size            -1 downto 0);
-    dbus_data_o   : out std_logic_vector(c_dline_size*8          -1 downto 0);
+    dbus_radr_o   : out std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+    dbus_way_o    : out std_logic_vector(f_opa_num_dway  (g_config)  -1 downto 0);
+    dbus_wadr_o   : out std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+    dbus_dirty_o  : out std_logic_vector(f_opa_dline_size(g_config)  -1 downto 0);
+    dbus_data_o   : out std_logic_vector(f_opa_dline_size(g_config)*8-1 downto 0);
     
     dbus_busy_i   : in  std_logic; -- can accept a req_i
-    dbus_we_i     : in  std_logic_vector(f_opa_num_dway(g_config)-1 downto 0);
-    dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    dbus_valid_i  : in  std_logic_vector(c_dline_size            -1 downto 0);
-    dbus_data_i   : in  std_logic_vector(c_dline_size*8          -1 downto 0);
+    dbus_we_i     : in  std_logic_vector(f_opa_num_dway  (g_config)  -1 downto 0);
+    dbus_adr_i    : in  std_logic_vector(f_opa_adr_wide  (g_config)  -1 downto 0);
+    dbus_valid_i  : in  std_logic_vector(f_opa_dline_size(g_config)  -1 downto 0);
+    dbus_data_i   : in  std_logic_vector(f_opa_dline_size(g_config)*8-1 downto 0);
     
     pbus_stall_i  : in  std_logic;
     pbus_req_o    : out std_logic;
     pbus_we_o     : out std_logic;
-    pbus_addr_o   : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto 0);
-    pbus_sel_o    : out std_logic_vector(2**g_config.log_width/8 -1 downto 0);
-    pbus_dat_o    : out std_logic_vector(2**g_config.log_width   -1 downto 0);
+    pbus_addr_o   : out std_logic_vector(f_opa_adr_wide(g_config)  -1 downto 0);
+    pbus_sel_o    : out std_logic_vector(f_opa_reg_wide(g_config)/8-1 downto 0);
+    pbus_dat_o    : out std_logic_vector(f_opa_reg_wide(g_config)  -1 downto 0);
     
     pbus_pop_o    : out std_logic;
     pbus_full_i   : in  std_logic;
     pbus_err_i    : in  std_logic;
-    pbus_dat_i    : in  std_logic_vector(2**g_config.log_width-1 downto 0));
+    pbus_dat_i    : in  std_logic_vector(f_opa_reg_wide(g_config)-1 downto 0));
 end opa_l1d;
 
 architecture rtl of opa_l1d is
@@ -119,13 +120,16 @@ architecture rtl of opa_l1d is
   -- Each cache entry is laid out as follows:
   --  [(dirty bit) (high-physical-bits) (valid mask) (line data)] * ways
   
+  constant c_big_endian    : boolean := f_opa_big_endian(g_isa);
   constant c_num_slow      : natural := f_opa_num_slow(g_config);
   constant c_num_ways      : natural := f_opa_num_dway(g_config);
   constant c_reg_wide      : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide      : natural := f_opa_adr_wide(g_config);
-  constant c_imm_wide      : natural := f_opa_imm_wide(g_config);
+  constant c_imm_wide      : natural := f_opa_imm_wide(g_isa);
+  constant c_page_size     : natural := f_opa_page_size(g_isa);
+  constant c_dline_size    : natural := f_opa_dline_size(g_config);
   constant c_alias_low     : natural := f_opa_alias_low(g_config);
-  constant c_alias_high    : natural := f_opa_alias_high(g_config);
+  constant c_alias_high    : natural := f_opa_alias_high(g_isa);
   constant c_reg_bytes     : natural := c_reg_wide/8;
   constant c_log_reg_wide  : natural := f_opa_log2(c_reg_wide);
   constant c_log_reg_bytes : natural := c_log_reg_wide - 3;

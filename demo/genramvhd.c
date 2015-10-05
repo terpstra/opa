@@ -56,6 +56,7 @@ int main(int argc, char **argv)
 {
 	int j, opt, error, i_width;
 	long i, elements, size, columns, entry_width;
+	const char *isa = "RV32";
 	char *value_end;
 	unsigned char x[16];	/* Up to 128 bit */
 	char buf[100];
@@ -71,8 +72,11 @@ int main(int argc, char **argv)
 	error = 0;
 
 	/* Process the command-line */
-	while ((opt = getopt(argc, argv, "w:p:s:blvh")) != -1) {
+	while ((opt = getopt(argc, argv, "w:p:s:i:blvh")) != -1) {
 		switch (opt) {
+		case 'i':
+			isa = optarg;
+			break;
 		case 'w':
 			width = strtol(optarg, &value_end, 0);
 			if (*value_end ||	/* bad integer */
@@ -229,9 +233,14 @@ int main(int argc, char **argv)
 	printf("use ieee.numeric_std.all;\n");
 	printf("\n");
 
+	printf("library work;\n");
+	printf("use work.opa_pkg.all;\n");
+	printf("\n");
+	
 	printf("package %s_pkg is\n", package);
 	printf("  type t_word_array is array(natural range <>) of std_logic_vector(%ld downto 0);\n", (width*8)-1);
-	printf("  constant %s : t_word_array(%ld downto 0) := (\n", package, size - 1);
+	printf("  constant c_%s_isa : t_opa_isa := T_OPA_%s;\n", package, isa);
+	printf("  constant c_%s_ram : t_word_array(%ld downto 0) := (\n", package, size - 1);
 
 	for (i = 0; i < size; ++i) {
 		if (i % columns == 0)

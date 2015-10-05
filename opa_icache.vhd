@@ -37,6 +37,7 @@ use work.opa_components_pkg.all;
 
 entity opa_icache is
   generic(
+    g_isa    : t_opa_isa;
     g_config : t_opa_config;
     g_target : t_opa_target);
   port(
@@ -44,14 +45,14 @@ entity opa_icache is
     rst_n_i         : in  std_logic;
     
     predict_stall_o : out std_logic;
-    predict_pc_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
+    predict_pc_i    : in  std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
     
     decode_stb_o    : out std_logic;
     decode_stall_i  : in  std_logic;
     decode_fault_i  : in  std_logic;
-    decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto c_op_align);
-    decode_dat_o    : out std_logic_vector(f_opa_fetch_bits(g_config)-1 downto 0);
+    decode_pc_o     : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    decode_pcn_o    : out std_logic_vector(f_opa_adr_wide(g_config)-1 downto f_opa_op_align(g_isa));
+    decode_dat_o    : out std_logic_vector(f_opa_fetch_bits(g_isa,g_config)-1 downto 0);
     
     i_cyc_o         : out std_logic;
     i_stb_o         : out std_logic;
@@ -64,15 +65,18 @@ end opa_icache;
 
 architecture rtl of opa_icache is
 
+  constant c_big_endian: boolean := f_opa_big_endian(g_isa);
+  constant c_op_align  : natural := f_opa_op_align(g_isa);
+  constant c_page_size : natural := f_opa_page_size(g_isa);
   constant c_reg_wide  : natural := f_opa_reg_wide(g_config);
   constant c_adr_wide  : natural := f_opa_adr_wide(g_config);
-  constant c_fetch_bits: natural := f_opa_fetch_bits(g_config);
+  constant c_fetch_bits: natural := f_opa_fetch_bits(g_isa,g_config);
   constant c_num_load  : natural := c_fetch_bits/c_reg_wide;
   constant c_reg_align : natural := f_opa_log2(c_reg_wide/8);
   constant c_load_wide : natural := f_opa_log2(c_num_load);
   constant c_page_wide : natural := f_opa_log2(c_page_size);
-  constant c_fetch_align: natural := f_opa_fetch_align(g_config);
-  constant c_fetch_bytes: natural := f_opa_fetch_bytes(g_config);
+  constant c_fetch_align: natural := f_opa_fetch_align(g_isa,g_config);
+  constant c_fetch_bytes: natural := f_opa_fetch_bytes(g_isa,g_config);
   constant c_tag_wide  : natural := c_adr_wide - c_page_wide;
   constant c_size      : natural := c_page_size/c_fetch_bytes;
   
