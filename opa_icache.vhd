@@ -83,6 +83,7 @@ architecture rtl of opa_icache is
   constant c_fetch_adr : unsigned(c_adr_wide-1 downto 0) := to_unsigned(c_fetch_bytes, c_adr_wide);
   constant c_increment : unsigned(c_adr_wide-1 downto c_op_align) := c_fetch_adr(c_adr_wide-1 downto c_op_align);
   
+  signal r_wipe  : std_logic := '1';
   signal r_hit   : std_logic := '0';
   signal s_stall : std_logic;
   signal s_dstb  : std_logic;
@@ -125,10 +126,9 @@ begin
       w_addr_i => r_pc2 (c_page_wide-1 downto c_fetch_align),
       w_data_i => s_wraw);
   
-  -- !!! add a valid bit; inverting the tag is temporary
-  s_rtag  <= not s_rraw(s_rraw'left downto s_rdata'length);
+  s_rtag  <= s_rraw(s_rraw'left downto s_rdata'length);
   s_rdata <= s_rraw(s_rdata'range);
-  s_wraw(s_wraw'left downto s_wdata'length) <= not r_pc2(s_rtag'range);
+  s_wraw(s_wraw'left downto s_wdata'length) <= r_pc2(s_rtag'range);
   s_wraw(s_wdata'range) <= s_wdata;
 
   -- The r_pc[12] comparison optimizes the case where we just wrote to the
@@ -147,14 +147,23 @@ begin
   pc : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
-      r_hit <= '0';
-      r_pc1 <= std_logic_vector(c_increment);
-      r_pc2 <= (others => '0');
+      r_wipe <= '1';
+      r_hit  <= '0';
+      r_pc1  <= std_logic_vector(c_increment);
+      r_pc2  <= (others => '0');
     elsif rising_edge(clk_i) then
       r_pc1 <= s_pc1;
-      if s_stall = '0' then
-        r_hit <= f_opa_eq(r_pc1(s_rtag'range), s_rtag) or s_repeat;
-        r_pc2 <= r_pc1;
+      if r_wipe = '1' then
+        if r_wen ='1' then
+          r_pc2(c_page_wide-1 downto c_fetch_align) <= 
+            std_logic_vector(unsigned(r_pc2(c_page_wide-1 downto c_fetch_align)) + 1);
+          r_wipe <= not f_opa_and(r_pc2(c_page_wide-1 downto c_fetch_align));
+        end if;
+      else
+        if s_stall = '0' then
+          r_hit <= f_opa_eq(r_pc1(s_rtag'range), s_rtag) or s_repeat;
+          r_pc2 <= r_pc1;
+        end if;
       end if;
     end if;
   end process;
@@ -172,7 +181,7 @@ begin
   end process;
   
   s_stall <= decode_stall_i or not s_dstb;
-  s_dstb <= r_hit or r_wen;
+  s_dstb <= (r_hit or r_wen) and not r_wipe;
   
   predict_stall_o <= s_stall;
   

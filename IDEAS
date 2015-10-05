@@ -1,7 +1,6 @@
 URGENT:
 	shift faster on fault, pull in proper values
 		... currently we force shift only sometimes and get bad shit in
-	add icache wipe on reset
 	write a proper n-way icache
 	optimize oldest
 
