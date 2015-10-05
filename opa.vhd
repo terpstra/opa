@@ -333,7 +333,7 @@ begin
     severity failure;
   
   check_dline_max :
-    assert (c_page_size/g_config.dline_size <= g_target.mem_depth)
+    assert (c_page_size/g_config.dline_size >= g_target.mem_depth)
     report "data cache line is so large that FPGA memory is underutilized (too shallow)"
     severity warning;
 
@@ -358,7 +358,7 @@ begin
     severity failure;
   
   check_iline_max :
-    assert (c_page_size/g_config.iline_size <= g_target.mem_depth)
+    assert (c_page_size/g_config.iline_size >= g_target.mem_depth)
     report "instruction cache line is so large that FPGA memory is underutilized (too shallow)"
     severity warning;
 
