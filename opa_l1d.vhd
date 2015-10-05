@@ -223,7 +223,7 @@ architecture rtl of opa_l1d is
   signal s_rdat_m    : t_opa_matrix(c_line_bytes*8-1 downto 0, c_num_slow*c_num_ways-1 downto 0);
   signal s_alias  : std_logic_vector(c_num_slow-1 downto 0);
   signal s_dretry : std_logic_vector(c_num_slow-1 downto 0);
-  signal s_pretry : std_logic_vector(c_num_slow-1 downto 0);
+  signal s_pretry : std_logic_vector(c_num_slow-1 downto 0) := (others => '1');
   
   signal r_stb    : std_logic_vector(c_num_slow-1 downto 0) := (others => '0');
   signal r_we     : std_logic_vector(c_num_slow-1 downto 0) := (others => '0');
@@ -588,7 +588,7 @@ begin
   end generate;
   -- Both loads and stores to pbus must be oldest
   -- Loads must have result ready, while stores must have a non-busy pbus
-  s_pretry <= (0 => not slow_oldest_i(0) or f_opa_mux(r_re(0), not pbus_full_i, pbus_stall_i), others => '1');
+  s_pretry(0) <= not slow_oldest_i(0) or f_opa_mux(r_re(0), not pbus_full_i, pbus_stall_i);
   slow_retry_o <= r_stb and f_opa_mux(s_pbus, s_pretry, s_dretry);
   
   -- Peripheral bus accesses are comparatievly easy. They come from port 0.
@@ -633,7 +633,8 @@ begin
       r_matchw<= s_matchw;
       r_victimw<= s_victimw;
       r_zext  <= s_zext;
-      r_pbus  <= (0 => s_pbus(0), others => '0');
+      r_pbus  <= (others => '0');
+      r_pbus(0) <= s_pbus(0);
       r_pdata <= pbus_dat_i;
       r_grant <= s_grant;
     end if;

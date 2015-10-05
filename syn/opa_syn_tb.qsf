@@ -3,10 +3,12 @@ set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CEFA2F23C8
 set_global_assignment -name TOP_LEVEL_ENTITY opa_syn_tb
 set_global_assignment -name VHDL_FILE ../opa_pkg.vhd
-set_global_assignment -name VHDL_FILE ../opa_isa_base_pkg_lm32.vhd
+set_global_assignment -name VHDL_FILE ../opa_isa_base_pkg.vhd
+set_global_assignment -name VHDL_FILE ../opa_riscv_pkg.vhd
+set_global_assignment -name VHDL_FILE ../opa_lm32_pkg.vhd
+set_global_assignment -name VHDL_FILE ../opa_isa_pkg.vhd
 set_global_assignment -name VHDL_FILE ../opa_functions_pkg.vhd
 set_global_assignment -name VHDL_FILE ../opa_components_pkg.vhd
-set_global_assignment -name VHDL_FILE ../opa_isa_pkg_lm32.vhd
 set_global_assignment -name VHDL_FILE ../opa_dpram_altera.vhd
 set_global_assignment -name VHDL_FILE ../opa_tdpram.vhd
 set_global_assignment -name VHDL_FILE ../opa_lcell_altera.vhd

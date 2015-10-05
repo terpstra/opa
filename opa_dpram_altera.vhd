@@ -31,6 +31,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.opa_pkg.all;
+use work.opa_isa_base_pkg.all;
 use work.opa_functions_pkg.all;
 use work.opa_components_pkg.all;
 
