@@ -373,8 +373,13 @@ package body opa_functions_pkg is
   end f_opa_ren_wide;
   
   function f_opa_fet_wide(conf : t_opa_config) return natural is
+    constant c_fetchers : natural := f_opa_fetchers(conf);
   begin
-    return f_opa_log2(f_opa_fetchers(conf));
+    if c_fetchers = 1 then
+      return 1; -- avoid null range warnings all over the place
+    else
+      return f_opa_log2(f_opa_fetchers(conf));
+    end if;
   end f_opa_fet_wide;
   
   function f_opa_dline_size(conf : t_opa_config) return natural is
@@ -427,7 +432,7 @@ package body opa_functions_pkg is
   
   function f_opa_fetch_align(isa : t_opa_isa; conf : t_opa_config) return natural is
   begin
-    return f_opa_fet_wide(conf) + f_opa_op_align(isa);
+    return f_opa_log2(f_opa_fetchers(conf)) + f_opa_op_align(isa);
   end f_opa_fetch_align;
   
   function f_opa_fetch_bytes(isa : t_opa_isa; conf : t_opa_config) return natural is

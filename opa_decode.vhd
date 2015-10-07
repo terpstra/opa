@@ -120,7 +120,6 @@ architecture rtl of opa_decode is
   type t_op_array  is array(natural range <>) of t_opa_op;
   type t_pc_array  is array(natural range <>) of std_logic_vector(c_adr_wide-1 downto c_op_align);
   type t_pcf_array is array(natural range <>) of std_logic_vector(c_fet_wide-1 downto 0);
-  type t_idx_array is array(natural range <>) of unsigned(c_fet_wide-1 downto 0);
   
   function f_flip(x : natural) return natural is
   begin
@@ -163,8 +162,6 @@ architecture rtl of opa_decode is
   signal r_pcn_taken  : std_logic_vector(c_adr_wide-1 downto c_op_align);
   signal s_jal_pc     : std_logic_vector(c_adr_wide-1 downto c_op_align);
 
-  signal s_idx_base : unsigned(c_fet_wide-1 downto 0);
-  signal s_idx      : t_idx_array(c_buffers-1 downto 0);
   signal s_ops      : t_op_array (c_buffers-1 downto 0);
   signal r_ops      : t_op_array (c_buffers-1 downto 0);
   signal s_pc       : t_pc_array (c_buffers-1 downto 0);
@@ -206,11 +203,24 @@ begin
   end process;
 
   -- Decode the flow control information from the instructions
-  s_pc_off <= unsigned(icache_pc_i(c_fetch_align-1 downto c_op_align));
+  off1p : if c_fetchers > 1 generate
+    s_pc_off <= unsigned(icache_pc_i(c_fetch_align-1 downto c_op_align));
+    s_ops_sub <= unsigned(f_opa_1hot_dec(f_opa_reverse(s_jump_taken))) + s_pc_off;
+  end generate;
+  off1 : if c_fetchers = 1 generate
+    s_pc_off  <= "0";
+    s_ops_sub <= "0";
+  end generate;
+  
   s_mask_tail(0) <= '0';
   decode : for i in 0 to c_fetchers-1 generate
     s_ops_in(i) <= f_opa_isa_decode(g_isa, g_config, icache_dat_i((f_flip(i)+1)*c_op_wide-1 downto f_flip(i)*c_op_wide));
-    s_pc_in(i)  <= icache_pc_i(c_adr_wide-1 downto c_fetch_align) & std_logic_vector(to_unsigned(i, c_fet_wide));
+    fet1 : if c_fetchers = 1 generate
+      s_pc_in(i)  <= icache_pc_i(c_adr_wide-1 downto c_fetch_align);
+    end generate;
+    fet1p : if c_fetchers > 1 generate
+      s_pc_in(i)  <= icache_pc_i(c_adr_wide-1 downto c_fetch_align) & std_logic_vector(to_unsigned(i, c_fet_wide));
+    end generate;
     
     s_immb_in(i)(c_min_imm_pc-2 downto c_op_align) <= s_ops_in(i).immb(c_min_imm_pc-2 downto c_op_align);
     s_immb_in(i)(c_adr_wide-1 downto c_min_imm_pc-1) <= (others => s_ops_in(i).immb(c_min_imm_pc-1));
@@ -263,10 +273,14 @@ begin
   
   -- Decode renamer's fault information
   s_rename_source(c_adr_wide-1    downto c_fetch_align) <= rename_pc_i(c_adr_wide-1 downto c_fetch_align);
-  s_rename_source(c_fetch_align-1 downto c_op_align)    <= rename_pcf_i;
-  
-  jumps : for i in 0 to c_fetchers-1 generate
-    s_rename_jump(i) <= f_opa_eq(unsigned(rename_pc_i(c_fetch_align-1 downto c_op_align)), i);
+  src_fet1p : if c_fetchers > 1 generate
+    s_rename_source(c_fetch_align-1 downto c_op_align)  <= rename_pcf_i;
+    jumps : for i in 0 to c_fetchers-1 generate
+      s_rename_jump(i) <= f_opa_eq(unsigned(rename_pc_i(c_fetch_align-1 downto c_op_align)), i);
+    end generate;
+  end generate;
+  src_fet1 : if c_fetchers = 1 generate
+    s_rename_jump <= "1";
   end generate;
   
   -- Feed back information to fetch
@@ -279,7 +293,9 @@ begin
   
   -- Do we need to push the PC?
   s_jal_pc(c_adr_wide   -1 downto c_fetch_align) <= icache_pc_i(c_adr_wide-1 downto c_fetch_align);
-  s_jal_pc(c_fetch_align-1 downto c_op_align)    <= f_opa_1hot_dec(s_jump_taken);
+  subpc : if c_fetchers > 1 generate
+    s_jal_pc(c_fetch_align-1 downto c_op_align)  <= f_opa_1hot_dec(s_jump_taken);
+  end generate;
   predict_push_o <= f_opa_or(s_push and s_jump_taken) and s_accept;
   predict_ret_o  <= std_logic_vector(1 + unsigned(s_jal_pc));
   
@@ -291,15 +307,29 @@ begin
   s_accept   <= icache_stb_i and not r_use_static and not s_stall;
   
   -- Select the new buffer fill state
-  s_idx_base <= s_pc_off - r_fill(s_idx_base'range);
-  ops : for i in 0 to c_buffers-1 generate
-    s_idx(i) <= s_idx_base + to_unsigned(i mod c_fetchers, c_fet_wide);
-    s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(to_integer(s_idx(i))) when f_opa_safe(s_idx(i))='1' else c_opa_op_undef;
-    s_pc (i) <= r_pc (i) when i < r_fill else s_pc_in (to_integer(s_idx(i))) when f_opa_safe(s_idx(i))='1' else (others => 'X');
-    s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_align-1 downto c_op_align) when f_opa_safe(s_idx(i))='1' else (others => 'X');
+  buf1p : if c_fetchers > 1 generate
+    index : block is
+      type t_idx_array is array(natural range <>) of unsigned(c_fet_wide-1 downto 0);
+      signal s_idx_base : unsigned(c_fet_wide-1 downto 0);
+      signal s_idx      : t_idx_array(c_buffers-1 downto 0);
+    begin
+      s_idx_base <= s_pc_off - r_fill(s_idx_base'range);
+      ops : for i in 0 to c_buffers-1 generate
+        s_idx(i) <= s_idx_base + to_unsigned(i mod c_fetchers, c_fet_wide);
+        s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(to_integer(s_idx(i))) when f_opa_safe(s_idx(i))='1' else c_opa_op_undef;
+        s_pc (i) <= r_pc (i) when i < r_fill else s_pc_in (to_integer(s_idx(i))) when f_opa_safe(s_idx(i))='1' else (others => 'X');
+        s_pcf(i) <= r_pcf(i) when i < r_fill else icache_pc_i(c_fetch_align-1 downto c_op_align);
+      end generate;
+    end block;
+  end generate;
+  buf1 : if c_fetchers = 1 generate
+    ops : for i in 0 to c_buffers-1 generate
+      s_ops(i) <= r_ops(i) when i < r_fill else s_ops_in(0);
+      s_pc (i) <= r_pc (i) when i < r_fill else s_pc_in (0);
+      s_pcf(i) <= "0";
+    end generate;
   end generate;
   
-  s_ops_sub <= unsigned(f_opa_1hot_dec(f_opa_reverse(s_jump_taken))) + s_pc_off;
   fill : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then

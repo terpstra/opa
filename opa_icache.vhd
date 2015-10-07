@@ -97,14 +97,14 @@ architecture rtl of opa_icache is
   signal s_rdata : std_logic_vector(c_fetch_bits-1 downto 0);
   signal r_rdata : std_logic_vector(c_fetch_bits-1 downto 0);
   signal s_wdata : std_logic_vector(c_fetch_bits-1 downto 0);
-  signal r_wdata : std_logic_vector(c_fetch_bits-1 downto 0);
   signal s_rraw  : std_logic_vector(c_tag_wide+c_fetch_bits-1 downto 0);
   signal s_wraw  : std_logic_vector(c_tag_wide+c_fetch_bits-1 downto 0);
   signal r_pc1   : std_logic_vector(c_adr_wide-1 downto c_op_align) := std_logic_vector(c_increment);
   signal r_pc2   : std_logic_vector(c_adr_wide-1 downto c_op_align) := (others => '0');
-  signal r_load  : unsigned(c_load_wide-1 downto 0) := (others => '0');
-  signal r_got   : unsigned(c_load_wide-1 downto 0) := (others => '0');
-
+  
+  signal s_last_load : std_logic;
+  signal s_last_get  : std_logic;
+  
 begin
 
   s_pc1 <= predict_pc_i when (s_stall = '0' or decode_fault_i = '1') else r_pc1;
@@ -191,21 +191,31 @@ begin
   decode_dat_o  <= r_rdata;
   
   -- When accepting data into the line, endian matters
-  big : if c_big_endian generate
-    s_wdata <= r_wdata(c_fetch_bits-c_reg_wide-1 downto 0) & i_data_i;
+  dat1p : if c_num_load > 1 generate
+    data : block is
+      signal r_wdata : std_logic_vector(c_fetch_bits-1 downto 0);
+    begin
+      refill : process(clk_i) is
+      begin
+        if rising_edge(clk_i) then
+          if i_ack_i = '1' then
+            r_wdata <= s_wdata;
+          end if;
+        end if;
+      end process;
+      
+      big : if c_big_endian generate
+        s_wdata <= r_wdata(c_fetch_bits-c_reg_wide-1 downto 0) & i_data_i;
+      end generate;
+      
+      small : if not c_big_endian generate
+        s_wdata <= i_data_i & r_wdata(c_fetch_bits-1 downto c_reg_wide);
+      end generate;
+    end block;
   end generate;
-  small : if not c_big_endian generate
-    s_wdata <= i_data_i & r_wdata(c_fetch_bits-1 downto c_reg_wide);
+  dat1 : if c_num_load = 1 generate
+    s_wdata <= i_data_i;
   end generate;
-  
-  refill : process(clk_i) is
-  begin
-    if rising_edge(clk_i) then
-      if (r_icyc and i_ack_i) = '1' then
-        r_wdata <= s_wdata;
-      end if;
-    end if;
-  end process;
   
   -- !!! think about what to do on i_err_i
   -- probably easiest is to fill cache with instructions which generate a fault
@@ -214,17 +224,12 @@ begin
   i_stb_o <= r_istb;
   
   i_addr_o(c_adr_wide-1 downto c_fetch_align) <= r_pc2(c_adr_wide-1 downto c_fetch_align);
-  -- !!! what if c_fetchers*c_op_size <= c_reg_wide ... => make icache line larger
-  i_addr_o(c_fetch_align-1 downto c_reg_align)  <= std_logic_vector(r_load);
-  i_addr_o(c_reg_align -1 downto 0)            <= (others => '0');
+  i_addr_o(c_reg_align-1 downto 0)            <= (others => '0');
   
-  s_wen  <= i_ack_i and f_opa_eq(r_got, c_num_load-1);
   fill : process(clk_i, rst_n_i) is
   begin
     if rst_n_i = '0' then
       r_wen  <= '0';
-      r_load <= (others => '0');
-      r_got  <= (others => '0');
       r_icyc <= '0';
       r_istb <= '0';
     elsif rising_edge(clk_i) then
@@ -234,21 +239,51 @@ begin
         r_wen <= '0';
       end if;
       if (not s_dstb and not r_icyc) = '1' then
-        r_load <= (others => '0');
-        r_got  <= (others => '0');
         r_istb <= '1';
         r_icyc <= '1';
       else
         if (r_istb and not i_stall_i) = '1' then
-          r_load <= r_load + 1;
-          r_istb <= not f_opa_eq(r_load, c_num_load-1);
+          r_istb <= not s_last_load;
         end if;
         if (r_icyc and i_ack_i) = '1' then
-          r_got  <= r_got + 1;
-          r_icyc <= not f_opa_eq(r_got, c_num_load-1);
+          r_icyc <= not s_last_get;
         end if;
       end if;
     end if;
   end process;
   
+  count1 : if c_num_load = 1 generate
+    s_last_load <= '1';
+    s_last_get  <= '1';
+    s_wen       <= i_ack_i;
+  end generate;
+  count1p : if c_num_load > 1 generate
+    sigs : block is
+      signal r_load : unsigned(c_load_wide-1 downto 0) := (others => '0');
+      signal r_got  : unsigned(c_load_wide-1 downto 0) := (others => '0');
+    begin
+      counters : process(clk_i, rst_n_i) is
+      begin
+        if rst_n_i = '0' then
+          r_load <= (others => '0');
+          r_got  <= (others => '0');
+        elsif rising_edge(clk_i) then
+          if (not s_dstb and not r_icyc) = '1' then
+            r_load <= (others => '0');
+            r_got  <= (others => '0');
+          else
+            r_load <= r_load + ("" & (r_istb and not i_stall_i));
+            r_got  <= r_got  + ("" & (r_icyc and i_ack_i));
+          end if;
+        end if;
+      end process;
+      
+      s_last_load <= f_opa_eq(r_load, c_num_load-1);
+      s_last_get  <= f_opa_eq(r_got,  c_num_load-1);
+      s_wen       <= i_ack_i and s_last_get;
+      
+      i_addr_o(c_fetch_align-1 downto c_reg_align) <= std_logic_vector(r_load);
+    end block;
+  end generate;
+
 end rtl;
