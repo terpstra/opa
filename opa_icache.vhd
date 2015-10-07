@@ -268,12 +268,12 @@ begin
           r_load <= (others => '0');
           r_got  <= (others => '0');
         elsif rising_edge(clk_i) then
-          if (not s_dstb and not r_icyc) = '1' then
+          if r_icyc = '0' then
             r_load <= (others => '0');
             r_got  <= (others => '0');
           else
             r_load <= r_load + ("" & (r_istb and not i_stall_i));
-            r_got  <= r_got  + ("" & (r_icyc and i_ack_i));
+            r_got  <= r_got  + ("" & i_ack_i);
           end if;
         end if;
       end process;
