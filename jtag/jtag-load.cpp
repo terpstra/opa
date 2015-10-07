@@ -26,7 +26,7 @@ int main(int argc, const char** argv) {
   }
   
   if ((f = fopen(argv[2], "r")) == 0) {
-    perror(argv[1]);
+    perror(argv[2]);
     return 1;
   }
   
