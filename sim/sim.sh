@@ -45,6 +45,6 @@ echo link
 ghdl -e --std=93 --ieee=standard --syn-binding opa_sim_tb
 
 echo run
-./opa_sim_tb --stop-time=64us --wave=testbench.ghw
+./opa_sim_tb --stop-time=80us --wave=testbench.ghw
 
 gtkwave testbench.ghw wave.gtkw
