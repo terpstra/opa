@@ -47,23 +47,7 @@ end opa_syn_tb;
 
 architecture rtl of opa_syn_tb is
 
-  -- A 'large' OPA does not fit into the bemicro. Use a two-way L1d to fit.
-  constant c_opa_bemicro : t_opa_config := (
-    reg_width  => 32, -- 32-bit CPU
-    adr_width  => 32, -- 32-bit address space
-    num_fetch  =>  4, -- fetch  4 instructions per clock
-    num_rename =>  3, -- rename 3 instructions per clock
-    num_stat   => 27, -- schedule 27 instructions at once
-    num_fast   =>  2, -- execute 2 fast instructions per clock
-    num_slow   =>  1, -- execute 1 slow instruction per clock
-    ieee_fp    => false, -- hell no
-    ic_ways    =>  2, -- keep the size down; only 2-way L1i
-    iline_size => 16, -- 4 instructions per line
-    dc_ways    =>  2, -- keep the size down; only 2-way L1d
-    dline_size => 16, -- 4 words per line
-    dtlb_ways  =>  1);-- direct mapped TLB
-  
-  constant c_config : t_opa_config := c_opa_bemicro;
+  constant c_config : t_opa_config := c_opa_large;
   
   -- How many words to run it with?
   constant c_log_ram : natural := 14; -- 4*2^14 = 64kB of memory

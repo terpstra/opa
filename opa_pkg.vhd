@@ -52,16 +52,16 @@ package opa_pkg is
   end record;
   
   -- Tiny processor:  1-issue,  6 stations, 1+1 EU, 4+4KB i+dcache
-  constant c_opa_tiny  : t_opa_config := (16, 16, 1, 1,  6, 1, 1, false, 1,  8, 1,  8, 1);
+  constant c_opa_tiny  : t_opa_config := (32, 17, 1, 1,  6, 1, 1, false, 1,  8, 1,  8, 1);
   
   -- Small processor: 2-issue, 18 stations, 1+1 EU, 8+8KB i+dcache
-  constant c_opa_small : t_opa_config := (32, 22, 2, 2, 18, 1, 1, false, 2, 16, 2, 16, 1);
+  constant c_opa_small : t_opa_config := (32, 32, 2, 2, 18, 1, 1, false, 2, 16, 1, 16, 1);
   
   -- Large processor: 3-issue, 27 stations, 2+1 EU, 16+16KB i+dcache
-  constant c_opa_large : t_opa_config := (32, 32, 4, 3, 27, 2, 1, false, 4, 16, 4, 16, 2);
+  constant c_opa_large : t_opa_config := (32, 32, 4, 3, 27, 2, 1, false, 2, 16, 2, 16, 2);
   
   -- Huge processor:  4-issue, 44 stations, 2+2 EU, 32+32KB i+dcache
-  constant c_opa_huge  : t_opa_config := (64, 38, 4, 4, 44, 2, 2, true,  8, 16, 8, 16, 4);
+  constant c_opa_huge  : t_opa_config := (32, 32, 4, 4, 44, 2, 2, true,  8, 16, 8, 16, 4);
   
   type t_opa_target is record
     lut_width  : natural; -- How many inputs to combine at once
