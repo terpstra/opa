@@ -180,10 +180,8 @@ architecture rtl of opa_issue is
   --      For a fast instruction, it is impossible for ready to go high if deps are unready.
   --      A slow instruction must also block ready for this cycle.
   --      Both must wipe the schedule so that final (and ready for slow) won't come later.
-  --   2. We must ensure two things for retried loads:
-  --     They must not be shifted out! The store final=1 and loads final=0 must be atomic.
-  --     If the load was being executed, it must be prevented from going ready/final
-  --     Loads are slow, so this means just blocking delayed ready and wiping the schedule
+  --   2. We must ensure that retried loads are not shifted out!
+  --      The store final=1 and loads final=0 must be atomic.
   --   3. An instruction that does not go final has two sub-cases
   --     a. The instruction was retried: this failed execution is ignored
   --     b. The instruction was not retried: set issued+ready to 0
@@ -193,7 +191,7 @@ architecture rtl of opa_issue is
   --      if it is preceded by non-final instructions, refuse to go final, causing its own reissue
   --      otherwise, report the fault, causing an irreversible update to the branch predictor
   --   B. A load that cannot find its data in cache will:
-  --      request the L1 to refill a selected line (this request can be ignored)
+  --      request the dbus to refill a selected line (this request can be ignored)
   --      not go final, causing its own reissue later (dbus has 5 cycles to refill L1)
   --   C. A page fault is handled like a mispredicted branch/jump; reissue until oldest, then fault
   --   D. When a store executes, any loads with a matching address are reissued
@@ -628,8 +626,8 @@ begin
   --   Nothing can undo complete instructions; alias/nodep affect younger instructions and retry scheduled
   -- Define old = will be complete if all the instructions at schedule4 go final
   --   Old instructions can be prevented from becoming complete if they or an older old instruction
-  --   report retry. Only old instructions might retry. Suppose none of them retry. Then:
-  --   1. s_nodep can't stop them; they are all final => ready => clearly not woken up
+  --   report retry. Only old instructions matter. Suppose none of them retry. Then:
+  --   1. s_nodep can't stop them; older are all final => ready
   --   2. r_alias can't stop them; the only younger instructions are also old, which means that they
   --      ran in the same cycle. same cycle aliases are resolved with a retry.
   -- Therefore, the only thing that prevents an old instruction from going final is retry.
