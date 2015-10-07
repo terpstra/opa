@@ -5,7 +5,7 @@ unsigned char buf2[16] = { 0,  1, -2, -3,  4,  5, -6, -7,  8,  9, -10, -11, 12, 
 const char hello[] = "hello world";
 
 #ifndef HOST
-volatile unsigned int* stdout = (unsigned int*)0x80000000U;
+volatile unsigned int* stdout = (unsigned int*)0xFFFFFFFCU;
 int puts(const char *s) {
   while (*s) *stdout = *s++;
   *stdout = '\n';
