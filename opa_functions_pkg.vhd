@@ -224,8 +224,11 @@ package body opa_functions_pkg is
   function f_opa_index(v : std_logic_vector; idx : unsigned) return std_logic is
   begin
     assert (v'low = 0) report "vector-index not at zero" severity failure;
-    assert (f_opa_log2(v'length) = idx'length) report "vector-index dimension mismatch" severity failure;
-    if f_opa_safe(idx) = '1' then
+    assert (v'length=1 or f_opa_log2(v'length) = idx'length) report "vector-index dimension mismatch" severity failure;
+    
+    if v'length = 1 then
+      return v(0);
+    elsif f_opa_safe(idx) = '1' then
       return v(to_integer(idx));
     else
       return 'X';
@@ -360,8 +363,13 @@ package body opa_functions_pkg is
   end f_opa_arg_wide;
   
   function f_opa_ren_wide(conf : t_opa_config) return natural is
+    constant c_renamers : natural := f_opa_renamers(conf);
   begin
-    return f_opa_log2(f_opa_renamers(conf));
+    if c_renamers = 1 then
+      return 1; -- avoid null range warnings all over the place
+    else
+      return f_opa_log2(c_renamers);
+    end if;
   end f_opa_ren_wide;
   
   function f_opa_fet_wide(conf : t_opa_config) return natural is
@@ -695,10 +703,14 @@ package body opa_functions_pkg is
     variable index  : integer;
   begin
     assert (x'low(1) = 0) report "matrix-index not at zero" severity failure;
-    assert (f_opa_log2(x'length(1)) = indexu'length) report "matrix-index dimension mismatch" severity failure;
+    assert (x'length(1) = 1 or f_opa_log2(x'length(1)) = indexu'length) report "matrix-index dimension mismatch" severity failure;
     for i in result'range(1) loop
       indexu := unsigned(f_opa_select_row(y, i));
-      if f_opa_safe(indexu) = '1' then
+      if x'length(1) = 1 then
+        for j in result'range(2) loop
+          result(i, j) := x(0, j);
+        end loop;
+      elsif f_opa_safe(indexu) = '1' then
         index  := to_integer(indexu);
         for j in result'range(2) loop
           result(i, j) := x(index, j);
