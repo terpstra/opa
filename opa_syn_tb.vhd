@@ -63,6 +63,8 @@ architecture rtl of opa_syn_tb is
     dline_size => 16, -- 4 words per line
     dtlb_ways  =>  1);-- direct mapped TLB
   
+  constant c_config : t_opa_config := c_opa_bemicro;
+  
   -- How many words to run it with?
   constant c_log_ram : natural := 14; -- 4*2^14 = 64kB of memory
 
@@ -128,14 +130,14 @@ architecture rtl of opa_syn_tb is
   signal i_stb  : std_logic;
   signal i_stall: std_logic;
   signal i_ack  : std_logic;
-  signal i_addr : std_logic_vector(31 downto 0);
+  signal i_addr : std_logic_vector(c_config.adr_width-1 downto 0);
   signal i_dat  : std_logic_vector(31 downto 0); 
   signal d_cyc  : std_logic;
   signal d_stb  : std_logic;
   signal d_stall: std_logic;
   signal d_we   : std_logic;
   signal d_ack  : std_logic;
-  signal d_addr : std_logic_vector(31 downto 0);
+  signal d_addr : std_logic_vector(c_config.adr_width-1 downto 0);
   signal d_sel  : std_logic_vector( 3 downto 0);
   signal d_dati : std_logic_vector(31 downto 0);
   signal d_dato : std_logic_vector(31 downto 0);
@@ -144,11 +146,11 @@ architecture rtl of opa_syn_tb is
   signal p_stall: std_logic;
   signal p_we   : std_logic;
   signal p_ack  : std_logic;
-  signal p_addr : std_logic_vector(31 downto 0);
+  signal p_addr : std_logic_vector(c_config.adr_width-1 downto 0);
   signal p_sel  : std_logic_vector( 3 downto 0);
   signal p_dati : std_logic_vector(31 downto 0);
   signal p_dato : std_logic_vector(31 downto 0);
-  signal s_led  : std_logic_vector( 2 downto 0);
+  signal s_led  : std_logic_vector(c_config.num_fast+c_config.num_slow-1 downto 0);
   signal d_wem  : std_logic;
   
   -- JTAG connection
@@ -157,7 +159,7 @@ architecture rtl of opa_syn_tb is
   signal gpio      : std_logic_vector( 3 downto 0);
   signal s_we_xor  : std_logic;
   signal jtag_rstn : std_logic;
-  signal s_a_addr  : std_logic_vector(31 downto 0);
+  signal s_a_addr  : std_logic_vector(c_config.adr_width-1 downto 0);
   
   signal r_we_xor2 : std_logic;
   signal r_we_xor1 : std_logic;
@@ -292,7 +294,7 @@ begin
   opa_core : opa
     generic map(
       g_isa    => T_OPA_LM32,
-      g_config => c_opa_bemicro,
+      g_config => c_config,
       g_target => c_opa_cyclone_v)
     port map(
       clk_i     => clk,
@@ -331,9 +333,9 @@ begin
   led(5) <= '0' when gpio(2) ='1' else 'Z';
   led(4) <= '0' when gpio(1) ='1' else 'Z';
   led(3) <= '0' when gpio(0) ='1' else 'Z';
-  led(2) <= '0' when s_led(2)='1' else 'Z';
-  led(1) <= '0' when s_led(1)='1' else 'Z';
-  led(0) <= '0' when s_led(0)='1' else 'Z';
+  activity : for i in s_led'range generate
+    led(i) <= '0' when s_led(i)='1' else 'Z';
+  end generate;
   d_wem <= d_cyc and d_stb and d_we;
   
   ext : jtag
@@ -354,7 +356,7 @@ begin
       r_we <= r_we_xor1 xor r_we_xor2;
     end if;
   end process;
-  s_a_addr <= jtag_addr when jtag_rstn='0' else i_addr;
+  s_a_addr <= jtag_addr(s_a_addr'range) when jtag_rstn='0' else i_addr;
   
   i_stall <= '0';
   d_stall <= '0';
