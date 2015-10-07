@@ -198,7 +198,7 @@ begin
       refill : process(clk_i) is
       begin
         if rising_edge(clk_i) then
-          if i_ack_i = '1' then
+          if (r_icyc and i_ack_i) = '1' then
             r_wdata <= s_wdata;
           end if;
         end if;
