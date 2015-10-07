@@ -380,13 +380,13 @@ begin
   end process;
   
   write_big : if c_big_endian generate
-    s_dirty     <= std_logic_vector(rotate_right(unsigned(r_dirty),     c_reg_wide/8));
-    s_storeline <= std_logic_vector(rotate_right(unsigned(r_storeline), c_reg_wide));
+    s_dirty     <= std_logic_vector(rotate_left(unsigned(r_dirty),     c_reg_wide/8));
+    s_storeline <= std_logic_vector(rotate_left(unsigned(r_storeline), c_reg_wide));
     s_lineout   <= r_storeline(c_dline_size*8-1 downto c_dline_size*8-c_reg_wide);
   end generate;
   write_little : if not c_big_endian generate
-    s_dirty     <= std_logic_vector(rotate_left(unsigned(r_dirty),     c_reg_wide/8));
-    s_storeline <= std_logic_vector(rotate_left(unsigned(r_storeline), c_reg_wide));
+    s_dirty     <= std_logic_vector(rotate_right(unsigned(r_dirty),     c_reg_wide/8));
+    s_storeline <= std_logic_vector(rotate_right(unsigned(r_storeline), c_reg_wide));
     s_lineout   <= r_storeline(c_reg_wide-1 downto 0);
   end generate;
   
