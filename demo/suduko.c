@@ -27,7 +27,7 @@ void checkRow(int row)
   for (col = 0; col < 9; ++col) {
     what = known[row][col];
     for (opt = 1; opt <= 9; ++opt)
-      square[row][col][opt-1] |= (opt != what) && seen[opt];
+      square[row][col][opt-1] |= (opt != what) & seen[opt];
   }
 }
 
@@ -49,7 +49,7 @@ void checkCol(int col)
   for (row = 0; row < 9; ++row) {
     what = known[row][col];
     for (opt = 1; opt <= 9; ++opt)
-      square[row][col][opt-1] |= (opt != what) && seen[opt];
+      square[row][col][opt-1] |= (opt != what) & seen[opt];
   }
 }
 
@@ -78,7 +78,7 @@ void checkSquare(int r, int c)
       col = c*3 + j;
       what = known[row][col];
       for (opt = 1; opt <= 9; ++opt)
-        square[row][col][opt-1] |= (opt != what) && seen[opt];
+        square[row][col][opt-1] |= (opt != what) & seen[opt];
     }
   }
 }
