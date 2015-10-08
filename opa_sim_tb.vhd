@@ -195,8 +195,11 @@ begin
   end process;
   
   pbus : process(clk) is
-    variable buf : line;
-    variable ch : integer;
+    variable bufo : line;
+    variable bufi : line;
+    variable cho  : integer;
+    variable chi  : character;
+    variable good : boolean := false;
   begin
     if rising_edge(clk) then
       assert (f_opa_safe(p_cyc) = '1') report "Meta-value on p_cyc" severity failure;
@@ -207,16 +210,31 @@ begin
         assert (f_opa_safe(p_sel)    = '1') report "Meta-value on p_sel"    severity failure;
         assert (f_opa_safe(p_data_o) = '1') report "Meta-value on p_data_o" severity failure;
         if (not p_stall and p_we) = '1' then
-          ch := to_integer(unsigned(p_data_o(7 downto 0)));
-          if ch = 10 then
-            writeline(output, buf);
+          cho := to_integer(unsigned(p_data_o(7 downto 0)));
+          if cho = 10 then
+            writeline(output, bufo);
           else
-            write(buf, character'val(ch));
+            write(bufo, character'val(cho));
+          end if;
+        end if;
+        if (not p_stall and not p_we) = '1' then
+          if not good and endfile(input) then
+            p_data_i <= (others => '0');
+          else
+            if not good then
+              readline(input, bufi);
+            end if;
+            read(bufi, chi, good);
+            if not good then
+              chi := character'val(10);
+            end if;
+            p_data_i(31 downto 9) <= (others => '0');
+            p_data_i(8) <= '1';
+            p_data_i(7 downto 0) <= std_logic_vector(to_unsigned(character'pos(chi), 8));
           end if;
         end if;
       end if;
       p_ack <= p_cyc and p_stb and not p_stall;
-      p_data_i <= (others => '0'); -- read from console?
     end if;
   end process;
   
