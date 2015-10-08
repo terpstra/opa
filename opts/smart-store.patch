@@ -1,5 +1,5 @@
 diff --git a/opa_issue.vhd b/opa_issue.vhd
-index 9edd3ff..fbf49d8 100644
+index fe2b363..ec43b49 100644
 --- a/opa_issue.vhd
 +++ b/opa_issue.vhd
 @@ -218,6 +218,7 @@ architecture rtl of opa_issue is
@@ -19,7 +19,7 @@ index 9edd3ff..fbf49d8 100644
    signal s_ready_pads      : t_ready_pad((c_num_stat+c_mux_share-1)/c_mux_share-1 downto 0);
    signal s_ready_pad       : std_logic_vector(2**c_stat_wide-1 downto 0) := (others => '0');
    signal s_readya          : std_logic_vector(c_num_stat-1 downto 0);
-@@ -441,6 +444,9 @@ begin
+@@ -507,6 +510,9 @@ begin
    
    -- Which stations are already issued?
    s_issued <= f_shift(r_fast_issue or r_slow_issue, r_shift) or r_issued;
@@ -29,7 +29,7 @@ index 9edd3ff..fbf49d8 100644
  
    -- Which stations have ready operands?
    -- 
-@@ -471,7 +477,7 @@ begin
+@@ -537,7 +543,7 @@ begin
    -- Which stations are pending issue?
    s_readyab <= s_readya and s_readyb; -- 3 levels (for stat_wide <= 5)
    s_pending_fast <= s_readyab and not s_issued and r_fast;
@@ -38,7 +38,7 @@ index 9edd3ff..fbf49d8 100644
    
    -- Derive the schedule from the pending instructions
    fast : opa_prefixsum
-@@ -773,12 +779,14 @@ begin
+@@ -875,19 +881,23 @@ begin
    stations_0rc : process(rst_n_i, clk_i) is
    begin
      if rst_n_i = '0' then
@@ -49,11 +49,24 @@ index 9edd3ff..fbf49d8 100644
 +      r_order <= (others => '0');
      elsif rising_edge(clk_i) then
        if s_shift = '1' then
--        r_fast <= rename_fast_i & r_fast(c_num_stat-1 downto c_renamers);
--        r_slow <= rename_slow_i & r_slow(c_num_stat-1 downto c_renamers);
-+        r_fast  <= rename_fast_i  & r_fast (c_num_stat-1 downto c_renamers);
-+        r_slow  <= rename_slow_i  & r_slow (c_num_stat-1 downto c_renamers);
-+        r_order <= rename_order_i & r_order(c_num_stat-1 downto c_renamers);
+         if r_fault_out = '1' then
+-          r_fast(c_num_stat-1 downto c_num_stat-c_renamers) <= (others => '0');
+-          r_slow(c_num_stat-1 downto c_num_stat-c_renamers) <= (others => '0');
++          r_fast (c_num_stat-1 downto c_num_stat-c_renamers) <= (others => '0');
++          r_slow (c_num_stat-1 downto c_num_stat-c_renamers) <= (others => '0');
++          r_order(c_num_stat-1 downto c_num_stat-c_renamers) <= (others => '0');
+         else
+-          r_fast(c_num_stat-1 downto c_num_stat-c_renamers) <= rename_fast_i;
+-          r_slow(c_num_stat-1 downto c_num_stat-c_renamers) <= rename_slow_i;
++          r_fast (c_num_stat-1 downto c_num_stat-c_renamers) <= rename_fast_i;
++          r_slow (c_num_stat-1 downto c_num_stat-c_renamers) <= rename_slow_i;
++          r_order(c_num_stat-1 downto c_num_stat-c_renamers) <= rename_order_i;
+         end if;
+-        r_fast(c_num_stat-c_renamers-1 downto 0) <= r_fast(c_num_stat-1 downto c_renamers);
+-        r_slow(c_num_stat-c_renamers-1 downto 0) <= r_slow(c_num_stat-1 downto c_renamers);
++        r_fast (c_num_stat-c_renamers-1 downto 0) <= r_fast (c_num_stat-1 downto c_renamers);
++        r_slow (c_num_stat-c_renamers-1 downto 0) <= r_slow (c_num_stat-1 downto c_renamers);
++        r_order(c_num_stat-c_renamers-1 downto 0) <= r_order(c_num_stat-1 downto c_renamers);
        end if;
      end if;
    end process;
