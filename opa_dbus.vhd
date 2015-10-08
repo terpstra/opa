@@ -93,6 +93,7 @@ architecture rtl of opa_dbus is
   signal r_stb      : std_logic := '0';
   signal r_we       : std_logic := '1'; -- May only be '0' if r_cyc='1'
   signal r_idle1    : std_logic; -- was idle last cycle?
+  signal s_sel      : std_logic_vector(c_reg_wide/8-1 downto 0);
   signal r_sel      : std_logic_vector(c_reg_wide/8-1 downto 0);
   signal r_radr     : std_logic_vector(c_adr_wide-1 downto 0) := (others => '0');
   signal s_way_en   : std_logic_vector(c_num_dway-1 downto 0);
@@ -225,7 +226,7 @@ begin
           r_cyc   <= '1';
           r_stb   <= '1';
           r_we    <= '1';
-          r_sel   <= s_dirty_mux(r_sel'range);
+          r_sel   <= s_sel;
         when OPA_DBUS_STORE_LOAD =>
           r_stb <= r_stb and not s_last_stb;
           if s_last_ack = '1' then
@@ -237,7 +238,7 @@ begin
             r_state <= OPA_DBUS_STORE_LOAD;
             r_cyc   <= '1';
             r_we    <= '1';
-            r_sel   <= s_dirty_mux(r_sel'range);
+            r_sel   <= s_sel;
           end if;
         when OPA_DBUS_LOAD_STORE =>
           r_stb <= r_stb and not s_last_stb;
@@ -263,7 +264,7 @@ begin
           r_cyc   <= '1';
           r_stb   <= '1';
           r_we    <= '1';
-          r_sel   <= s_dirty_mux(r_sel'range);
+          r_sel   <= s_sel;
         when OPA_DBUS_LOAD =>
           r_stb <= r_stb and not s_last_stb;
           if s_last_ack = '1' then
@@ -288,7 +289,7 @@ begin
             r_state <= OPA_DBUS_STORE;
             r_cyc   <= '1';
             r_we    <= '1';
-            r_sel   <= s_dirty_mux(r_sel'range);
+            r_sel   <= s_sel;
           end if;
       end case;
     end if;
@@ -383,11 +384,13 @@ begin
     s_dirty     <= std_logic_vector(rotate_left(unsigned(r_dirty),     c_reg_wide/8));
     s_storeline <= std_logic_vector(rotate_left(unsigned(r_storeline), c_reg_wide));
     s_lineout   <= r_storeline(c_dline_size*8-1 downto c_dline_size*8-c_reg_wide);
+    s_sel       <= s_dirty_mux(c_dline_size-1 downto c_dline_size-c_reg_wide/8);
   end generate;
   write_little : if not c_big_endian generate
     s_dirty     <= std_logic_vector(rotate_right(unsigned(r_dirty),     c_reg_wide/8));
     s_storeline <= std_logic_vector(rotate_right(unsigned(r_storeline), c_reg_wide));
     s_lineout   <= r_storeline(c_reg_wide-1 downto 0);
+    s_sel       <= s_dirty_mux(c_reg_wide/8-1 downto 0);
   end generate;
   
   -- Need this bypass to setup r_sel and r_adr
