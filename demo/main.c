@@ -1,3 +1,4 @@
+#include <string.h>
 #include "pp-printf.h"
 
 signed short  buf1[16] = { 0, -1,  2, -3,  4, -5,  6, -7,  8, -9,  10, -11, 12, -13,  14, -15 };
@@ -6,12 +7,47 @@ const char hello[] = "hello world";
 
 #ifndef HOST
 volatile unsigned int* stdout = (unsigned int*)0xFFFFFFFCU;
+
 int puts(const char *s) {
   while (*s) *stdout = *s++;
   *stdout = '\n';
   return 1;
 }
+
+int my_getchar() {
+  static int but = 0, old = 0;
+  
+  while (1) {
+    unsigned int x = *stdout;
+
+    // Report button activity
+    old = but;
+    but = x >> 31;
+    if (but != old) {
+      pp_printf("Button: %s", but?"pushed":"released");
+    }
+    
+    // Read data from JTAG?
+    if (0 != (x & 0x100)) {
+      return x & 0xFF;
+    }
+  }
+}
+
+void* memset(void* x, int c, size_t n)
+{
+  unsigned char *b = x;
+  for (; n > 0; --n) *b++ = c;
+  return x;
+}
+#else
+extern int getchar();
+int my_getchar() {
+  return getchar();
+}
 #endif
+
+void suduko();
 
 void msleep(int x) {
   int i, j;
@@ -39,18 +75,8 @@ int main() {
   
   pp_printf("Result: %x %d", sum, sum);
   
-#ifndef HOST
-  int old = 0, but = 0;
-  while (1) {
-    msleep(100); // Debounce by sleeping
-    
-    old = but;
-    but = (*stdout >> 31);
-    if (but != old) {
-      pp_printf("Button: %s", but?"pushed":"released");
-    }
-  }
-#endif
+  // Run the suduko solver
+  suduko();
 
   return sum;
 }

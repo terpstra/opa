@@ -2,7 +2,7 @@
 
 set -ex
 
-SOURCES="main.c pp-printf.c pp-vsprintf.c"
+SOURCES="main.c suduko.c pp-printf.c pp-vsprintf.c"
 
 gcc -DHOST -Wall -O2 $SOURCES -o main
 

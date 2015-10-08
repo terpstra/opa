@@ -14,4 +14,4 @@ extern int pp_vsprintf(char *buf, const char *, va_list)
 /* This is what we rely on for output */
 extern int puts(const char *s);
 
-
+extern int my_getchar();
