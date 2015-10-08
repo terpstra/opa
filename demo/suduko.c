@@ -1,11 +1,10 @@
+// #define DEBUG 1
+
 #include <string.h>
 #include <stdio.h>
 
 #include "pp-printf.h"
 
-/* If a square is known, it is filled with
- */
-unsigned char sequence;
 unsigned char mark[9][9];
 unsigned char known[9][9];
 unsigned char square[9][9][9];
@@ -17,20 +16,18 @@ void checkRow(int row)
   
   memset(seen, 0, sizeof(seen));
   for (col = 0; col < 9; ++col) {
-    if (0 != (what = known[row][col])) {
-      if (++seen[what] != 1) pp_printf("DUPLICATE IN ROW %d", row+1);
-    }
+    what = known[row][col];
+#if DEBUG
+    if (seen[what]) puts("DUPLICATE IN ROW");
+#endif
+    seen[what] = 1;
   }
   
   // Eliminate all options
   for (col = 0; col < 9; ++col) {
     what = known[row][col];
-    for (opt = 1; opt <= 9; ++opt) {
-      if (opt == what) continue; // don't mark knowns invalid
-      if (seen[opt]) { // eliminate candidates
-        square[row][col][opt-1] = sequence;
-      }
-    }
+    for (opt = 1; opt <= 9; ++opt)
+      square[row][col][opt-1] |= (opt != what) && seen[opt];
   }
 }
 
@@ -41,20 +38,18 @@ void checkCol(int col)
   
   memset(seen, 0, sizeof(seen));
   for (row = 0; row < 9; ++row) {
-    if (0 != (what = known[row][col])) {
-      if (++seen[what] != 1) pp_printf("DUPLICATE IN COLUMN %d", col+1);
-    }
+    what = known[row][col];
+#if DEBUG
+    if (seen[what]) puts("DUPLICATE IN COL");
+#endif
+    seen[what] = 1;
   }
   
   // Eliminate all options
   for (row = 0; row < 9; ++row) {
     what = known[row][col];
-    for (opt = 1; opt <= 9; ++opt) {
-      if (opt == what) continue; // don't mark knowns invalid
-      if (seen[opt]) { // eliminate candidates
-        square[row][col][opt-1] = sequence;
-      }
-    }
+    for (opt = 1; opt <= 9; ++opt)
+      square[row][col][opt-1] |= (opt != what) && seen[opt];
   }
 }
 
@@ -68,9 +63,11 @@ void checkSquare(int r, int c)
     for (j = 0; j < 3; ++j) {
       row = r*3 + i;
       col = c*3 + j;
-      if (0 != (what = known[row][col])) {
-        if (++seen[what] != 1) pp_printf("DUPLICATE IN SQUARE %d,%d", r+1, c+1);
-      }
+      what = known[row][col];
+#if DEBUG
+      if (seen[what]) puts("DUPLICATE IN SQUARE");
+#endif
+      seen[what] = 1;
     }
   }
   
@@ -80,40 +77,34 @@ void checkSquare(int r, int c)
       row = r*3 + i;
       col = c*3 + j;
       what = known[row][col];
-      for (opt = 1; opt <= 9; ++opt) {
-        if (opt == what) continue; // don't mark knowns invalid
-        if (seen[opt]) { // eliminate candidates
-          square[row][col][opt-1] = sequence;
-        }
-      }
+      for (opt = 1; opt <= 9; ++opt)
+        square[row][col][opt-1] |= (opt != what) && seen[opt];
     }
   }
 }
 
 int findKnown()
 {
-  int i, j, k, opts, last, found;
+  int i, j, k, opts, last, found, now, old;
   
   found = 0;
   for (i = 0; i < 9; ++i) {
     for (j = 0; j < 9; ++j) {
       opts = 0;
-      last = -1;
+      last = 0;
       for (k = 0; k < 9; ++k) {
-        if (!square[i][j][k]) {
-          ++opts;
-          last = k;
-        }
+        int possible = !square[i][j][k];
+        opts += possible;
+        last += k*possible;
       }
-      switch (opts) {
-      case 0: pp_printf("IMPOSSIBLE PUZZLE"); break;
-      case 1: 
-        k = known[i][j];
-        mark[i][j] = !k;
-        found += !k;
-        known[i][j] = last+1; 
-        break;
-      }
+#if DEBUG
+      if (opts == 0) puts("IMPOSSIBLE PUZZLE");
+#endif
+      old = known[i][j];
+      now = (opts == 1) && !old;
+      mark[i][j] = now;
+      found += now;
+      known[i][j] = old + now * (last+1);
     }
   }
   
@@ -122,42 +113,35 @@ int findKnown()
 
 void printSquare()
 {
-  int row, col;
+  int row, col, green;
   char buf[120];
   char *x;
   
   for (row = 0; row < 9; ++row) {
     if (row == 3 || row == 6)
-      pp_printf("-----------");
+      puts("-----------");
     
     x = &buf[0];
     for (col = 0; col < 9; ++col) {
-      if (col == 3 || col == 6)
-        *x++ = '|';
+      *x = '|';
+      x += (col == 3 || col == 6);
       
-      if (known[row][col]) {
-        if (mark[row][col]) {
-          *x++ = 27;
-          *x++ = '[';
-          *x++ = '4';
-          *x++ = '2';
-          *x++ = 'm';
-        }
-        *x++ = known[row][col] + '0';
-        if (mark[row][col]) {
-          *x++ = 27;
-          *x++ = '[';
-          *x++ = '0';
-          *x++ = 'm';
-        }
-      } else {
-        *x++ = '.';
-      }
+      green = mark[row][col];
+      *x = 27;  x += green;
+      *x = '['; x += green;
+      *x = '4'; x += green;
+      *x = '2'; x += green;
+      *x = 'm'; x += green;
+      *x++ = (known[row][col] + '0') - (known[row][col] == 0) * ('0' - '.');
+      *x = 27;  x += green;
+      *x = '['; x += green;
+      *x = '0'; x += green;
+      *x = 'm'; x += green;
     }
     *x = 0;
-    pp_printf("%s", buf);
+    puts(buf);
   }
-  pp_printf("\n");
+  puts("\n");
 }
 
 void solve()
@@ -213,7 +197,6 @@ void suduko() {
       col = 0;
       if (++row == 9) {
         row = 0;
-        sequence = 1;
         memset(square, 0, sizeof(square));
         solve();
       }
