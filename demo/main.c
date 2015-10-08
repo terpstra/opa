@@ -6,7 +6,7 @@ unsigned char buf2[16] = { 0,  1, -2, -3,  4,  5, -6, -7,  8,  9, -10, -11, 12, 
 const char hello[] = "hello world";
 
 #ifndef HOST
-volatile unsigned int* stdout = (unsigned int*)0xFFFFFFFCU;
+static volatile unsigned int * const stdout = (unsigned int*)0xFFFFFFFCU;
 
 int puts(const char *s) {
   while (*s) *stdout = *s++;
@@ -37,7 +37,8 @@ int my_getchar() {
 void* memset(void* x, int c, size_t n)
 {
   unsigned char *b = x;
-  for (; n > 0; --n) *b++ = c;
+  unsigned char *e = b + n;
+  while (b != e) *b++ = c;
   return x;
 }
 #else
@@ -53,8 +54,8 @@ void msleep(int x) {
   int i, j;
   for (i = 0; i < x; ++i) {
     // On a fast2 OPA, each loop iteration takes exactly 1 cycle
-    // Thus, at 50MHz / 50000 = 1kHz => 1ms
-    for (j = 0; j < 50000; ++j)
+    // Thus, at 100MHz / 100000 = 1kHz => 1ms
+    for (j = 0; j < 100000; ++j)
       asm volatile ("");
   }
 }
