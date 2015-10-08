@@ -153,6 +153,8 @@ architecture rtl of opa_syn_tb is
   -- UART flow control
   signal s_uart_we : std_logic;
   signal s_uart_re : std_logic;
+  signal s_pin     : std_logic_vector(8 downto 0);
+  signal r_pin     : std_logic_vector(8 downto 0);
   signal s_uart_stall : std_logic;
   
   -- User button presed?
@@ -370,6 +372,7 @@ begin
       i_ack <= i_cyc and i_stb and not i_stall;
       d_ack <= d_cyc and d_stb and not d_stall;
       p_ack <= p_cyc and p_stb and not p_stall;
+      r_pin <= s_pin;
       r_clk <= not r_clk;
     end if;
   end process;
@@ -385,11 +388,9 @@ begin
       stb_i   => s_uart_we,
       stall_o => s_uart_stall,
       dat_i   => p_dato(7 downto 0),
-      stb_o   => p_dati(8),
+      stb_o   => s_pin(8),
       stall_i => "not"(s_uart_re),
-      dat_o   => p_dati(7 downto 0));
-  
-  p_dati(30 downto 9) <= (others => '0');
+      dat_o   => s_pin(7 downto 0));
   
   button : process(clk) is
   begin
@@ -399,6 +400,9 @@ begin
       r_but0 <= r_but1;
     end if;
   end process;
+  
   p_dati(31) <= not r_but0;
+  p_dati(30 downto 9) <= (others => '0');
+  p_dati( 8 downto 0) <= r_pin;
   
 end rtl;
