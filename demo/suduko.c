@@ -117,6 +117,7 @@ void printSquare()
   char buf[120];
   char *x;
   
+  puts("\n");
   for (row = 0; row < 9; ++row) {
     if (row == 3 || row == 6)
       puts("-----------");
@@ -141,7 +142,6 @@ void printSquare()
     *x = 0;
     puts(buf);
   }
-  puts("\n");
 }
 
 void solve()
