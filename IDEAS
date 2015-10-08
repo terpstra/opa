@@ -37,3 +37,4 @@ BUGS:
 		... old ordered patch does not help
 		=> need to kill ALL ordered ops
 	bad executed instructions corrupt prediction SM with 'X's
+	pbus double-read! (retry faster than device ack)
