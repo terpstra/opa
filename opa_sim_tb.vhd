@@ -40,6 +40,8 @@ use work.opa_functions_pkg.all;  -- for f_opa_safe
 use work.opa_components_pkg.all; -- for opa_lfsr
 
 entity opa_sim_tb is
+  generic (
+    init_file : string := "");
 end opa_sim_tb;
 
 architecture rtl of opa_sim_tb is
@@ -83,6 +85,26 @@ architecture rtl of opa_sim_tb is
   
 begin
 
+  p_load_ram : process
+    type t_char_file is file of character;
+    file fp : t_char_file;
+    variable cbuf : character;
+    variable cnt  : integer := 0;
+  begin
+    if init_file /= "" then
+      file_open(fp, init_file, READ_MODE);
+      cnt := 0;
+      while not endfile(fp) loop
+        read(fp, cbuf);
+        ram(cnt/4)(8*(cnt mod 4) +7 downto 8*(cnt mod 4)) :=
+          std_logic_vector(to_unsigned(character'POS(cbuf), 8));
+        cnt := cnt+1;
+      end loop;
+      file_close(fp);
+    end if;
+    wait;
+  end process;
+    
   clock : process
   begin
     clk <= '1';
