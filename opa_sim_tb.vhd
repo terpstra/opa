@@ -79,7 +79,7 @@ architecture rtl of opa_sim_tb is
   signal p_data_o : std_logic_vector(c_config.reg_width  -1 downto 0);
   signal p_data_i : std_logic_vector(c_config.reg_width  -1 downto 0);
   
-  signal ram : t_word_array(c_demo_ram'range) := c_demo_ram;
+  shared variable ram : t_word_array(c_demo_ram'range) := c_demo_ram;
   
 begin
 
@@ -185,7 +185,7 @@ begin
           else
             for b in d_sel'range loop
               if d_sel(b) = '1' then
-                ram(da)((b+1)*8-1 downto b*8) <= d_data_o((b+1)*8-1 downto b*8);
+                ram(da)((b+1)*8-1 downto b*8) := d_data_o((b+1)*8-1 downto b*8);
               end if;
             end loop;
           end if;
